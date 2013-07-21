@@ -1,0 +1,33 @@
+<ivy-module version="2.0">
+
+  <info organisation="com.zotoh" module="hohenheim"/>
+
+  <configurations defaultconf="libjar">
+    <conf name="libjar"  description="the core jar library"/>
+    <conf name="test" extends="libjar" visibility="private" description="internal testing"/>
+  </configurations>
+
+  <publications>
+    <artifact name="hohenheim-distro" type="distro"  conf="libjar" ext="tar.gz"/>
+    <artifact name="hohenheim" type="jar"  conf="libjar" ext="jar"/>
+  </publications>
+
+  <dependencies defaultconf="libjar">
+
+    <dependency org="com.zotoh" name="hohenheim-support" rev="1.0.0-SNAPSHOT" conf="libjar->libjar"/>
+
+    <!-- clojure  -->
+    <dependency org="org.clojure" name="math.numeric-tower" rev="0.0.2" conf="libjar->default"/>
+    <dependency org="org.clojure" name="math.combinatorics" rev="0.0.4" conf="libjar->default"/>
+    <dependency org="org.clojure" name="tools.logging" rev="0.2.6" conf="libjar->default"/>
+    <dependency org="org.clojure" name="data.codec" rev="0.1.0" conf="libjar->default"/>
+    <dependency org="org.clojure" name="java.jdbc" rev="0.3.0-alpha4" conf="libjar->default"/>
+    <dependency org="org.clojure" name="java.jmx" rev="0.2.0" conf="libjar->default"/>
+    <dependency org="org.clojure" name="data.json" rev="0.2.2" conf="libjar->default"/>
+    <dependency org="org.clojure" name="data.xml" rev="0.0.7" conf="libjar->default"/>
+    <dependency org="expectations" name="expectations" rev="1.4.49" conf="libjar->default"/>
+    <dependency org="org.clojure" name="clojure" rev="1.5.1" conf="libjar->default"/>
+
+  </dependencies>
+
+</ivy-module>
