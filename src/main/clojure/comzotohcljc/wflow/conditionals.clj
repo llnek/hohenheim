@@ -1,6 +1,35 @@
+;;
+;; COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
+;;
+;; THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
+;; MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE
+;; VERSION 2.0 (THE "LICENSE").
+;;
+;; THIS LIBRARY IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL
+;; BUT WITHOUT ANY WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF
+;; MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+;;
+;; SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING PERMISSIONS
+;; AND LIMITATIONS UNDER THE LICENSE.
+;;
+;; You should have received a copy of the Apache License
+;; along with this distribution; if not you may obtain a copy of the
+;; License at
+;; http://www.apache.org/licenses/LICENSE-2.0
+;;
+
 (ns ^{ :doc ""
        :author "kenl" }
   comzotohcljc.wflow.conditionals )
+
+
+(use '[clojure.tools.logging :only (info warn error debug)])
+(import '(com.zotoh.hohenheim.core Job))
+
+(require '[comzotohcljc.util.seqnumgen :as SN])
+(require '[comzotohcljc.util.coreutils :as CU])
+
+(use '[comzotohcljc.wflow.core])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -14,7 +43,7 @@
 (defprotocol While)
 
 (defprotocol ForLoopCountExpr
-  (eval [_ job] ))
+  (getCount [_ job] ))
 (defprotocol ForPoint)
 (defprotocol For)
 
@@ -22,17 +51,14 @@
 ;; If
 
 (defn make-if [expr then else]
-  (let [ b (make-Activity [ Conditional If ] ) ]
+  (let [ b (make-activity :If Conditional If) ]
     (.setf b :test expr)
     (.setf b :then then)
     (.setf b :else else)
     b))
 
 (defmethod ac-reify :If [ac cur]
-  (let [ pipe (get (meta cur) :pipeline)
-         f (make-FlowPoint pipe ConditionalPoint IfPoint) ]
-    (fw-configure! f ac cur)
-    (fw-realize! f)))
+  (ac-spawnpoint ac cur :IfPoint ConditionalPoint IfPoint))
 
 (defmethod ac-realize! :If [ac fw]
   (let [ np (.getf fw :next)
@@ -45,14 +71,13 @@
     fw))
 
 (defmethod fw-evaluate! :IfPoint [fw job]
-  (let [ c (.getf fw :attmt)
+  (let [ c (fw-popattmt! fw)
          t (.getf fw :then)
          e (.getf fw :else)
          b (.eval (.getf fw :test) job) ]
     (debug "if-(test) = " (if b "OK" "FALSE"))
     (let [ rc (if b t e) ]
-      (when-not (nil? rc)
-        (.setf rc :attmt c))
+      (when-not (nil? rc) (fw-setattmt! rc c))
       (fw-realize! fw)
       rc)))
 
@@ -60,16 +85,13 @@
 ;; While
 
 (defn make-while [expr body]
-  (let [ b (make-Activity [ Conditional While ] ) ]
+  (let [ b (make-activity :While Conditional While) ]
     (.setf b :test expr)
     (.setf b :then body)
     b))
 
 (defmethod ac-reify :While [ac cur]
-  (let [ pipe (get (meta cur) :pipeline)
-         f (make-FlowPoint pipe ConditionalPoint WhilePoint) ]
-    (fw-configure! f ac cur)
-    (fw-realize! f)))
+  (ac-spawnpoint ac cur :WhilePoint ConditionalPoint WhilePoint))
 
 (defmethod ac-realize! :While [ac fw]
   (let [ b (.getf ac :body)
@@ -80,27 +102,27 @@
     fw))
 
 (defn- evalWhilePoint [fw job]
-  (let [ c (.getf fw :attmt)
+  (let [ c (fw-popattmt! fw)
          np (.getf fw :next)
          body (.getf fw :body)
          tst (.getf fw :test) ]
-    (.setf fw :attmt nil)
     (with-local-vars [ rc fw ]
       (if (not (.eval tst job))
         (do
           (debug "test-condition == false")
           (var-set rc np)
-          (when-not (nil? @rc)
-            (.setf @rc :attmt c))
+          (when-not (nil? @rc) (fw-setattmt! @rc c))
           (fw-realize! fw))
         (do
           (debug "looping - eval body")
-          (.setf body :attmt c)
-          (let [ f (fw-evaluate! body job) ]
+          (fw-setattmt! body c)
+          (let [ f (fw-evaluate! body job)
+                 id (:typeid (meta f)) ]
             (cond
-              (or (satisfies? AsyncWaitPoint f)
-                  (satisfies? DelayPoint f))
-                (do (.setf f :next @rc) (var-set rc f))
+              (or (= id :AsyncWaitPoint)
+                  (= id :DelayPoint))
+              (do (.setf f :next @rc) (var-set rc f))
+
               :else
               (when-not (identical? f fw)
                 (.setf fw :body f))))) )
@@ -112,25 +134,23 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; For
 
+;; expr == ForLoopCountExpr
 (defn make-for [expr body]
-  (let [ b (make-Activity [ Conditional While For ] ) ]
+  (let [ b (make-activity :For Conditional While For) ]
     (.setf b :test expr)
     (.setf b :body body)
     b))
 
 (defmethod ac-reify :For [ac cur]
-  (let [ pipe (get (meta cur) :pipeline)
-         f (make-FlowPoint pipe ConditionalPoint WhilePoint ForPoint) ]
-    (fw-configure! f ac cur)
-    (fw-realize! f)))
+  (ac-spawnpoint ac cur :ForPoint ConditionalPoint WhilePoint ForPoint))
 
 (deftype ForLoopExpr [ ^:unsynchronized-mutable started
                        ^:unsynchronized-mutable loopCnt
                        loopCountExpr ] BoolExpr
-  (eval [_ job]
+  (evaluate [_ job]
     (try
       (when-not (started)
-        (set! loopCnt (.eval loopCountExpr job))
+        (set! loopCnt (.getCount loopCountExpr job))
         (set! started true))
       (debug "currnet loop " loopCnt)
       (let [ rc (> loopCnt 0) ]

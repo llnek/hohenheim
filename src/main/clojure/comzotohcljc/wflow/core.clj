@@ -44,6 +44,9 @@
 (defprotocol NihilPoint)
 (defprotocol Nihil)
 
+(defprotocol BoolExpr
+  (evaluate [_ job] "boolean" ))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmulti ^{ :doc "" } fw-configure! (fn [a b c] (:typeid (meta a))))

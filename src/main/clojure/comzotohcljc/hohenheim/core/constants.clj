@@ -20,7 +20,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
-  comzotohcljc.hoheheim.core.constants )
+  comzotohcljc.hohenheim.core.constants )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

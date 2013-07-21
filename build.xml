@@ -79,6 +79,12 @@
       <arg value="comzotohcljc.hohenheim.impl.container" />
       <arg value="comzotohcljc.hohenheim.impl.kernel" />
       <arg value="comzotohcljc.hohenheim.impl.execvisor" />
+      <arg value="comzotohcljc.wflow.core" />
+      <arg value="comzotohcljc.wflow.composites" />
+      <arg value="comzotohcljc.wflow.conditionals" />
+      <arg value="comzotohcljc.wflow.switch" />
+      <arg value="comzotohcljc.wflow.delays" />
+      <arg value="comzotohcljc.wflow.ptask" />
     </java>
   </target>
 
