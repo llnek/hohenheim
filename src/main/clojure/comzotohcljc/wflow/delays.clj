@@ -3,6 +3,16 @@
        :author "kenl" }
   comzotohcljc.wflow.delays)
 
+
+
+(use '[clojure.tools.logging :only (info warn error debug)])
+(import '(com.zotoh.hohenheim.core Job))
+
+(require '[comzotohcljc.util.seqnumgen :as SN])
+(require '[comzotohcljc.util.coreutils :as CU])
+
+(use '[comzotohcljc.wflow.core])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol AsyncWaitPoint)
@@ -20,22 +30,19 @@
       (resume [_ resArg]
         (let [ np (.getf fw :next) ]
           (when-not (nil? np)
-            (.setf np :attmt resArg)
-            (.rerun pipe np))))))
+            (fw-setattmt np resarg)
+            (fw-rerun np))))) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Delay
 
 (defn make-delay [delayMillis]
-  (let [ b (make-Activity Delay) ]
+  (let [ b (make-activity :Delay Delay) ]
     (.setf b :delayMillis delayMillis)
     b))
 
 (defmethod ac-reify :Delay [ac cur]
-  (let [ pipe (get (meta cur) :pipeline)
-         f (make-FlowPoint pipe DelayPoint) ]
-    (fw-configure! f ac cur)
-    (fw-realize! f)))
+  (ac-spawnpoint ac cur :DelayPoint DelayPoint))
 
 (defmethod ac-realize! :Delay [ac fw]
   (let [ d (.getf ac :delayMillis) ]
@@ -49,7 +56,7 @@
 ;; AsyncWait
 
 (defn make-asyncwait []
-  (let [ b (make-Activity AsyncWait) ]
+  (let [ b (make-activity AsyncWait) ]
     b))
 
 (defmethod ac-reify :AsyncWait [ac cur]
