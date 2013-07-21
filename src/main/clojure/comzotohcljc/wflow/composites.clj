@@ -23,42 +23,45 @@
   comzotohcljc.wflow.composites )
 
 
+(use '[clojure.tools.logging :only (info warn error debug)])
+(import '(com.zotoh.hohenheim.core Job))
+(import '(java.util.concurrent.atomic AtomicLong))
 (require '[comzotohcljc.util.coreutils :as CU])
-
+(use '[comzotohcljc.wflow.core])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol MutableListAPI
   (is-empty? [_] )
-  (size [_])
+  (length [_])
   (shift [_]))
 (deftype MutableList [ ^:unsynchronized-mutable data] MutableListAPI
-  (is-empty? [_] (= 0 (count @data) ))
-  (size [_] (count @data))
+  (is-empty? [_] (= 0 (count data) ))
+  (length [_] (count data))
   (shift [this]
-    (if (is-empty this)
+    (if (is-empty? this)
       nil
-      (let [ f (first @data) ]
-        (var-set data (pop @data))
+      (let [ f (first data) ]
+        (set! data (pop data))
         f))))
 
-(defprotocol IterWrapperAPI
+(defprotocol InnerPointsAPI
   (isEmpty [_])
   (size [_])
   (nextPoint [_]))
 
-(defn make-IterWrapper [outerPoint children]
+;; children == (vec ... activities )
+(defn make-innerPoints [outerPoint children]
   (let [ impl (MutableList. (into () (reverse children))) ]
     (reify
-      IterWrapperAPI
+      InnerPointsAPI
       (isEmpty [_] (.is-empty? impl))
       (size [_] (.size impl))
       (nextPoint [_]
-        (let [ n (.shift impl) ]
-          (if (nil? n)
+        (let [ ac (.shift impl) ]
+          (if (nil? ac)
             nil
-            (ac-reify n outerPoint)))))))
-
+            (ac-reify ac outerPoint)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Composite
@@ -79,7 +82,7 @@
 (defprotocol Block)
 
 (defn make-block [ & args ]
-  (let [ b (make-Activity [ Composite Block ] )
+  (let [ b (make-activity :Block Composite Block)
          v (if (empty? args)
              []
              (vec (flatten (conj [] args)))) ]
@@ -87,34 +90,28 @@
     b))
 
 (defmethod ac-reify :Block [ac cur]
-  (let [ pipe (get (meta cur) :pipeline)
-         f (make-FlowPoint pipe CompositePoint BlockPoint) ]
-    ;;(.setf f :inner-points nil)
-    (fw-configure! f ac cur)
-    (fw-realize! f)))
+  (ac-spawnpoint ac cur :BlockPoint CompositePoint BlockPoint))
 
 (defmethod ac-realize! :Block [ac fw]
-  (let [ w (make-IterWrapper fw (.getf ac :children)) ]
+  (let [ w (make-innerPoints fw (.getf ac :children)) ]
     (.setf fw :inner-points w)
     fw))
 
-(defmethod fw-evaluate! :BlockPoint [fw job]
-  (let [ c (.getf fw :attmt) ;; data pass back from previous async call?
-         w (.getf fw :inner-points) ]
-    (.setf fw :attmt nil)
+(defmethod fw-evaluate! :BlockPoint [fw  job]
+  (let [ w (.getf fw :inner-points)
+         np (.getf fw :next)
+         c (fw-popattmt! fw) ]
     (with-local-vars [ rc nil ]
       (if (or (nil? w) (.isEmpty w))
         (do
-          (debug "no more inner elements.")
-          (var-set rc (.getf fw :next))
-          (when-not (nil? @rc)
-            (.setf @rc :attmt c))
+          (debug "no more inner points.")
+          (var-set rc np)
+          (when-not (nil? @rc) (fw-setattmt! @rc c))
           (fw-realize! fw)
           @rc)
         (do
-          (debug (.size w) " element(s)")
-          (fw-evaluate! (doto (.nextPoint w)(.setf :attmt c)) job))))))
-
+          (debug (.size w) " inner points remaining.")
+          (fw-evaluate! (->  (.nextPoint w)(fw-setattmt! c)) job))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Join
@@ -132,100 +129,88 @@
 (defprotocol OrJoin)
 
 (defn make-nulljoin []
-  (let [ a (make-Activity Join NullJoin) ]
-    (.setf a :body nil)
+  (let [ a (make-activity :NullJoin Join NullJoin) ]
     (.setf a :branches 0)
+    (.setf a :body nil)
     a))
 
 (defmethod ac-reify :NullJoin [ac cur]
-  (let [ pipe (get (meta cur) :pipeline)
-         f (make-FlowPoint pipe JoinPoint NullJoinPoint) ]
-    (fw-configure! f ac cur)
-    (fw-realize! f)))
+  (ac-spawnpoint ac cur :NullJoinPoint JoinPoint NullJoinPoint))
 
+(defmethod fw-evaluate! :NullJoinPoint [fw  job] nil)
 (defmethod ac-realize! :NullJoin [ac fw] fw)
-(defmethod fw-evaluate! :NullJoinPoint [fw job] nil)
 
 
 (defn make-andjoin [body]
-  (let [ a (make-Activity Join AndJoin) ]
+  (let [ a (make-activity :AndJoin Join AndJoin) ]
     (.setf a :body body)
     (.setf a :branches 0)
     a))
 
 (defmethod ac-reify :AndJoin [ac cur]
-  (let [ pipe (get (meta cur) :pipeline)
-         f (make-FlowPoint pipe JoinPoint AndJoinPoint) ]
-    (fw-configure! f ac cur)
-    (fw-realize! f)))
+  (ac-spawnpoint ac cur :AndJoinPoint JoinPoint AndJoinPoint))
 
 (defmethod ac-realize! :AndJoin [ac fw]
   (let [ b (.getf ac :body)
+         np (.getf fw :next)
          n (.getf ac :branches) ]
     (when-not (nil? b)
-      (.setf fw :body (ac-reify b (.getf fw :next))) )
+      (.setf fw :body (ac-reify b np)) )
     (.setf fw :branches n)
     (.setf fw :counter (AtomicLong. 0))
     fw))
 
 (defmethod fw-evaluate! :AndJoinPoint [fw job]
-  (let [ c (.getf fw :attmt)
+  (let [ c (fw-popattmt! fw)
          b (.getf fw :branches)
          body (.getf fw :body)
-         n (.getf fw :counter) ]
-    (.setf fw :attmt nil)
-    (.incrementAndGet n)
-    (debug "branches " b ", counter "  (.get n) ", join(pid) = " fw)
-    (with-local-vars [ rc nil nn (.get n) ]
+         np (.getf fw :next)
+         n (.getf fw :counter)
+         nn (.incrementAndGet n) ]
+    (debug "branches " b ", counter " nn ", join(pid) = " fw)
+    (with-local-vars [ rc nil ]
       ;; all branches have returned, proceed...
       (when (= nn b)
-        (var-set rc (if (nil? body) (.getf fw :next) body))
-        (when-not (nil? @rc)
-          (.setf @rc :attmt c))
+        (var-set rc (if (nil? body) np body))
+        (when-not (nil? @rc) (fw-setattmt! @rc c))
         (fw-realize! fw))
       @rc)))
 
 
-
 (defn make-orjoin [body]
-  (let [ a (make-Activity Join OrJoin) ]
+  (let [ a (make-activity :OrJoin Join OrJoin) ]
     (.setf a :body body)
     (.setf a :branches 0)
     a))
 
 (defmethod ac-reify :OrJoin [ac cur]
-  (let [ pipe (get (meta cur) :pipeline)
-         f (make-FlowPoint pipe JoinPoint OrJoinPoint) ]
-    (fw-configure! f ac cur)
-    (fw-realize! f)))
+  (ac-spawnpoint ac cur :OrJoinPoint JoinPoint OrJoinPoint))
 
 (defmethod ac-realize! :OrJoin [ac fw]
   (let [ b (.getf ac :body)
+         np (.getf fw :next)
          n (.getf ac :branches) ]
     (when-not (nil? b)
-      (.setf fw :body (ac-reify b (.getf fw :next))) )
+      (.setf fw :body (ac-reify b np)) )
     (.setf fw :branches n)
     (.setf fw :counter (AtomicLong. 0))
     fw))
 
 (defmethod fw-evaluate! :OrJoinPoint [fw job]
-  (let [ c (.getf fw :attmt)
+  (let [ c (fw-popattmt! fw)
          b (.getf fw :branches)
          np (.getf fw :next)
          body (.getf fw :body)
-         n (.getf fw :counter) ]
-    (.setf fw :attmt nil)
-    (.incrementAndGet n)
-    (debug "branches " b ", counter "  (.get n) ", join(pid) = " fw)
-    (with-local-vars [ rc nil nn (.get n) ]
+         n (.getf fw :counter)
+         nn (.incrementAndGet n) ]
+    (debug "branches " b ", counter " nn ", join(pid) = " fw)
+    (with-local-vars [ rc nil ]
       (cond
         (= b 0) (do (var-set rc np) (fw-realize! fw))
         (= 1 nn) (var-set rc (if (nil? body) np body))
         (= b nn) (do (var-set rc nil) (fw-realize! fw)))
-      (when-not (nil? @rc)
-        (.setf @rc :attmt c))
+      (when-not (nil? @rc) (fw-setattmt! @rc c))
       @rc)))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Split
@@ -233,18 +218,14 @@
 (defprotocol SplitPoint)
 (defprotocol Split)
 
-(defn make-split [ joiner ]
-  (let [ s (make-Activity Composite Split) ]
+(defn make-split [joiner]
+  (let [ s (make-activity :Split Composite Split) ]
     (.setf s :children [])
     (.setf s :join joiner)
     s))
 
 (defmethod ac-reify :Split [ac cur]
-  (let [ pipe (get (meta cur) :pipeline)
-         f (make-FlowPoint pipe CompositePoint SplitPoint) ]
-    ;;(.setf f :inner-points nil)
-    (fw-configure! f ac cur)
-    (fw-realize! f)))
+  (ac-spawnpoint ac cur :SplitPoint CompositePoint SplitPoint))
 
 (defmethod ac-realize! :Split [ac fw]
   (let [ cs (.getf ac :children)
@@ -258,17 +239,17 @@
                (ac-reify j np))) ]
     (when (nil? j)
       (.setf fw :fall-thru true) )
-    (.setf fw :inner-points (make-IterWrapper s cs))
+    (.setf fw :inner-points (make-innerPoints s cs))
     fw))
 
 (defmethod fw-evaluate! :SplitPoint [fw job]
   (let [ w (:getf fw :inner-points)
-         c (:getf fw :attmt) ]
-    (.setf fw :attmt nil)
+         pipe (.getf fw :pipeline)
+         c (fw-popattmt! fw) ]
     (while (and (CU/notnil? w) (not (.isEmpty w)))
       (let [ n (.nextPoint w) ]
-        (.setf n :attmt c)
-        (-> pipe (.core)(.run n))))
+        (fw-setattmt! n c)
+        (.run pipe n)))
     (fw-realize! fw)
     ;; should we also pass the closure to the next step ? not for now
     (if (.getf fw :fall-thru)
