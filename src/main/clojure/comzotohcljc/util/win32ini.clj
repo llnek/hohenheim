@@ -34,7 +34,7 @@
 
 (defprotocol ^{ :doc "A Windows INI file object." }
   IWin32Conf
-  (getSectionAsMap [this sectionName] )
+  (getSection [this sectionName] )
   (sectionKeys [this ] )
   (dbgShow [this])
   (getString [this sectionName property] )
@@ -85,7 +85,7 @@
     (if (or (nil? kn) (nil? m)) nil (.containsKey m kn)) ))
 
 (defn- getKV [cf s k err]
-  (let [ kn (name k) sn (name s) mp (.getSectionAsMap cf sn) ]
+  (let [ kn (name k) sn (name s) mp (.getSection cf sn) ]
     (cond
       (nil? mp) (if err (throwBadMap sn) nil)
       (nil? k) (if err (throwBadKey "") nil)
@@ -96,7 +96,7 @@
 
 (deftype Win32Conf [mapOfSections] IWin32Conf
 
-  (getSectionAsMap [this sectionName]
+  (getSection [this sectionName]
     (if (nil? sectionName)
       nil
       (let [ m (.get mapOfSections (name sectionName)) ]

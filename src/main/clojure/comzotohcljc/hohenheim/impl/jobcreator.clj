@@ -37,8 +37,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-job [event]
-  (let [ impl (CU/make-mmap)
+(defn make-job [kontainer evt]
+  (let [ impl (CU/make-mmap) 
          jid (SN/next-long) ]
     (reify
       comzotohcljc.util.coreutils.MutableObjectAPI
@@ -47,33 +47,34 @@
       (getf [_ k] (.mm-g impl k))
       (clrf! [_ k] (.mm-r impl k))
       Job
-      (container [this] (getf this :container))
+      (container [_] kontainer)
+      (event [_] evt)
       (id [_] jid))))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol JobCreatorAPI
-  (update [_ target & more ] ))
+  (update [_ target options] ))
 
-(deftype JobCreator
-  [^comzotohcljc.hohenheim.impl.container.Container parent]
-  JobCreatorAPI
-  (update [event options]
-    (let [ cz (if (.hasRouter event)
-                (.routerClass event)
-                (:router-class options))
-           job (doto (make-job event)
-                 (.setf! :container parent) ) ]
-      (try
-        (let [ p (WC/make-pipeline job cz)
-               q (if (nil? p) (OrphanFlow. job) p) ]
-          (.start q))
-        (catch Throwable e#
-          (-> (FatalErrorFlow. job) (.start)))))) )
-
-
+(defn make-jobcreator ^{ :doc "" }
+  [parObj]
+  (let [ impl (CU/make-mmap) ]
+    (with-meta 
+      (reify
+        JobCreatorAPI
+          (update [evt options]
+            (let [ cz (if (.hasRouter evt)
+                        (.routerClass evt)
+                        (:router-class options))
+                   job (make-job parObj evt) ]
+              (try
+                (let [ p (WC/make-pipeline job cz)
+                       q (if (nil? p) (OrphanFlow. job) p) ]
+                  (.start q))
+                (catch Throwable e#
+                  (-> (FatalErrorFlow. job) (.start)))))) )
+      { :typeid :JobCreator } )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

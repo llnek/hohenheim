@@ -44,16 +44,19 @@
   (start [_] )
   (stop [_] ))
 
+(def PODMetaAPI
+  (srcUrl [_ ]))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- maybe-start-pod [knl pod]
   (try
-    (let [ ctx (comp-get-context knl)
+    (let [ ctx (.getCtx knl)
            root (get ctx K_COMPS)
            apps (.lookup root K_APPS)
            cid (.id pod)
            ctr (make-container pod) ]
-      (if (not (nil? ctr))
+      (if (CU/notnil? ctr)
         (do
           (.reg apps ctr)
         ;;_jmx.register(ctr,"", c.name)
@@ -63,59 +66,98 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype Kernel [id version parent ctxHolder cacheHolder] Component KernelAPI
+(defn make-kernel ^{ :doc "" }
+  [parObj]
+  (let [ impl (CU/make-mmap) ]
+    (with-meta
+      (reify
 
-  (start [this]
-    (let [ ctx (comp-get-context this)
-           root (get ctx K_COMPS)
-           apps (.lookup root K_APPS)
-           cs (comp-get-cache apps) ]
-      ;; need this to prevent deadlocks amongst pods
-      ;; when there are dependencies
-      ;; TODO: need to handle this better
-      (doseq [ [k v] (seq cs) ]
-        (let [ r (-> (CU/new-random) (.nextLong 6)) ]
-          (maybe-start-pod this v)
-          (PU/safe-wait (* 1000 (Math/max 1 r)))))))
+        Component
 
-  (stop [this]
-    (let [ cs (comp-get-cache this) ]
-      (doseq [ [k v] (seq cs) ]
-        (.stop v))
-      (comp-set-cache this {} )))
+          (setCtx! [_ x] (.mm-s impl :ctx x))
+          (getCtx [_] (.mm-s impl :ctx))
+          (setAttr! [_ a v] (.mm-s impl a v) )
+          (clrAttr! [_ a] (.mm-r impl a) )
+          (getAttr [_ a] (.mm-g impl a) )
+          (version [_] "1.0")
+          (parent [_] parObj)
+          (id [_] K_KERNEL )
+ 
+        KernelAPI
 
-)
+          (start [this]
+            (let [ ctx (getCtx this)
+                   root (get ctx K_COMPS)
+                   apps (.lookup root K_APPS)
+                   cs (.getf apps K_PODS) ]
+              ;; need this to prevent deadlocks amongst pods
+              ;; when there are dependencies
+              ;; TODO: need to handle this better
+              (doseq [ [k v] (seq cs) ]
+                (let [ r (-> (CU/new-random) (.nextLong 6)) ]
+                  (maybe-start-pod this v)
+                  (PU/safe-wait (* 1000 (Math/max 1 r)))))))
+
+          (stop [this]
+            (let [ cs (.mm-g impl K_APPS) ]
+              (doseq [ [k v] (seq cs) ]
+                (.stop v))
+              (.mm-s impl K_APPS {}))) )
+
+      { :typeid :Kernel } )))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype PODMeta [id version parent podType srcUrl] )
+(defn make-podmeta ^{ :doc "" }
+  [parObj podType pathToPOD]
+  (let [ pid (str podType "#" (SN/next-long))
+         impl (CU/make-mmap) ]
+    (with-meta
+      (reify
+
+        Component
+
+          (setCtx! [_ x] (.mm-s impl :ctx x))
+          (getCtx [_] (.mm-s impl :ctx))
+          (setAttr! [_ a v] (.mm-s impl a v) )
+          (clrAttr! [_ a] (.mm-r impl a) )
+          (getAttr [_ a] (.mm-g impl a) )
+          (version [_] "1.0")
+          (parent [_] parObj)
+          (id [_] pid )
+
+        PODMetaAPI
+
+          (typeof [_] podType)
+          (srcUrl [_] pathToPOD))
+
+      { :typeid :PODMeta } )))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod comp-initialize PODMeta [co]
-  (let [ ctx (comp-get-context co)
+(defmethod comp-initialize :PODMeta [co]
+  (let [ ctx (.getCtx co)
          rcl (get ctx K_ROOT_CZLR)
          cl  (AppClassLoader. rcl) ]
     (.configure cl (CU/nice-fpath (File. (.toURI (.srcUrl co)))) )
-    (comp-set-context co (assoc ctx K_APP_CZLR cl))) )
+    (.setCtx! co (assoc ctx K_APP_CZLR cl))) )
 
-(defmethod comp-compose Kernel [co rego]
+(defmethod comp-compose :Kernel [co rego]
   ;; get the jmx server from root
   co)
 
-(defmethod comp-contextualize Kernel [co ctx]
+(defmethod comp-contextualize :Kernel [co ctx]
   (let [ base (maybeDir ctx K_BASEDIR) ]
     (precondDir base)
     (precondDir (maybeDir ctx K_PODSDIR))
     (precondDir (maybeDir ctx K_PLAYDIR))
     (MI/setup-cache (-> (File. base (str DN_CFG "/app/mime.properties"))
                       (.toURI)(.toURL )))
-    (comp-set-context co ctx)))
+    (.setCtx! co ctx)))
 
 
-(defn make-kernel ^{ :doc "" }
-  []
-  (Kernel. K_KERNEL "1.0" nil (ref {}) (ref {})))
 
 
 

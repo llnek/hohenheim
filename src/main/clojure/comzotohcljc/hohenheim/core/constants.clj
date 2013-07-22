@@ -92,8 +92,11 @@
 (def K_KERNEL :kernel )
 (def K_EXECV :execvisor )
 (def K_DEPLOYER :deployer )
+(def K_JCTOR :job-creator )
+(def K_SCHEDULER :scheduler )
 (def K_BLOCKS :blocks )
 (def K_APPS :apps )
+(def K_PODS :pods )
 (def K_SVCS :services )
 ;;(def K_ROOT :root-rego )
 

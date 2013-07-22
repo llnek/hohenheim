@@ -30,8 +30,9 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hohenheim.core.constants])
 (use '[comzotohcljc.hohenheim.impl.defaults])
-(use '[comzotohcljc.hohenheim.impl.deployer])
-(use '[comzotohcljc.hohenheim.impl.kernel :only (make-kernel)   ])
+
+(use '[comzotohcljc.hohenheim.impl.kernel :only (make-kernel make-podmeta) ])
+(use '[comzotohcljc.hohenheim.impl.deployer :only (make-deployer) ])
 
 (require '[ comzotohcljc.util.coreutils :as CU ] )
 
@@ -45,6 +46,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol ExecvisorAPI
+  ""
   (start [_] )
   (stop [_] )
   (homeDir [_] )
@@ -63,7 +65,7 @@
 
 (defn- chkManifest [ctx app des mf]
   (let [ root (get ctx K_COMPS)
-         apps (.lookup root :rego/apps)
+         apps (.lookup root K_APPS)
          ps (CU/load-javaprops mf)
          ver (.getProperty ps "Implementation-Version" "")
          cz (.getProperty ps "Main-Class" "") ]
@@ -78,7 +80,7 @@
     ;;.gets("Implementation-Vendor-Id")
 
     (.reg apps
-      (-> (comzotohcljc.hohenheim.impl.kernel.PODMeta. app ver nil cz (-> des (.toURI) (.toURL)))
+      (-> (make-podmeta app ver nil cz (-> des (.toURI) (.toURL)))
         (synthesize-component { :ctx ctx }))) ))
 
 
@@ -99,7 +101,7 @@
         (error e#)))) )
 
 (defn- inspect-pods [co]
-  (let [ ctx (comp-get-context co)
+  (let [ ctx (assoc (.getCtx co) K_EXECV co)
          fs (-> (get ctx K_PLAYDIR)
                 (.listFiles (cast FileFilter DirectoryFileFilter/DIRECTORY))) ]
     (doseq [ f (seq fs) ]
@@ -108,76 +110,71 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype Execvisor [id version parent ctxHolder] Component ExecvisorAPI
-
-  (getStartTime [_] START-TIME)
-
-  (getUpTimeInMillis [_]
-    (- (System/currentTimeMillis) START-TIME))
-
-  (homeDir [_] (maybeDir @ctxHolder K_BASEDIR))
-
-  (confDir [_] (maybeDir @ctxHolder K_CFGDIR))
-
-  (podsDir [_] (maybeDir @ctxHolder K_PODSDIR))
-
-  (playDir [_] (maybeDir @ctxHolder K_PLAYDIR))
-
-  (logDir [_] (maybeDir @ctxHolder K_LOGDIR))
-
-  (tmpDir [_] (maybeDir @ctxHolder K_TMPDIR))
-
-  (dbDir [_] (maybeDir @ctxHolder K_DBSDIR))
-
-  (blocksDir [_] (maybeDir @ctxHolder K_BKSDIR))
-
-  (kill9 [this]
-    (let [ ctx (comp-get-context this) sh (get ctx K_CLISH) ]
-      (when-not (nil? sh) (.stop sh))))
-
-  (start [this]
-    (let [ ctx (comp-get-context this) root (get ctx K_COMPS)
-           k (.lookup root K_KERNEL) ]
-      (inspect-pods this)
-      (.start k)))
-
-  (stop [this]
-    (let [ ctx (comp-get-context this) root (get ctx K_COMPS)
-           k (.lookup root K_KERNEL) ]
-      (.stop k))) 
-
-)
+(defn make-execvisor ^{ :doc "" }
+  [parObj]
+  (let [ impl (CU/make-mmap) ]
+    (with-meta (reify
+                  Component
+                    (setCtx! [_ x] (.mm-s impl :ctx x))
+                    (getCtx [_] (.mm-s impl :ctx))
+                    (setAttr! [_ a v] (.mm-s impl a v) )
+                    (clrAttr! [_ a] (.mm-r impl a) )
+                    (getAttr [_ a] (.mm-g impl a) )
+                    (version [_] "1.0")
+                    (parent [_] parObj)
+                    (id [_] K_EXECV )
+                  ExecvisorAPI
+                    (getStartTime [_] START-TIME)
+                    (getUpTimeInMillis [_]
+                      (- (System/currentTimeMillis) START-TIME))
+                    (homeDir [this] (maybeDir (getCtx this) K_BASEDIR))
+                    (confDir [this] (maybeDir (getCtx this) K_CFGDIR))
+                    (podsDir [this] (maybeDir (getCtx this) K_PODSDIR))
+                    (playDir [this] (maybeDir (getCtx this) K_PLAYDIR))
+                    (logDir [this] (maybeDir (getCtx this) K_LOGDIR))
+                    (tmpDir [this] (maybeDir (getCtx this) K_TMPDIR))
+                    (dbDir [this] (maybeDir (getCtx this) K_DBSDIR))
+                    (blocksDir [this] (maybeDir (getCtx this) K_BKSDIR))
+                    (kill9 [this]
+                      (let [ sh (get (getCtx this) K_CLISH) ]
+                        (when-not (nil? sh) (.stop sh))))
+                    (start [this]
+                      (let [ root (get (getCtx this) K_COMPS)
+                             k (.lookup root K_KERNEL) ]
+                        (inspect-pods this)
+                        (.start k)))
+                    (stop [this]
+                      (let [ root (get (getCtx this) K_COMPS)
+                             k (.lookup root K_KERNEL) ]
+                        (.stop k)))  )
+       { :typeid :Execvisor } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- make-comp-rego [cid parent]
-  (comzotohcljc.hohenheim.impl.defaults.ComponentRegistry. cid "" parent (ref {}) (ref {})))
+(defmethod comp-initialize :Execvisor [co]
+  (let [ cf (get (.getCtx co) K_PROPS)
+         comps (.getSection cf K_COMPS)
+         regs (.getSection cf K_REGS)
+         jmx  (.getSection cf K_JMXMGM) ]
 
-(defmethod comp-initialize Execvisor [this]
-  (let [ ctx (comp-get-context this)
-         cf (get ctx K_PROPS)
-         comps (.getSectionAsMap cf K_COMPS)
-         regs (.getSectionAsMap cf K_REGS)
-         jmx  (.getSectionAsMap cf K_JMXMGM) ]
-    (comp-set-context this (assoc ctx K_EXECV this))
     (CU/test-nonil "conf file: components" comps)
-    (CU/test-nonil "conf file: jmx mgmt" jmx)
     (CU/test-nonil "conf file: registries" regs)
+    (CU/test-nonil "conf file: jmx mgmt" jmx)
+
     (System/setProperty "file.encoding" "utf-8")
-    (let [ ctx (comp-get-context this)
-           homeDir (get ctx K_BASEDIR)
-           sb (doto (File. (homeDir this) DN_BOXX)
+    (let [ home (homeDir co)
+           sb (doto (File. home DN_BOXX)
                   (.mkdir))
-           bks (doto (File. (homeDir this) DN_BLOCKS)
+           bks (doto (File. home DN_BLOCKS)
                   (.mkdir))
-           tmp (doto (File. (homeDir this) DN_TMP)
+           tmp (doto (File. home DN_TMP)
                   (.mkdir))
-           db (doto (File. (homeDir this) DN_DBS)
+           db (doto (File. home DN_DBS)
                   (.mkdir))
-           log (doto (File. (homeDir this) DN_LOGS)
+           log (doto (File. home DN_LOGS)
                   (.mkdir))
-           pods (doto (File. (homeDir this) DN_PODS)
+           pods (doto (File. home DN_PODS)
                   (.mkdir)) ]
       (precondDir pods)
       (precondDir sb)
@@ -185,7 +182,7 @@
       (precondDir tmp)
       (precondDir db)
       (precondDir bks)
-      (comp-set-context this (-> ctx
+      (.setCtx! co (-> (.getCtx co)
           (assoc K_PODSDIR pods)
           (assoc K_PLAYDIR sb)
           (assoc K_LOGDIR log)
@@ -193,51 +190,23 @@
           (assoc K_TMPDIR tmp)
           (assoc K_BKSDIR bks)) ))
     ;;(start-jmx)
-    (let [ root (make-comp-rego K_COMPS this)
-           bks (make-comp-rego K_BLOCKS nil)
-           apps (make-comp-rego K_APPS nil)
+    (let [ root (make-component-registry K_COMPS "1.0" co)
+           bks (make-component-registry K_BLOCKS "1.0" nil)
+           apps (make-component-registry K_APPS "1.0" nil)
            deployer (make-deployer)
-           knl (make-kernel)
-           ctx (comp-set-context this (-> (comp-get-context this)
-                                        (assoc K_COMPS root)) )
-           options { :ctx ctx } ]
+           knl (make-kernel) ]
+      (.setCtx! co (assoc (.getCtx co) K_COMPS root))
       (.reg root deployer)
       (.reg root knl)
       (.reg root apps)
       (.reg root bks)
-      (synthesize-component root options)
-      (synthesize-component bks options)
-      (synthesize-component apps options)
-      (synthesize-component deployer options)
-      (synthesize-component knl options))
+      (->> { :ctx (assoc (.getCtx co) K_EXECV co) }
+        (synthesize-component root)
+        (synthesize-component bks)
+        (synthesize-component apps)
+        (synthesize-component deployer)
+        (synthesize-component knl)) )
     ))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-(defn make-execvisor ^{ :doc "" }
-  [parent]
-  (Execvisor. K_EXECV "1.0" parent (ref {})) )
-
-
-
-
-
-
-
-
-
 
 
 
