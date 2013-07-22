@@ -32,12 +32,14 @@
 (require '[comzotohcljc.util.strutils :as SU])
 
 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- xrefPID [^Runnable w]
-  (let [ m (meta w)
-         pid (if (nil? m) -1 (:id m)) ]
-    (if (nil? pid) -1 pid)))
+  (if (satisfies? Flowpoint w)
+    (.getf w :pid)
+    -911))
 
 (defprotocol SchedulerAPI
   (dequeue [_ w] )
@@ -54,25 +56,30 @@
   (configure [_ options] )
   (addTimer [_ task dely] ) )
 
-(deftype Scheduler [core timer holdQ runQ] SchedulerAPI
+(deftype Scheduler [data] SchedulerAPI
 
   (dispose [_]
-    (when-not (nil? @core) (.dispose @core)))
+    (let [c (.mm-g data :core) ]
+      (when-not (nil? c) (.dispose c))))
 
   ;; called by a *running* task to remove itself from the running queue
   (dequeue [_ w]
-    (let [ pid (xrefPID w) ]
+    (let [ pid (xrefPID w) runQ (.mm-g data :runQ) ]
       (.remove runQ pid)))
 
   (run [this w]
     (do
       (preRun this w)
-      (.schedule @core w)) )
+      (.schedule (.mm-g data :core) w)) )
 
   (postpone [this w delayMillis]
     (cond
-      (= delayMillis 0) (run this w)
-      (< delayMillis 0) (hold this w)
+      (= delayMillis 0)
+      (run this w)
+
+      (< delayMillis 0)
+      (hold this w)
+
       :else
       (do
         (addTimer this (proxy [TimerTask] []
@@ -85,9 +92,11 @@
 
   (hold [this pid w]
     (when (> pid 0)
-      (.remove runQ pid)
-      (.put holdQ pid w)
-      (debug "Moved to pending wait, process: " w)))
+      (let [ runQ (.mm-g data :runQ)
+             holdQ (.mm-g data :holdQ) ]
+        (.remove runQ pid)
+        (.put holdQ pid w)
+        (debug "Moved to pending wait, process: " w))))
 
   (wakeup [this w]
     (let [ pid (xrefPID w) ]
@@ -95,10 +104,12 @@
 
   (wakeAndRun [this pid w]
     (when (> pid 0)
-      (.remove holdQ pid)
-      (.put runQ pid w)
-      (run this w)
-      (debug "Waking up process: " w)))
+      (let [ runQ (.mm-g data :runQ)
+             holdQ (.mm-g data :holdQ) ]
+        (.remove holdQ pid)
+        (.put runQ pid w)
+        (run this w)
+        (debug "Waking up process: " w))) )
 
   (reschedule [this w]
     (when-not (nil? w)
@@ -108,22 +119,26 @@
   (preRun [this w]
     (let [pid (xrefPID w) ]
       (when (> pid 0)
-        (.remove holdQ pid)
-        (.put runQ pid w))))
+        (let [ runQ (.mm-g data :runQ)
+               holdQ (.mm-g data :holdQ) ]
+          (.remove holdQ pid)
+          (.put runQ pid w)))) )
 
   (start [_]
-    (.start @core))
+    (.start (.mm-g data :core)) )
 
   (stop [_]
-    (.stop @core))
+    (.stop (.mm-g data :core)) )
 
   (configure [_ options]
     (let [ t (:threads options) ]
-      (reset! core (TCore. (CU/uid) (if (nil? t) 4 t)))
-      (reset! timer (Timer. (CU/uid) true)) ))
+      (.mm-s data :holdQ (HashMap.))
+      (.mm-s data :runQ (HashMap.))
+      (.mm-s data :core (TCore. (CU/uid) (if (nil? t) 4 t)))
+      (.mm-s data :timer (Timer. (CU/uid) true)) ))
 
   (addTimer [_ task dely]
-    (.schedule @timer task dely))
+    (.schedule (.mm-g data :timer) task dely))
 
 )
 
@@ -132,7 +147,7 @@
 
 (defn make-scheduler ^{ :doc "" }
   []
-  (Scheduler. (atom nil) (atom nil) (HashMap.)(HashMap.)))
+  (Scheduler. (CU/make-mmap)) )
 
 
 

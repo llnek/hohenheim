@@ -26,13 +26,17 @@
 (import '(java.io File))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(use '[comzotohcljc.hohenheim.impl.defaults])
+
 (use '[comzotohcljc.hohenheim.core.constants])
+(use '[comzotohcljc.hohenheim.impl.defaults])
+(use '[comzotohcljc.hohenheim.impl.jobcreator])
+(use '[comzotohcljc.hohenheim.impl.scheduler])
 
 (require '[ comzotohcljc.util.coreutils :as CU ] )
 (require '[ comzotohcljc.util.strutils :as SU ] )
 (require '[ comzotohcljc.util.metautils :as MU ] )
 (require '[ comzotohcljc.util.procutils :as PU ] )
+
 (require '[clojure.data.json :as JS])
 
 
@@ -42,10 +46,8 @@
   (reifyServices [_] )
   (reifyOneService [_ sid cfg] )
   (reifyService [_ svc cfg] )
+  (core [_] )
   (enabled? [_] ))
-
-(deftype Scheduler [])
-(deftype JobCreator [])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

@@ -409,14 +409,22 @@
                    (assoc sum (keyword k) (.get props k))) {} (seq (.keySet props))))
 
 
+(defprotocol MutableObjectAPI
+  (setf! [_ k v] )
+  (getf [_ k] )
+  (clear! [_] )
+  (clrf! [_ k] ))
+
 (defprotocol MutableMapAPI
   (mm-r [_ k] )
   (mm-g [_ k] )
+  (mm-c [_] )
   (mm-s [_ k v]))
 (deftype MutableMap [ ^:unsynchronized-mutable data ] MutableMapAPI
   (mm-r [_ k]
     (set! data (dissoc @data k)))
   (mm-g [_ k] (get @data k))
+  (mm-c [_ ] (set! data {} ))
   (mm-s [_ k v]
     (set! data (assoc @data k v))))
 

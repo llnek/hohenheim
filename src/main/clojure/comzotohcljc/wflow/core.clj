@@ -33,10 +33,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol MutableObjectAPI
-  (setf [_ k v] )
-  (getf [_ k] )
-  (clrf [_ k] ))
 
 (defprotocol FlowPoint)
 (defprotocol Activity)
@@ -152,10 +148,11 @@
 (defmacro ^{ :doc "" } make-flowpoint [ id & args ]
   `(let [ impl# (CU/make-mmap) ]
     (with-meta (reify
-                  MutableObjectAPI
-                  (setf [_ k1# v1#] (.mm-s impl# k1# v1#))
+                  comzotohcljc.util.coreutils.MutableObjectAPI
+                  (setf! [_ k1# v1#] (.mm-s impl# k1# v1#))
                   (getf [_ k2#] (.mm-g impl# k2#))
-                  (clrf [_ k3#] (.mm-r impl# k3#))
+                  (clear! [_] (.mm-c impl#))
+                  (clrf! [_ k3#] (.mm-r impl# k3#))
                   Runnable
                   (run [me#] (CU/TryC (fw-run me#)))
                   FlowPoint
@@ -164,10 +161,11 @@
 (defmacro make-activity [ id & args ]
   `(let [ impl# (CU/make-mmap) ]
      (with-meta (reify
-                  MutableObjectAPI
-                  (setf [_ k1# v1#] (.mm-s impl# k1# v1#))
+                  comzotohcljc.util.coreutils.MutableObjectAPI
+                  (setf! [_ k1# v1#] (.mm-s impl# k1# v1#))
                   (getf [_ k2#] (.mm-g impl# k2#))
-                  (clrf [_ k3#] (.mm-r impl# k3#))
+                  (clear! [_] (.mm-c impl#))
+                  (clrf! [_ k3#] (.mm-r impl# k3#))
                   Activity
                   ~@(filterv CU/notnil? args)) { :typeid ~id } )) )
 
@@ -189,6 +187,11 @@
     (fw-configure! f (make-nihil) f)
     (fw-realize! f)))
 
+
+(defprotocol PipelineDelegateAPI
+  (getStart [_] )
+  (getStop [_] )
+  (getError [_] ))
 
 (defprotocol PipelineAPI
   (container [_] )
@@ -214,7 +217,7 @@
   (isActive [_] active)
 
   (onError [this err cur]
-    (let [ h (:on-error delegate) ]
+    (let [ h (.getError delegate) ]
       (error err)
       (let [ a (if (nil? h)
                  nil
@@ -229,7 +232,7 @@
   (start [this]
     (with-local-vars [ f9 nil ]
       (let [ f1 (ac-reify-nihil this)
-             h (:on-start delegate) ]
+             h (.getStart delegate) ]
         (debug "Pipeline " pid " starting...")
         (when (nil? h) (warn "no start function defined by delegate!"))
         (try
@@ -248,7 +251,7 @@
   (stop [_]
     (try
       (debug "Pipeline " pid " stopping...")
-      (let [ h (:on-stop delegate) ]
+      (let [ h (.getStop delegate) ]
         (when-not (nil? h)
           (apply h)))
       (catch Throwable e# (error e#))))
@@ -259,17 +262,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn make-pipeline [job delegate]
-  (let [ pid (SN/next-long)
-         pipe (Pipeline. job pid false delegate) ]
+(defn make-pipeline [job delegateClassName]
+  (let [ dg (MU/make-obj delegateClassName)
+         dummy (CU/test-cond "Delegate does not implement PipelineDelegateAPI" (satisfies? PipelineDelegateAPI dg))
+         pid (SN/next-long)
+         pipe (Pipeline. job pid false dg) ]
     (debug "Pipeline " pid " created.")
     (CU/test-nonil "the-job" job)))
 
 
 (defn- no-flow [pipe job]
-  (let [ f (fn [_] (ac-reify-nihil pipe)) ]
-    (make-pipeline job { :on-start f })) )
-
+  (let [ f (fn [_] (ac-reify-nihil pipe))
+         g (reify PipelineDelegateAPI
+             (getStart [_] f)
+             (getStop [_] nil)
+             (getError [_] nil)) ]
+    (make-pipeline job g)))
 
 
 
