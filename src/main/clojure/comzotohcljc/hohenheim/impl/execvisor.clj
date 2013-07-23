@@ -35,6 +35,9 @@
 (use '[comzotohcljc.hohenheim.impl.deployer :only (make-deployer) ])
 
 (require '[ comzotohcljc.util.coreutils :as CU ] )
+(require '[ comzotohcljc.util.metautils :as MU ] )
+(require '[ comzotohcljc.util.strutils :as SU ] )
+(require '[ comzotohcljc.util.win32ini :as WI ] )
 
 
 
@@ -45,8 +48,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol ExecvisorAPI
-  ""
+
+(defprotocol ExecvisorAPI ""
   (start [_] )
   (stop [_] )
   (homeDir [_] )
@@ -61,10 +64,16 @@
   (kill9 [_] )
   (getUpTimeInMillis [_] ) )
 
+
+(defprotocol BlockMetaAPI ""
+  (enabled? [_] )
+  (metaUrl [_] ))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- chkManifest [ctx app des mf]
-  (let [ root (get ctx K_COMPS)
+(defn- chkManifest [execv app des mf]
+  (let [ ctx (.getCtx execv)
+         root (.getf ctx K_COMPS)
          apps (.lookup root K_APPS)
          ps (CU/load-javaprops mf)
          ver (.getProperty ps "Implementation-Version" "")
@@ -79,12 +88,13 @@
     ;;.gets("Implementation-Vendor")
     ;;.gets("Implementation-Vendor-Id")
 
-    (.reg apps
-      (-> (make-podmeta app ver nil cz (-> des (.toURI) (.toURL)))
-        (synthesize-component { :ctx ctx }))) ))
+    (let [ m (-> (make-podmeta app ver nil cz (-> des (.toURI) (.toURL)))
+                 (synthesize-component { :ctx ctx })) ]
+      (.setf! (.getCtx m) K_EXECV execv)
+      (.reg apps m)
+      m)))
 
-
-(defn- inspect-pod [ctx des]
+(defn- inspect-pod [execv des]
   (let [ app (FilenameUtils/getBaseName (CU/nice-fpath des))
          mf (File. des MN_FILE) ]
     (try
@@ -96,64 +106,68 @@
         (precondFile (File. des CFG_ENV_CF))
         (precondDir (File. des DN_CONF))
         (precondFile mf)
-        (chkManifest ctx app des mf)
+        (chkManifest execv app des mf)
       (catch Throwable e#
         (error e#)))) )
 
 (defn- inspect-pods [co]
-  (let [ ctx (assoc (.getCtx co) K_EXECV co)
-         fs (-> (get ctx K_PLAYDIR)
+  (let [ fs (-> (.getf (.getCtx co) K_PLAYDIR)
                 (.listFiles (cast FileFilter DirectoryFileFilter/DIRECTORY))) ]
     (doseq [ f (seq fs) ]
-      (inspect-pod ctx f)) ))
+      (inspect-pod co f)) ))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-execvisor ^{ :doc "" }
-  [parObj]
+(defn make-execvisor "" [parObj]
   (let [ impl (CU/make-mmap) ]
-    (with-meta (reify
-                  Component
-                    (setCtx! [_ x] (.mm-s impl :ctx x))
-                    (getCtx [_] (.mm-s impl :ctx))
-                    (setAttr! [_ a v] (.mm-s impl a v) )
-                    (clrAttr! [_ a] (.mm-r impl a) )
-                    (getAttr [_ a] (.mm-g impl a) )
-                    (version [_] "1.0")
-                    (parent [_] parObj)
-                    (id [_] K_EXECV )
-                  ExecvisorAPI
-                    (getStartTime [_] START-TIME)
-                    (getUpTimeInMillis [_]
-                      (- (System/currentTimeMillis) START-TIME))
-                    (homeDir [this] (maybeDir (getCtx this) K_BASEDIR))
-                    (confDir [this] (maybeDir (getCtx this) K_CFGDIR))
-                    (podsDir [this] (maybeDir (getCtx this) K_PODSDIR))
-                    (playDir [this] (maybeDir (getCtx this) K_PLAYDIR))
-                    (logDir [this] (maybeDir (getCtx this) K_LOGDIR))
-                    (tmpDir [this] (maybeDir (getCtx this) K_TMPDIR))
-                    (dbDir [this] (maybeDir (getCtx this) K_DBSDIR))
-                    (blocksDir [this] (maybeDir (getCtx this) K_BKSDIR))
-                    (kill9 [this]
-                      (let [ sh (get (getCtx this) K_CLISH) ]
-                        (when-not (nil? sh) (.stop sh))))
-                    (start [this]
-                      (let [ root (get (getCtx this) K_COMPS)
-                             k (.lookup root K_KERNEL) ]
-                        (inspect-pods this)
-                        (.start k)))
-                    (stop [this]
-                      (let [ root (get (getCtx this) K_COMPS)
-                             k (.lookup root K_KERNEL) ]
-                        (.stop k)))  )
+    (with-meta
+      (reify
+
+        Component
+
+          (setCtx! [_ x] (.mm-s impl :ctx x))
+          (getCtx [_] (.mm-s impl :ctx))
+          (setAttr! [_ a v] (.mm-s impl a v) )
+          (clrAttr! [_ a] (.mm-r impl a) )
+          (getAttr [_ a] (.mm-g impl a) )
+          (version [_] "1.0")
+          (parent [_] parObj)
+          (id [_] K_EXECV )
+
+        ExecvisorAPI
+
+          (getStartTime [_] START-TIME)
+          (getUpTimeInMillis [_]
+            (- (System/currentTimeMillis) START-TIME))
+          (homeDir [this] (maybeDir (getCtx this) K_BASEDIR))
+          (confDir [this] (maybeDir (getCtx this) K_CFGDIR))
+          (podsDir [this] (maybeDir (getCtx this) K_PODSDIR))
+          (playDir [this] (maybeDir (getCtx this) K_PLAYDIR))
+          (logDir [this] (maybeDir (getCtx this) K_LOGDIR))
+          (tmpDir [this] (maybeDir (getCtx this) K_TMPDIR))
+          (dbDir [this] (maybeDir (getCtx this) K_DBSDIR))
+          (blocksDir [this] (maybeDir (getCtx this) K_BKSDIR))
+          (kill9 [this]
+            (let [ sh (.getf (getCtx this) K_CLISH) ]
+              (when-not (nil? sh) (.stop sh))))
+          (start [this]
+            (let [ root (.getf (getCtx this) K_COMPS)
+                   k (.lookup root K_KERNEL) ]
+              (inspect-pods this)
+              (.start k)))
+          (stop [this]
+            (let [ root (.getf (getCtx this) K_COMPS)
+                   k (.lookup root K_KERNEL) ]
+              (.stop k)))  )
+
        { :typeid :Execvisor } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod comp-initialize :Execvisor [co]
-  (let [ cf (get (.getCtx co) K_PROPS)
+  (let [ cf (.getf (.getCtx co) K_PROPS)
          comps (.getSection cf K_COMPS)
          regs (.getSection cf K_REGS)
          jmx  (.getSection cf K_JMXMGM) ]
@@ -163,6 +177,7 @@
     (CU/test-nonil "conf file: jmx mgmt" jmx)
 
     (System/setProperty "file.encoding" "utf-8")
+
     (let [ home (homeDir co)
            sb (doto (File. home DN_BOXX)
                   (.mkdir))
@@ -182,31 +197,105 @@
       (precondDir tmp)
       (precondDir db)
       (precondDir bks)
-      (.setCtx! co (-> (.getCtx co)
-          (assoc K_PODSDIR pods)
-          (assoc K_PLAYDIR sb)
-          (assoc K_LOGDIR log)
-          (assoc K_DBSDIR db)
-          (assoc K_TMPDIR tmp)
-          (assoc K_BKSDIR bks)) ))
+      (-> (.getCtx co)
+          (.setf! K_PODSDIR pods)
+          (.setf! K_PLAYDIR sb)
+          (.setf! K_LOGDIR log)
+          (.setf! K_DBSDIR db)
+          (.setf! K_TMPDIR tmp)
+          (.setf! K_BKSDIR bks)) )
     ;;(start-jmx)
-    (let [ root (make-component-registry K_COMPS "1.0" co)
-           bks (make-component-registry K_BLOCKS "1.0" nil)
-           apps (make-component-registry K_APPS "1.0" nil)
+    (let [ root (make-component-registry :SystemRegistry K_COMPS "1.0" co)
+           bks (make-component-registry :BlocksRegistry K_BLOCKS "1.0" nil)
+           apps (make-component-registry :AppsRegistry K_APPS "1.0" nil)
            deployer (make-deployer)
            knl (make-kernel) ]
-      (.setCtx! co (assoc (.getCtx co) K_COMPS root))
+      (.setf! (.getCtx co) K_COMPS root)
       (.reg root deployer)
       (.reg root knl)
       (.reg root apps)
       (.reg root bks)
-      (->> { :ctx (assoc (.getCtx co) K_EXECV co) }
+      (.setf! (.getCtx co) K_EXECV co)
+      (->> { :ctx (.getCtx co) }
         (synthesize-component root)
         (synthesize-component bks)
         (synthesize-component apps)
         (synthesize-component deployer)
-        (synthesize-component knl)) )
+        (synthesize-component knl))
+      (.clrf! (.getCtx co) K_EXECV))
+
     ))
+
+
+(defn- make-blockmeta [url]
+  (let [ impl (CU/make-mmap) ]
+    (.mm-s impl :id (keyword (CU/uid)))
+    (.mm-s impl K_META url)
+    (with-meta
+      (reify
+
+        Component
+
+          (setCtx! [_ x] (.mm-s impl :ctx x))
+          (getCtx [_] (.mm-s impl :ctx))
+          (setAttr! [_ a v] (.mm-s impl a v) )
+          (clrAttr! [_ a] (.mm-r impl a) )
+          (getAttr [_ a] (.mm-g impl a) )
+          (version [_] "1.0")
+          (parent [_] nil)
+          (id [_] (.mm-g impl :id))
+
+        BlockMetaAPI
+
+          (enabled? [_] (true? (.mm-g impl :active)))
+          (metaUrl [_] (.mm-g impl K_META)) )
+
+      { :typeid :BlockMeta } )))
+
+
+(defmethod comp-initialize :BlockMeta [co]
+  (let [ cfg (WI/parse-inifile (.metaUrl co))
+         inf (.getSection cfg "info") ]
+    (CU/test-nonil "Invalid block-meta file, no info section." inf)
+
+    (let [ cz (SU/strim (.optString "info" "block-type" "")) ]
+      (when (SU/hgl? cz)
+        (.setAttr! co :id (keyword cz))
+        (try
+          (MU/load-class cz)
+          (.setAttr! co :active true)
+          (catch Throwable e#
+            (warn e#))))
+      (.setAttr! co :version (SU/strim (.optString "info" "version" "")))
+      (.setAttr! co :name (SU/strim (.optString "info" "name" "")))
+
+      co)))
+
+(defmethod comp-initialize :BlocksRegistry [co]
+  (let [ ctx (.getCtx co)
+         bDir (.getf ctx K_BKSDIR)
+         fs (FileUtils/listFiles bDir (into-array String ["meta"]) false) ]
+    (doseq [ f (seq fs) ]
+      (let [ b (-> (make-blockmeta (-> f (.toURI)(.toURL)))
+                   (synthesize-component {}) ) ]
+        (.reg co b)
+        (info "added one block: " (.id b)) ))))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

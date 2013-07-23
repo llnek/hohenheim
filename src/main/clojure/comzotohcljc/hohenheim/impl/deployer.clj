@@ -35,7 +35,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol DeployerAPI
+(defprotocol DeployerAPI ""
   (undeploy [_ app]
     "clean out the app from the work-dir." )
   (deploy [_ src]
@@ -43,10 +43,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-deployer ^{ :doc "" }
-  []
+(defn make-deployer "" []
   (let [ impl (CU/make-mmap) ]
-    (with-meta 
+    (with-meta
       (reify
 
         Component
@@ -65,7 +64,7 @@
           (deploy [this src]
             (let [ app (FilenameUtils/getBaseName (CU/nice-fpath src))
                    ctx (.getCtx this)
-                   des (File. (get ctx K_PLAYDIR) app)
+                   des (File. (.getf ctx K_PLAYDIR) app)
                    pod (File. (.toURI src)) ]
               (if (not (.exists des))
                 (FU/unzip pod des)
@@ -73,12 +72,12 @@
 
           (undeploy [this app]
             (let [ ctx (.getCtx this)
-                   dir (File. (get ctx K_PLAYDIR) app) ]
+                   dir (File. (.getf ctx K_PLAYDIR) app) ]
               (if (.exists dir)
                 (do
                   (FileUtils/deleteDirectory dir)
                   (info "app: " app " has been undeployed."))
-                (warn "cannot undeploy app: " app 
+                (warn "cannot undeploy app: " app
                       ", doesn't exist - no operation taken.")))) )
 
       { :typeid :Deployer } )))
@@ -90,12 +89,12 @@
     (precondDir (maybeDir ctx K_BASEDIR))
     (precondDir (maybeDir ctx K_PODSDIR))
     (precondDir (maybeDir ctx K_PLAYDIR))
-    (.setCtx! co ctx)))
+    (comp-clone-context co ctx)))
 
 (defmethod comp-initialize :Deployer [co]
   (let [ ctx (.getCtx co)
-         py (get ctx K_PLAYDIR)
-         pd (get ctx K_PODSDIR)
+         py (.getf ctx K_PLAYDIR)
+         pd (.getf ctx K_PODSDIR)
          fs (FileUtils/listFiles pd (into-array String ["pod"]) false) ]
     (doseq [f (seq fs)]
       (.deploy co (-> f (.toURI)(.toURL))))))

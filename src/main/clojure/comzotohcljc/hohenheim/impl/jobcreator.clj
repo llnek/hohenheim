@@ -22,6 +22,8 @@
        :author "kenl" }
   comzotohcljc.hohenheim.impl.jobcreator )
 
+;;(use '[comzotohcljc.wflow.core :only (FatalErrorFlow OrphanFlow) ])
+(use '[comzotohcljc.util.coreutils :only (MutableObjectAPI) ])
 (use '[clojure.tools.logging :only (info warn error debug)])
 
 (require '[comzotohcljc.util.metautils :as MU])
@@ -33,37 +35,50 @@
 
 
 
+(deftype FatalErrorFlow [job])
+(deftype OrphanFlow [job])
+
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-job [kontainer evt]
-  (let [ impl (CU/make-mmap) 
+(defn make-job "" [kontainer evt]
+  (let [ impl (CU/make-mmap)
          jid (SN/next-long) ]
-    (reify
-      comzotohcljc.util.coreutils.MutableObjectAPI
-      (setf! [_ k v] (.mm-s impl k v))
-      (clear! [_] (.mm-c impl))
-      (getf [_ k] (.mm-g impl k))
-      (clrf! [_ k] (.mm-r impl k))
-      Job
-      (container [_] kontainer)
-      (event [_] evt)
-      (id [_] jid))))
+    (with-meta
+      (reify
+
+        MutableObjectAPI
+
+          (setf! [_ k v] (.mm-s impl k v))
+          (clear! [_] (.mm-c impl))
+          (seq* [_] (seq (.mm-m impl)))
+          (getf [_ k] (.mm-g impl k))
+          (clrf! [_ k] (.mm-r impl k))
+
+        Job
+
+          (container [_] kontainer)
+          (event [_] evt)
+          (id [_] jid))
+
+      { :typeid :Job } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol JobCreatorAPI
-  (update [_ target options] ))
+  (update [_ event options] ))
 
-(defn make-jobcreator ^{ :doc "" }
-  [parObj]
+(defn make-jobcreator "" [parObj]
   (let [ impl (CU/make-mmap) ]
-    (with-meta 
+    (with-meta
       (reify
+
         JobCreatorAPI
-          (update [evt options]
+
+          (update [_ evt options]
             (let [ cz (if (.hasRouter evt)
                         (.routerClass evt)
                         (:router-class options))
@@ -73,7 +88,8 @@
                        q (if (nil? p) (OrphanFlow. job) p) ]
                   (.start q))
                 (catch Throwable e#
-                  (-> (FatalErrorFlow. job) (.start)))))) )
+                  (-> (FatalErrorFlow. job) (.start)))))))
+
       { :typeid :JobCreator } )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

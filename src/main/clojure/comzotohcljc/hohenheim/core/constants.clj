@@ -94,6 +94,7 @@
 (def K_DEPLOYER :deployer )
 (def K_JCTOR :job-creator )
 (def K_SCHEDULER :scheduler )
+(def K_CONTAINERS :containers)
 (def K_BLOCKS :blocks )
 (def K_APPS :apps )
 (def K_PODS :pods )

@@ -36,29 +36,29 @@
 (require '[ comzotohcljc.util.strutils :as SU ] )
 (require '[ comzotohcljc.util.procutils :as PU ] )
 (require '[ comzotohcljc.util.mimeutils :as MI ] )
+(require '[ comzotohcljc.util.seqnumgen :as SN ] )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol KernelAPI
+(defprotocol PODMetaAPI ""
+  (typeof [_ ])
+  (srcUrl [_ ]))
+
+(defprotocol KernelAPI ""
   (start [_] )
   (stop [_] ))
-
-(def PODMetaAPI
-  (srcUrl [_ ]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- maybe-start-pod [knl pod]
   (try
-    (let [ ctx (.getCtx knl)
-           root (get ctx K_COMPS)
-           apps (.lookup root K_APPS)
+    (let [ cache (.getAttr knl K_CONTAINERS)
            cid (.id pod)
            ctr (make-container pod) ]
       (if (CU/notnil? ctr)
         (do
-          (.reg apps ctr)
+          (.setAttr! knl K_CONTAINERS (assoc cache cid ctr))
         ;;_jmx.register(ctr,"", c.name)
           )
         (info "kernel: container " cid " disabled.")) )
@@ -66,9 +66,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-kernel ^{ :doc "" }
-  [parObj]
+(defn make-kernel "" [parObj]
   (let [ impl (CU/make-mmap) ]
+    (.mm-s impl K_CONTAINERS {} )
     (with-meta
       (reify
 
@@ -87,30 +87,28 @@
 
           (start [this]
             (let [ ctx (getCtx this)
-                   root (get ctx K_COMPS)
-                   apps (.lookup root K_APPS)
-                   cs (.getf apps K_PODS) ]
+                   root (.getf ctx K_COMPS)
+                   apps (.lookup root K_APPS) ]
               ;; need this to prevent deadlocks amongst pods
               ;; when there are dependencies
               ;; TODO: need to handle this better
-              (doseq [ [k v] (seq cs) ]
+              (doseq [ [k v] (seq* apps) ]
                 (let [ r (-> (CU/new-random) (.nextLong 6)) ]
                   (maybe-start-pod this v)
                   (PU/safe-wait (* 1000 (Math/max 1 r)))))))
 
           (stop [this]
-            (let [ cs (.mm-g impl K_APPS) ]
+            (let [ cs (.mm-g impl K_CONTAINERS) ]
               (doseq [ [k v] (seq cs) ]
                 (.stop v))
-              (.mm-s impl K_APPS {}))) )
+              (.mm-s impl K_CONTAINERS {}))) )
 
       { :typeid :Kernel } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-podmeta ^{ :doc "" }
-  [parObj podType pathToPOD]
+(defn make-podmeta "" [parObj podType pathToPOD]
   (let [ pid (str podType "#" (SN/next-long))
          impl (CU/make-mmap) ]
     (with-meta
@@ -139,10 +137,10 @@
 
 (defmethod comp-initialize :PODMeta [co]
   (let [ ctx (.getCtx co)
-         rcl (get ctx K_ROOT_CZLR)
+         rcl (.getf ctx K_ROOT_CZLR)
          cl  (AppClassLoader. rcl) ]
     (.configure cl (CU/nice-fpath (File. (.toURI (.srcUrl co)))) )
-    (.setCtx! co (assoc ctx K_APP_CZLR cl))) )
+    (.setf! ctx K_APP_CZLR cl)))
 
 (defmethod comp-compose :Kernel [co rego]
   ;; get the jmx server from root
@@ -155,7 +153,7 @@
     (precondDir (maybeDir ctx K_PLAYDIR))
     (MI/setup-cache (-> (File. base (str DN_CFG "/app/mime.properties"))
                       (.toURI)(.toURL )))
-    (.setCtx! co ctx)))
+    (comp-clone-context co ctx)))
 
 
 

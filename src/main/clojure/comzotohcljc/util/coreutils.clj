@@ -411,26 +411,28 @@
 
 (defprotocol MutableObjectAPI
   (setf! [_ k v] )
+  (seq* [_] )
   (getf [_ k] )
   (clear! [_] )
   (clrf! [_ k] ))
 
 (defprotocol MutableMapAPI
   (mm-r [_ k] )
+  (mm-m* [_] )
   (mm-g [_ k] )
   (mm-c [_] )
   (mm-s [_ k v]))
 (deftype MutableMap [ ^:unsynchronized-mutable data ] MutableMapAPI
   (mm-r [_ k]
-    (set! data (dissoc @data k)))
-  (mm-g [_ k] (get @data k))
+    (set! data (dissoc data k)))
+  (mm-m* [_] data)
+  (mm-g [_ k] (get data k))
   (mm-c [_ ] (set! data {} ))
   (mm-s [_ k v]
-    (set! data (assoc @data k v))))
+    (set! data (assoc data k v))))
 
-(defn make-mmap ^{ :doc "" }
-  []
-  (MutableMap. {}))
+
+(defn make-mmap "" [] (MutableMap. {} ))
 
 
 

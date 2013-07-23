@@ -37,11 +37,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- xrefPID [w]
-  (if (satisfies? FlowPoint w)
+  (if (= :FlowPoint (:isa (meta w)) )
     (.getf w :pid)
     -911))
 
-(defprotocol SchedulerAPI
+(defprotocol SchedulerAPI ""
   (dequeue [_ w] )
   (dispose [_] )
   (run [_ w] )
@@ -51,16 +51,16 @@
   (wakeAndRun [_ pid w] )
   (reschedule [_ w] )
   (preRun [_ w] )
-  (start [_] )
+  (start [_ options] )
   (stop [_] )
   ;;(configure [_ options] )
   (addTimer [_ task dely] ) )
 
-(defn make-scheduler ^{ :doc "" }
-  [parObj]
+(defn make-scheduler "" [parObj]
   (let [ impl (CU/make-mmap) ]
     (with-meta
       (reify
+
         SchedulerAPI
 
           (dispose [_]

@@ -24,6 +24,7 @@
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
 (import '(java.io File))
+(import '(com.zotoh.hohenheim.core ServiceError))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
@@ -39,9 +40,11 @@
 
 (require '[clojure.data.json :as JS])
 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol ContainerAPI
+(defprotocol ContainerAPI ""
   (reifyOneService [_ sid cfg] )
   (reifyService [_ svc cfg] )
   (reifyServices [_] )
@@ -50,10 +53,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- make-app-container ^{ :doc "" }
-  [pod]
+(defn- make-service-block [bk container cfg]
+  (let [ cz (.id bk)
+         obj (MU/make-obj cz) ]
+    (synthesize-component obj { :ctx container :props cfg } )
+    obj))
+
+
+(defn- make-app-container [pod]
   (let [ impl (CU/make-mmap) ]
-    (with-meta 
+    (with-meta
       (reify
 
         Component
@@ -71,38 +80,45 @@
 
           (enabled? [_]
             (let [ env (.mm-g impl K_ENVCONF)
-                   c (get env :container) ]
-              (if (nil? c)
+                   c (:container env) ]
+              (if (false? (:enabled c))
                 false
-                (let [ v (get c :enabled) ]
-                  (if (nil? v) true v)))))
+                true)))
 
           (reifyServices [this]
             (let [ env (.mm-g impl K_ENVCONF)
-                   s (get env :services) ]
+                   s (:services env) ]
               (if (empty? s)
                   (warn "No system service \"depend\" found in env.conf.")
                   (doseq [ [k v] (seq s) ]
                     (reifyOneService this k v)))))
 
-          (reifyOneService [this k cfg]
-            (let [ svc (SU/nsb (get cfg :service))
-                   b (get cfg :enabled) ]
+          (reifyOneService [this nm cfg]
+            (let [ svc (SU/nsb (:service cfg))
+                   srg (.mm-g impl K_SVCS)
+                   b (:enabled cfg) ]
               (if (or (false? b) (SU/nichts? svc))
-                (info "System service \"" svc "\" is disabled.")
-                (reifyService this svc cfg))))
+                (info "service \"" svc "\" is disabled.")
+                (let [ s (reifyService this svc cfg) ]
+                  (.reg srg s)
+                  (info "service \"" svc "\" synthesis - OK.")))))
 
-                ;;_svcReg.add(key, rc._2 )
-        ;;;; TODO
-          (reifyService [this svc cfg] nil) )
+          (reifyService [this svc cfg]
+            (let [ root (.getf (.getCtx this) K_COMPS)
+                   bks (.lookup root K_BLOCKS)
+                   bk (.lookup bks (keyword svc)) ]
+              (when (nil? bk)
+                (throw (ServiceError. (str "No such Service: " svc "."))))
+              (make-service-block bk this cfg)))
+        )
 
     { :typeid :Container } )) )
 
 (defn make-container [pod]
   (let [ c (make-app-container pod)
          ctx (.getCtx pod)
-         cl (get ctx K_APP_CZLR)
-         root (get ctx K_COMPS)
+         cl (.getf ctx K_APP_CZLR)
+         root (.getf ctx K_COMPS)
          apps (.lookup root K_APPS)
          ps { K_APPDIR (File. (-> (.srcUrl pod) (.toURI))) } ]
     (comp-compose c apps)
@@ -118,8 +134,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod comp-configure :Container [co props]
-  (let [ appDir (get props K_APPDIR)
+  (let [ appDir (K_APPDIR props)
          cfgDir (File. appDir DN_CONF)
+         srg (make-component-registry :EventSources K_SVCS "1.0" co)
          mf (CU/load-javaprops (File. appDir MN_FILE))
          envConf (JS/read-str (FileUtils/readFileToString 
                                 (File. cfgDir "env.conf"))
@@ -132,7 +149,9 @@
     ;;_ftlCfg = new FTLCfg()
     ;;_ftlCfg.setDirectoryForTemplateLoading( new File(_appDir, DN_PAGES+"/"+DN_TEMPLATES))
     ;;_ftlCfg.setObjectWrapper(new DefaultObjectWrapper())
+    (synthesize-component srg {} )
     (-> co
+      (.setAttr! K_SVCS srg)
       (.setAttr! K_ENVCONF envConf)
       (.setAttr! K_APPCONF appConf)
       (.setAttr! K_MFPROPS mf))
@@ -143,16 +162,13 @@
   (let [ env (.getAttr co K_ENVCONF)
          app (.getAttr co K_APPCONF)
          mf (.getAttr co K_MFPROPS)
-         mCZ (SU/nsb (.get mf "Main-Class"))
-         reg (make-component-registry (CU/uid) "1.0" co)
+         mCZ (SU/strim (.get mf "Main-Class"))
+         reg (.getAttr co K_SVCS)
          jc (make-jobcreator co)
          sc (make-scheduler co)
-         cfg (get env :container) ]
-
-    (synthesize-component reg)
+         cfg (:container env) ]
 
     (.setAttr! co K_SCHEDULER sc)
-    (.setAttr! co K_SVCS reg)
     (.setAttr! co K_JCTOR jc)
 
     (when (SU/nichts? mCZ) (warn "no main-class defined."))
@@ -165,11 +181,12 @@
         (.initialize obj)
         (info "application main-class " mCZ " created and invoked")))
 
-    (let [ svcs (get env :services) ]
+    (let [ svcs (:services env) ]
       (if (empty? svcs)
-          (warn "No system service \"depend\" found in env.conf.")
+          (warn "No system service defined in env.conf.")
           (.reifyServices co)))
 
+    ;; start the scheduler
     (.start sc cfg)
 
     (info "Initialized app: " (.id co))))

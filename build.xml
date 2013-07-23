@@ -76,6 +76,8 @@
       <arg value="comzotohcljc.hohenheim.etc.core" />
       <arg value="comzotohcljc.hohenheim.impl.defaults" />
       <arg value="comzotohcljc.hohenheim.impl.deployer" />
+      <arg value="comzotohcljc.hohenheim.impl.jobcreator" />
+      <arg value="comzotohcljc.hohenheim.impl.scheduler" />
       <arg value="comzotohcljc.hohenheim.impl.container" />
       <arg value="comzotohcljc.hohenheim.impl.kernel" />
       <arg value="comzotohcljc.hohenheim.impl.execvisor" />

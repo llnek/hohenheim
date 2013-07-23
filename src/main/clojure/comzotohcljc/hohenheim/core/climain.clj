@@ -147,7 +147,7 @@
 (defn- hookShutdown [ctx]
   (let [ cli (get ctx K_CLISH)
          rt (Runtime/getRuntime) ]
-    (comp-set-context cli ctx)
+    ;;(comp-set-context cli ctx)
     (.addShutdownHook rt (Thread. (reify Runnable
                                     (run [_] (CU/TryC (stop-main ctx))))))
     (enableRemoteShutdown)

@@ -29,6 +29,7 @@
 
 (require '[comzotohcljc.util.seqnumgen :as SN])
 (require '[comzotohcljc.util.coreutils :as CU])
+(require '[comzotohcljc.util.metautils :as MU])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -141,7 +142,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -156,7 +156,9 @@
                   Runnable
                   (run [me#] (CU/TryC (fw-run me#)))
                   FlowPoint
-                  ~@(filterv CU/notnil? args)) { :typeid ~id } )))
+                  ~@(filterv CU/notnil? args))
+
+               { :typeid ~id  :isa :FlowPoint } )))
 
 (defmacro make-activity [ id & args ]
   `(let [ impl# (CU/make-mmap) ]
