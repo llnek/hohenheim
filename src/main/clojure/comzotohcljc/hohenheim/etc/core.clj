@@ -59,9 +59,9 @@
   ["demo samples" "Generate a set of samples."]
   ["version" "Show version info."] ])
 
-(defn- drawHelpLines [fmt arr]
-  (doseq [ v (seq arr) ]
-    (-> System/out (.format fmt (first v) (last v)))))
+(defn- drawHelpLines [^String fmt arr]
+  (doseq [ [k v] (seq arr) ]
+    (-> System/out (.format fmt (into-array Object [k v]) ))))
 
 (defn- usage []
   (println (SU/make-string \= 78))
@@ -85,11 +85,12 @@
         (fn [] (CL/eval-command h rcb (drop 1 args))))))
 
 
-(defn -main ^{ :doc "" }
-  [& args]
+(defn -main "Main Entry" [& args]
+  ;; for security, don't just eval stuff
   (alter-var-root #'*read-eval* (constantly false))
-  (let [ rcb (LU/get-resource "comzotohcljc/hohenheim/etc/Resources" (Locale/getDefault)) ]
-    (if (< (.size args) 2)
+  (let [ rcpath (str "comzotohcljc/hohenheim/etc/Resources")
+         rcb (LU/get-resource rcpath (Locale/getDefault)) ]
+    (if (< (count args) 2)
       (usage)
       (let [ rc (parseArgs rcb args) ]
         (if (fn? rc)

@@ -30,7 +30,17 @@
 (require '[ comzotohcljc.util.strutils :as SU])
 
 
-(defrecord CmdSeqQ [qid qline choices dft must onok] )
+;;(defrecord CmdSeqQ [qid qline choices dft must onok] )
+
+(defn make-CmdSeqQ ""
+  [qid qline choices dft must onok]
+  (-> {}
+    (assoc :choices choices)
+    (assoc :qline qline)
+    (assoc :qid qid)
+    (assoc :dft dft)
+    (assoc :must must)
+    (assoc :onok onok)))
 
 (defn- readData [cout cin]
   (let [ buf (StringBuilder.)
@@ -92,13 +102,13 @@
     (cycleQ cout cin cmdQs q1 props)))
 
 (comment
-(def q1 (->CmdSeqQ "q1" "hello ken" "q|b|c" "c" true 
+(def q1 (make-CmdSeqQ "q1" "hello ken" "q|b|c" "c" true 
            (fn [a ps]
              (do (.put ps "a1" a) "q2")) ) )
-(def q2 (->CmdSeqQ "q2" "hello paul" "" "" false 
+(def q2 (make-CmdSeqQ "q2" "hello paul" "" "" false 
            (fn [a ps]
              (do (.put ps "a2" a) "q3"))) )
-(def q3 (->CmdSeqQ "q3" "hello joe" "z" "" false 
+(def q3 (make-CmdSeqQ "q3" "hello joe" "z" "" false 
            (fn [a ps]
              (do (.put ps "a3" a) "" ))) )
 (def QM { "q1" q1 "q2" q2 "q3" q3 })

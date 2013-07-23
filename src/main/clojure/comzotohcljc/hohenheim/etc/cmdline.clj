@@ -31,16 +31,17 @@
 ;;(import '(com.zotoh.hohenheim.core ))
 ;;(import '(org.apache.tools.ant Main))
 
+(require '[comzotohcljc.hohenheim.core.climain :as CLI])
 (require '[comzotohcljc.util.coreutils :as CU])
 (require '[comzotohcljc.util.metautils :as MU])
 (require '[comzotohcljc.util.strutils :as SU])
-(require '[comzotohcljc.hohenheim.core.climain :as CLI])
+(require '[comzotohcljc.util.cmdlineseq :as CQ])
 
 (use '[comzotohcljc.hohenheim.core.constants])
-(use '[comzotohcljc.util.cmdlineseq])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (def ^:dynamic *HOHENHEIM-RSBUNDLE* nil)
 (def ^:dynamic *HOHENHEIM-HOME-DIR* "")
 
@@ -78,18 +79,18 @@
 
 (defn- onCreatePrompt []
   (let [ domain (-> (str "com." (SU/nsb (CU/getuser))) (.toLowerCase))
-         q1  (comzotohcljc.util.cmdlineseq.CmdSeqQ. "domain" "What is the application domain"
+         q1 (CQ/make-CmdSeqQ "domain" "What is the application domain"
                        domain domain true
                        (fn [ans jps] (do (.put jps "app-domain" ans) "app" )))
-         q2  (comzotohcljc.util.cmdlineseq.CmdSeqQ. "app" "What is the application name"
+         q2 (CQ/make-CmdSeqQ "app" "What is the application name"
                        "" "" true
                        (fn [ans jps] (do (.put jps "app-id" ans) "" )))
-         ps (cli-converse {"domain" q1 "app" q2} "domain") ]
+         ps (CQ/cli-converse {"domain" q1 "app" q2} "domain") ]
     [ (not (nil? ps)) ps ] ))
 
 (defn- onCreateApp [args options]
   (let [ cb (fn [t ps] (runTargetExtra t ps)) ]
-    (if (> (.size args) 1)
+    (if (> (count args) 1)
       (case (nth args 1)
         "web/jetty" (apply cb "create-jetty" options)
         "web" (apply cb "create-web" options)
@@ -97,7 +98,7 @@
       (apply cb "create-app" options))))
 
 (defn- onCreate [args]
-  (if (< (.size args) 1)
+  (if (< (count args) 1)
     (throw (CmdHelpError.))
     (let [ [ok x] (onCreatePrompt) ]
       (when ok
@@ -106,34 +107,37 @@
         (onCreateApp args x)))))
 
 (defn- onBuild [args]
-  (if (>= (.size args) 2)
+  (if (>= (count args) 2)
     (runTargetExtra "build-app"
         { :app-id (nth args 1)
-          :app-task (if (> (.size args) 2) (nth args 2) "devmode") } )
+          :app-task (if (> (count args) 2) (nth args 2) "devmode") } )
     (throw (CmdHelpError.))))
 
 (defn- onPodify [args]
-  (if (> (.size args) 1)
+  (if (> (count args) 1)
     (runTargetExtra "bundle-app" { :app-id (nth args 1) :app-task "release" })
     (throw (CmdHelpError.))))
 
 (defn- onTest [args]
-  (if (> (.size args) 1)
+  (if (> (count args) 1)
     (runTargetExtra "test-code" { :app-id (nth args 1) })
     (throw (CmdHelpError.))))
 
 (defn- onStart [args]
-  (let [ s2 (if (> (.size args) 1) (nth args 1) "") ]
+  (let [ s2 (if (> (count args) 1) (nth args 1) "") ]
     (cond
-      (and (= s2 "bg") (CU/is-windows?)) (runTarget "run-app-bg-w32")
-      :else (CLI/start-main (CU/nice-fpath (getHomeDir))))))
+      (and (= s2 "bg") (CU/is-windows?))
+      (runTarget "run-app-bg-w32")
+
+      :else
+      (CLI/start-main (CU/nice-fpath (getHomeDir))))))
 
 (defn- onDebug [args]
   ;;runTarget( if (isWindows() ) "run-dbg-app-w32" else "run-dbg-app-nix")
   (onStart args))
 
 (defn- onDemo [args]
-  (if (> (.size args) 1)
+  (if (> (count args) 1)
     (let [ s (nth args 1) ]
       (if (= "samples" s)
         (runTarget "create-samples")
@@ -145,7 +149,7 @@
 (defn- csrfile [] nil)
 
 (defn- onGenerate [args]
-  (if (> (.size args) 1)
+  (if (> (count args) 1)
     (case (nth args 1)
       "password" (generatePassword)
       "serverkey" (keyfile)
@@ -156,14 +160,14 @@
 (defn- encrypt [a b] nil)
 
 (defn- onEncrypt [args]
-  (if (> (.size args) 2)
+  (if (> (count args) 2)
     (encrypt  (nth args 1) (nth args 2))
     (throw (CmdHelpError.))))
 
 (defn- decrypt [a b] nil)
 
 (defn- onDecrypt [args]
-  (if (> (.size args) 2)
+  (if (> (count args) 2)
     (decrypt (nth args 1) (nth args 2))
     (throw (CmdHelpError.))))
 
@@ -171,7 +175,8 @@
   )
 
 (defn- onVersion [args]
-  (let [ s (FileUtils/readFileToString (File. (getHomeDir) "VERSION") "utf-8") ]
+  (let [ s (FileUtils/readFileToString
+             (File. (getHomeDir) "VERSION") "utf-8") ]
     (if (SU/hgl? s)
       (println s)
       (println "Unknown version."))))
@@ -214,7 +219,7 @@
       "utf-8")))
 
 (defn- onIDE [args]
-  (if (> (.size args) 2)
+  (if (> (count args) 2)
     (case (nth args 1)
       "eclipse" (genEclipseProj (nth args 2))
       (throw (CmdHelpError.)))
@@ -239,26 +244,13 @@
   })
 
 
-(defn eval-command ^{ :doc "" }
-  [home rcb args]
+(defn eval-command "" [home rcb args]
   (let [ v (get _ARGS (keyword (first args))) ]
     (when (nil? v) (throw (CmdHelpError.)))
     (binding [ *HOHENHEIM-HOME-DIR* home *HOHENHEIM-RSBUNDLE* rcb]
       (apply v rcb args))))
 
-(defn get-commands ^{ :doc "" }
-  []
-  (keys _ARGS))
-
-
-
-
-
-
-
-
-
-
+(defn get-commands "" [] (keys _ARGS))
 
 
 

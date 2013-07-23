@@ -131,6 +131,7 @@
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
+
           (version [_] "1.0")
           (parent [_] parObj)
           (id [_] K_EXECV )
@@ -148,9 +149,7 @@
           (tmpDir [this] (maybeDir (getCtx this) K_TMPDIR))
           (dbDir [this] (maybeDir (getCtx this) K_DBSDIR))
           (blocksDir [this] (maybeDir (getCtx this) K_BKSDIR))
-          (kill9 [this]
-            (let [ sh (.getf (getCtx this) K_CLISH) ]
-              (when-not (nil? sh) (.stop sh))))
+          (kill9 [this] (.stop parObj))
           (start [this]
             (let [ root (.getf (getCtx this) K_COMPS)
                    k (.lookup root K_KERNEL) ]
@@ -178,7 +177,7 @@
 
     (System/setProperty "file.encoding" "utf-8")
 
-    (let [ home (homeDir co)
+    (let [ home (.homeDir co)
            sb (doto (File. home DN_BOXX)
                   (.mkdir))
            bks (doto (File. home DN_BLOCKS)
@@ -221,8 +220,7 @@
         (synthesize-component bks)
         (synthesize-component apps)
         (synthesize-component deployer)
-        (synthesize-component knl))
-      (.clrf! (.getCtx co) K_EXECV))
+        (synthesize-component knl)) )
 
     ))
 

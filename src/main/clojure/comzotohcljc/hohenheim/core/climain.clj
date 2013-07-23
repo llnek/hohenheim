@@ -36,30 +36,19 @@
 (use '[comzotohcljc.hohenheim.impl.defaults])
 (use '[comzotohcljc.hohenheim.impl.execvisor :only (make-execvisor) ])
 
-(import '(com.zotoh.hohenheim.core ConfigError 
+(import '(com.zotoh.hohenheim.core
+  Startable ConfigError
   AppClassLoader RootClassLoader ExecClassLoader))
 (import '(com.zotoh.hohenheim.etc CmdHelpError))
 (import '(java.util Locale))
 (import '(java.io File))
 (import '(org.apache.commons.io FileUtils))
 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def SHOW-STOPPER (agent 0))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defprotocol CLIMainAPI
-  (stop [_] ) )
-
-(deftype CLIMain [id version parent ctxHolder] Component CLIMainAPI
-
-  (stop [this]
-    (let [ exec (get @ctxHolder K_EXECV) ]
-      (.stop exec)))
-)
-
-(defn- make-climain []
-  (CLIMain. K_CLISH "1.0" nil (ref {})))
-
 
 (defn- inizContext [baseDir]
   (let [ cfg (File. baseDir DN_CFG)
@@ -68,123 +57,169 @@
     (precondDir home)
     (precondDir cfg)
     (precondFile f)
-    { K_BASEDIR home K_CFGDIR cfg } ))
+    (doto (make-context)
+      (.setf K_BASEDIR home)
+      (.setf K_CFGDIR cfg))))
 
 (defn- setupClassLoader [ctx]
-  (let [ root (get ctx K_ROOT_CZLR)
+  (let [ root (.getf ctx K_ROOT_CZLR)
          cl (ExecClassLoader. root) ]
     (MU/set-cldr cl)
-    (assoc ctx K_EXEC_CZLR cl)))
+    (.setf! ctx K_EXEC_CZLR cl)
+    ctx))
 
 (defn- setupClassLoaderAsRoot [ctx]
   (let [ root (RootClassLoader. (MU/get-cldr)) ]
-    (assoc ctx K_ROOT_CZLR root)))
+    (.setf! ctx K_ROOT_CZLR root)
+    ctx))
 
 (defn- maybeInizLoaders [ctx]
   (let [ cz (MU/get-cldr) ]
     (if (instance? ExecClassLoader cz)
       (-> ctx
-        (assoc K_ROOT_CZLR (.getParent cz))
-        (assoc K_EXEC_CZLR cz))
-      (setupClassLoader (setupClassLoaderAsRoot ctx)))) )
+        (.setf! K_ROOT_CZLR (.getParent cz))
+        (.setf! K_EXEC_CZLR cz))
+      (setupClassLoader (setupClassLoaderAsRoot ctx)))
+    ctx))
 
-(defn- loadConf [ctx home]
-  (let [ w (WI/parse-inifile (File. home  (str DN_CFG "/app/" (name K_PROPS) )))
+(defn- loadConf [ctx]
+  (let [ home (.getf ctx K_BASEDIR)
+         cf (File. home  (str DN_CFG "/app/" (name K_PROPS) ))
+         w (WI/parse-inifile cf)
          lg (.toLowerCase (.optString w K_LOCALE K_LANG "en"))
          cn (.toUpperCase (.optString w K_LOCALE K_COUNTRY ""))
          loc (if (SU/hgl? cn) (Locale. lg cn) (Locale. lg)) ]
-    (assoc ctx K_CLISH (make-climain))
-    (assoc ctx K_PROPS w)
-    (assoc ctx K_L10N loc)))
+    (doto ctx
+      (.setf! K_PROPS w)
+      (.setf! K_L10N loc))) )
 
 (defn- setupResources [ctx]
-  (let [ rc (LN/get-resource "comzotohcljc.hohenheim.etc.Resources" (get ctx K_LOCALE)) ]
-    (assoc ctx K_RCBUNDLE rc)))
+  (let [ rc (LN/get-resource "comzotohcljc.hohenheim.etc.Resources"
+                             (.getf ctx K_LOCALE)) ]
+    (.setf! ctx K_RCBUNDLE rc)
+    ctx))
 
-(defn- pre-parse [args]
+(defn- pre-parse [cli args]
   (let [ bh (File. (first args))
          ctx (inizContext bh) ]
     (precondDir (File. bh DN_PATCH))
     (precondDir (File. bh DN_CORE))
     (precondDir (File. bh DN_LIB))
-    (-> ctx
-      (maybeInizLoaders)
-      (loadConf bh)
-      (setupResources ))))
+    (.setf ctx K_CLISH cli)
+    (.setCtx! cli ctx)
+    ctx))
 
 (defn- start-exec [ctx]
   (do
     (info "About to start Hohenheim...")
-    (-> (get ctx K_EXECV) (.start))
+    (-> (.getf ctx K_EXECV) (.start))
     (info "Hohenheim started.")
     ctx))
 
 (defn- primodial [ctx]
-  (let [ cl (get ctx K_EXEC_CZLR)
-         cli (get ctx K_CLISH)
-         wc (get ctx K_PROPS)
+  (let [ cl (.getf ctx K_EXEC_CZLR)
+         cli (.getf ctx K_CLISH)
+         wc (.getf ctx K_PROPS)
          cz (.optString wc K_COMPS K_EXECV "") ]
     (CU/test-cond "conf file:exec-visor"
                   (= cz "comzotohcljc.hohenheim.impl.Execvisor"))
-    (let [ exec (make-execvisor cli)
-           rc (assoc ctx K_EXECV exec) ]
-      (synthesize-component exec { :ctx rc } )
-      rc)))
+    (let [ execv (make-execvisor cli) ]
+      (.setf! ctx K_EXECV execv)
+      (synthesize-component execv { :ctx ctx } )
+      ctx)))
 
 (defn- enableRemoteShutdown []
   (let [ port (CU/conv-long (System/getProperty "hohenheim.kill.port") 4444) ]
     nil))
 
-(defn- stop-main [ctx]
-  (let [ pid (get ctx K_PIDFILE)
-         exec (get ctx K_EXECV) ]
+(defn- stop-cli [ctx trigger]
+  (let [ pid (.getf ctx K_PIDFILE)
+         execv (.getf ctx K_EXECV) ]
     (when-not (nil? pid) (FileUtils/deleteQuietly pid))
     (info "About to stop Hohenheim...")
-    (.stop exec)
+    (when-not (nil? execv) (.stop execv))
     (info "Hohenheim stopped.")
-    (send SHOW-STOPPER inc)))
+    (deliver trigger 911)))
 
 (defn- hookShutdown [ctx]
-  (let [ cli (get ctx K_CLISH)
-         rt (Runtime/getRuntime) ]
-    ;;(comp-set-context cli ctx)
-    (.addShutdownHook rt (Thread. (reify Runnable
-                                    (run [_] (CU/TryC (stop-main ctx))))))
+  (let [ cli (.getf ctx K_CLISH)
+         trigger (promise) ]
+    (.addShutdownHook (Runtime/getRuntime)
+          (Thread. (reify Runnable
+                      (run [_] (CU/TryC (stop-cli ctx trigger))))))
     (enableRemoteShutdown)
     (debug "Added shutdown hook.")
-    ctx))
+    [ctx trigger] ))
 
 (defn- writePID [ctx]
-  (let [ fp (File. (get ctx K_BASEDIR) "hohenheim.pid") ]
+  (let [ fp (File. (.getf ctx K_BASEDIR) "hohenheim.pid") ]
     (FileUtils/writeStringToFile fp (PU/pid) "utf-8")
-    (assoc ctx K_PIDFILE fp)))
+    (.setf! ctx K_PIDFILE fp)))
 
-(defn- debug-context [ctx]
-  (do 
-    (info ctx)))
-
-(defn- pause-main [ctx]
+(defn- pause-cli [[ctx trigger]]
   (do
-    (debug-context ctx)
+    (print-mutableObj ctx)
     (info "Applications are now running...")
-    (loop []
-      (if (> @SHOW-STOPPER 0)
-        nil
-        (do (PU/safe-wait 6666) (recur))))
+    (deref trigger) ;; pause here
+    (info "Applications are shutting down...")
+    (PU/safe-wait 5000) ;; give some time for stuff to wind-down.
     (info "Bye.")
     (System/exit 0)))
 
-(defn start-main ^{ :doc "" }
-  [ & args ]
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+(defn- make-climain [ args ]
+  (let [ impl (CU/make-mmap) ]
+    (reify
+
+      Component
+
+        (setCtx! [_ x] (.mm-s impl :ctx x))
+        (getCtx [_] (.mm-g impl :ctx))
+        (parent [_] nil)
+        (setAttr! [_ a v] (.mm-s impl a v) )
+        (clrAttr! [_ a] (.mm-r impl a) )
+        (getAttr [_ a] (.mm-g impl a) )
+        (version [_] "1.0")
+        (id [_] K_CLISH)
+
+      Startable
+
+        (start [this]
+          (-> (pre-parse this args)
+            (maybeInizLoaders)
+            (loadConf)
+            (setupResources )
+            (primodial)
+            (start-exec)
+            (writePID)
+            (hookShutdown)
+            (pause-cli)) )
+
+        (stop [_] (.stop (.mm-g impl K_EXECV) )))) )
+
+
+(defn start-main "" [ & args ]
   (do
-    (when (< (.size args) 1) (throw (CmdHelpError. "Hohenheim Home not defined.")))
+    (when (< (count args) 1)
+      (throw (CmdHelpError. "Hohenheim Home not defined.")))
     (info "set hohenheim-home= " (first args))
-    (-> (pre-parse args)
-        (primodial)
-        (start-exec)
-        (hookShutdown)
-        (writePID)
-        (pause-main))))
+    (-> (make-climain args) (.start)) ))
+
+
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 
 (def ^:private climain-eof nil)
