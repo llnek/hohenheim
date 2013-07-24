@@ -21,6 +21,8 @@
 (ns ^{ :doc "Date related utilities." :author "kenl" }
   comzotohcljc.util.dateutils)
 
+(use '[clojure.tools.logging :only (info warn error debug)])
+
 (import '(java.text ParsePosition SimpleDateFormat))
 (import '(java.util Locale TimeZone SimpleTimeZone
   Date Calendar GregorianCalendar))
