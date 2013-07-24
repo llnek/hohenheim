@@ -82,7 +82,7 @@
 (defprotocol Block)
 
 (defn make-block [ & args ]
-  (let [ b (make-activity :Block Composite Block)
+  (let [ b (make-activity Composite Block)
          v (if (empty? args)
              []
              (vec (flatten (conj [] args)))) ]
@@ -90,7 +90,7 @@
     b))
 
 (defmethod ac-reify :Block [ac cur]
-  (ac-spawnpoint ac cur :BlockPoint CompositePoint BlockPoint))
+  (ac-spawnpoint ac cur CompositePoint BlockPoint))
 
 (defmethod ac-realize! :Block [ac fw]
   (let [ w (make-innerPoints fw (.getf ac :children)) ]
@@ -129,26 +129,26 @@
 (defprotocol OrJoin)
 
 (defn make-nulljoin []
-  (let [ a (make-activity :NullJoin Join NullJoin) ]
+  (let [ a (make-activity Join NullJoin) ]
     (.setf a :branches 0)
     (.setf a :body nil)
     a))
 
 (defmethod ac-reify :NullJoin [ac cur]
-  (ac-spawnpoint ac cur :NullJoinPoint JoinPoint NullJoinPoint))
+  (ac-spawnpoint ac cur  JoinPoint NullJoinPoint))
 
 (defmethod fw-evaluate! :NullJoinPoint [fw  job] nil)
 (defmethod ac-realize! :NullJoin [ac fw] fw)
 
 
 (defn make-andjoin [body]
-  (let [ a (make-activity :AndJoin Join AndJoin) ]
+  (let [ a (make-activity Join AndJoin) ]
     (.setf a :body body)
     (.setf a :branches 0)
     a))
 
 (defmethod ac-reify :AndJoin [ac cur]
-  (ac-spawnpoint ac cur :AndJoinPoint JoinPoint AndJoinPoint))
+  (ac-spawnpoint ac cur JoinPoint AndJoinPoint))
 
 (defmethod ac-realize! :AndJoin [ac fw]
   (let [ b (.getf ac :body)
@@ -178,13 +178,13 @@
 
 
 (defn make-orjoin [body]
-  (let [ a (make-activity :OrJoin Join OrJoin) ]
+  (let [ a (make-activity Join OrJoin) ]
     (.setf a :body body)
     (.setf a :branches 0)
     a))
 
 (defmethod ac-reify :OrJoin [ac cur]
-  (ac-spawnpoint ac cur :OrJoinPoint JoinPoint OrJoinPoint))
+  (ac-spawnpoint ac cur JoinPoint OrJoinPoint))
 
 (defmethod ac-realize! :OrJoin [ac fw]
   (let [ b (.getf ac :body)
@@ -219,13 +219,13 @@
 (defprotocol Split)
 
 (defn make-split [joiner]
-  (let [ s (make-activity :Split Composite Split) ]
+  (let [ s (make-activity Composite Split) ]
     (.setf s :children [])
     (.setf s :join joiner)
     s))
 
 (defmethod ac-reify :Split [ac cur]
-  (ac-spawnpoint ac cur :SplitPoint CompositePoint SplitPoint))
+  (ac-spawnpoint ac cur CompositePoint SplitPoint))
 
 (defmethod ac-realize! :Split [ac fw]
   (let [ cs (.getf ac :children)

@@ -26,6 +26,7 @@
 
 (import '(java.util Properties Timer TimerTask))
 (import '(java.util HashMap))
+(import '(com.zotoh.hohenheim.core Schedulable ))
 (import '(com.zotoh.frwk.util TCore))
 
 (require '[comzotohcljc.util.coreutils :as CU])
@@ -42,18 +43,9 @@
     -911))
 
 (defprotocol SchedulerAPI ""
-  (dequeue [_ w] )
-  (dispose [_] )
-  (run [_ w] )
-  (postpone [_ w delayMillis] )
-  (hold [_ w] [_ pid w] )
-  (wakeup [_ w] )
-  (wakeAndRun [_ pid w] )
-  (reschedule [_ w] )
   (preRun [_ w] )
   (start [_ options] )
   (stop [_] )
-  ;;(configure [_ options] )
   (addTimer [_ task dely] ) )
 
 (defn make-scheduler "" [parObj]
@@ -63,9 +55,34 @@
 
         SchedulerAPI
 
-          (dispose [_]
-            (let [c (.mm-g impl :core) ]
-              (when-not (nil? c) (.dispose c))))
+          (preRun [this w]
+            (let [pid (xrefPID w) ]
+              (when (> pid 0)
+                (let [ holdQ (.mm-g impl :holdQ)
+                       runQ (.mm-g impl :runQ) ]
+                  (.remove holdQ pid)
+                  (.put runQ pid w)))) )
+
+          (start [_ options]
+            (let [ t (:threads options) ]
+              (.mm-s impl :holdQ (HashMap.))
+              (.mm-s impl :runQ (HashMap.))
+              (.mm-s impl :core
+                     (TCore. (CU/uid) (if (nil? t) 4 t)))
+              (.mm-s impl :timer (Timer. (CU/uid) true))
+              (.start (.mm-g impl :core)) ) )
+
+          (stop [_]
+            (do
+              (.cancel (.mm-g impl :timer))
+              (.clear (.mm-g impl :holdQ))
+              (.clear (.mm-g impl :runQ))
+              (.stop (.mm-g impl :core))) )
+
+          (addTimer [_ task dely]
+            (.schedule (.mm-g impl :timer) task dely))
+
+        Schedulable
 
           ;; called by a *running* task to remove itself from the running queue
           (dequeue [_ w]
@@ -80,76 +97,53 @@
           (postpone [this w delayMillis]
             (cond
               (= delayMillis 0)
-              (run this w)
+              (.run this w)
 
               (< delayMillis 0)
-              (hold this w)
+              (.hold this w)
 
               :else
               (do
                 (addTimer this
                   (proxy [TimerTask] []
-                    (run [_] (wakeup this w))) delayMillis)
-                (debug "Delaying eval on process: " 
-                       w ", wait: " 
+                    (run [_] (.wakeup this w))) delayMillis)
+                (debug "Delaying eval on process: "
+                       w ", wait: "
                        delayMillis "millisecs"))))
 
           (hold [this w]
             (let [ pid (xrefPID w) ]
-              (hold this pid w)))
+              (.hold this pid w)))
 
           (hold [this pid w]
             (when (> pid 0)
-              (let [ runQ (.mm-g impl :runQ)
-                     holdQ (.mm-g impl :holdQ) ]
+              (let [ holdQ (.mm-g impl :holdQ)
+                     runQ (.mm-g impl :runQ) ]
                 (.remove runQ pid)
                 (.put holdQ pid w)
                 (debug "Moved to pending wait, process: " w))))
 
           (wakeup [this w]
             (let [ pid (xrefPID w) ]
-              (wakeAndRun this pid w)))
+              (.wakeAndRun this pid w)))
 
           (wakeAndRun [this pid w]
             (when (> pid 0)
-              (let [ runQ (.mm-g impl :runQ)
-                     holdQ (.mm-g impl :holdQ) ]
+              (let [ holdQ (.mm-g impl :holdQ)
+                     runQ (.mm-g impl :runQ) ]
                 (.remove holdQ pid)
                 (.put runQ pid w)
-                (run this w)
+                (.run this w)
                 (debug "Waking up process: " w))) )
 
           (reschedule [this w]
             (when-not (nil? w)
               (debug "Restarting runnable: {}" w)
-              (run this w)))
+              (.run this w)))
 
-          (preRun [this w]
-            (let [pid (xrefPID w) ]
-              (when (> pid 0)
-                (let [ runQ (.mm-g impl :runQ)
-                       holdQ (.mm-g impl :holdQ) ]
-                  (.remove holdQ pid)
-                  (.put runQ pid w)))) )
-
-          (start [_ options]
-            (let [ t (:threads options) ]
-              (.mm-s impl :holdQ (HashMap.))
-              (.mm-s impl :runQ (HashMap.))
-              (.mm-s impl :core 
-                     (TCore. (CU/uid) (if (nil? t) 4 t)))
-              (.mm-s impl :timer (Timer. (CU/uid) true))
-              (.start (.mm-g impl :core)) ) )
-
-          (stop [_]
-            (do
-              (.cancel (.mm-g impl :timer))
-              (.clear (.mm-g impl :holdQ))
-              (.clear (.mm-g impl :runQ))
-              (.stop (.mm-g impl :core))) )
-
-          (addTimer [_ task dely]
-            (.schedule (.mm-g impl :timer) task dely)) )
+          (dispose [_]
+            (let [c (.mm-g impl :core) ]
+              (when-not (nil? c) (.dispose c)))) )
 
       { :typeid :Scheduler } )))
 

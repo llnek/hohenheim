@@ -24,7 +24,7 @@
 
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(import '(com.zotoh.hohenheim.core Job))
+(import '(com.zotoh.hohenheim.core BoolExpr Job))
 
 (require '[comzotohcljc.util.seqnumgen :as SN])
 (require '[comzotohcljc.util.coreutils :as CU])
@@ -51,14 +51,14 @@
 ;; If
 
 (defn make-if [expr then else]
-  (let [ b (make-activity :If Conditional If) ]
+  (let [ b (make-activity Conditional If) ]
     (.setf b :test expr)
     (.setf b :then then)
     (.setf b :else else)
     b))
 
 (defmethod ac-reify :If [ac cur]
-  (ac-spawnpoint ac cur :IfPoint ConditionalPoint IfPoint))
+  (ac-spawnpoint ac cur ConditionalPoint IfPoint))
 
 (defmethod ac-realize! :If [ac fw]
   (let [ np (.getf fw :next)
@@ -85,13 +85,13 @@
 ;; While
 
 (defn make-while [expr body]
-  (let [ b (make-activity :While Conditional While) ]
+  (let [ b (make-activity Conditional While) ]
     (.setf b :test expr)
     (.setf b :then body)
     b))
 
 (defmethod ac-reify :While [ac cur]
-  (ac-spawnpoint ac cur :WhilePoint ConditionalPoint WhilePoint))
+  (ac-spawnpoint ac cur ConditionalPoint WhilePoint))
 
 (defmethod ac-realize! :While [ac fw]
   (let [ b (.getf ac :body)
@@ -136,13 +136,13 @@
 
 ;; expr == ForLoopCountExpr
 (defn make-for [expr body]
-  (let [ b (make-activity :For Conditional While For) ]
+  (let [ b (make-activity Conditional While For) ]
     (.setf b :test expr)
     (.setf b :body body)
     b))
 
 (defmethod ac-reify :For [ac cur]
-  (ac-spawnpoint ac cur :ForPoint ConditionalPoint WhilePoint ForPoint))
+  (ac-spawnpoint ac cur ConditionalPoint WhilePoint ForPoint))
 
 (deftype ForLoopExpr [ ^:unsynchronized-mutable started
                        ^:unsynchronized-mutable loopCnt

@@ -48,12 +48,12 @@
           (apply cb fw job c))))))
 
 (defn make-ptask [work]
-  (let [ b (make-activity :PTask PTask) ]
+  (let [ b (make-activity PTask) ]
     (.setf b :task work)
     b))
 
 (defmethod ac-reify :PTask [ac cur]
-  (ac-spawnpoint ac cur :PTaskPoint PTaskPoint))
+  (ac-spawnpoint ac cur PTaskPoint))
 
 (defmethod ac-realize! :PTask [ac fw]
   (let [ w (.getf ac :task) ]

@@ -56,12 +56,12 @@
 ;; Delay
 
 (defn make-delay [delayMillis]
-  (let [ b (make-activity :Delay Delay) ]
+  (let [ b (make-activity Delay) ]
     (.setf b :delayMillis delayMillis)
     b))
 
 (defmethod ac-reify :Delay [ac cur]
-  (ac-spawnpoint ac cur :DelayPoint DelayPoint))
+  (ac-spawnpoint ac cur DelayPoint))
 
 (defmethod ac-realize! :Delay [ac fw]
   (let [ d (.getf ac :delayMillis) ]
@@ -75,11 +75,11 @@
 ;; AsyncWait
 
 (defn make-asyncwait []
-  (let [ b (make-activity :AsyncWait AsyncWait) ]
+  (let [ b (make-activity AsyncWait) ]
     b))
 
 (defmethod ac-reify :AsyncWait [ac cur]
-  (ac-spawnpoint ac cur :AsyncWaitPoint AsyncWaitPoint))
+  (ac-spawnpoint ac cur AsyncWaitPoint))
 
 (defmethod fw-evaluate! :AsyncWaitPoint [fw job] fw)
 (defmethod ac-realize! :AsyncWait [ac fw] fw)

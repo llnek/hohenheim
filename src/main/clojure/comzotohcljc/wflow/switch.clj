@@ -40,14 +40,14 @@
   (getChoice [_ job] ))
 
 (defn make-switch [choiceExpr]
-  (let [ a (make-activity :Switch Switch) ]
+  (let [ a (make-activity Switch) ]
     (.setf a :test choiceExpr)
     (.setf a :default nil)
     (.setf a :choices {} )
     a))
 
 (defmethod ac-reify :Switch [ac cur]
-  (ac-spawnpoint ac cur :SwitchPoint SwitchPoint))
+  (ac-spawnpoint ac cur SwitchPoint))
 
 (defmethod ac-realize! :Switch [ac cur]
   (let [ cs (.getf ac :choices)
