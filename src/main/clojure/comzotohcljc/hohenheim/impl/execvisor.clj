@@ -225,10 +225,11 @@
     ))
 
 
-(defn- make-blockmeta [url]
+(defn- make-blockmeta "" [url]
   (let [ impl (CU/make-mmap) ]
     (.mm-s impl :id (keyword (CU/uid)))
     (.mm-s impl K_META url)
+    ;; url points to block-meta file
     (with-meta
       (reify
 
