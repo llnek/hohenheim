@@ -5,48 +5,88 @@
   comzotohcljc.hohenheim.io.filepicker )
 
 
-import org.apache.commons.lang3.{StringUtils=>STU}
-import scala.collection.mutable
-import com.zotoh.frwk.util.CoreUtils._
-import com.zotoh.frwk.util.StrUtils._
-import com.zotoh.frwk.util.FileUtils._
-import java.io.{File,FilenameFilter,IOException}
-import java.util.{Properties=>JPS,ResourceBundle}
-import org.apache.commons.io.filefilter._
-import org.apache.commons.io.{FileUtils=>FUT}
-import com.zotoh.blason.core.Configuration
-import com.zotoh.blason.util.Observer
-import org.apache.commons.io.monitor.FileAlterationListener
-import org.apache.commons.io.monitor.FileAlterationListenerAdaptor
-import org.apache.commons.io.monitor.FileAlterationMonitor
-import org.apache.commons.io.monitor.FileAlterationObserver
-import java.io.FileFilter
+(import '(org.apache.commons.lang3. StringUtils))
+(import '(java.io. FileFilter File FilenameFilter IOException))
+(import '(java.util Properties ResourceBundle))
+(import '(org.apache.commons.io.filefilter ))
+(import '(org.apache.commons.io. FileUtils))
+(import '(org.apache.commons.io.monitor
+ FileAlterationListener
+ FileAlterationListenerAdaptor
+ FileAlterationMonitor
+ FileAlterationObserver))
 
-object FILEAction extends Enumeration {
-  type FILEAction = Value
-  val FP_CREATED = Value(0,"created")
-  val FP_CHANGED = Value(1,"changed")
-  val FP_DELETED = Value(2,"deleted")
-}
+(def FP_CREATED :FP-CREATED )
+(def FP_CHANGED :FP-CHANGED )
+(def FP_DELETED :FP-DELETED )
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; FilePicker
+
+    ;;tlog().debug("{} : {} was {}" , "FilePicker", f, action)
+(defn- postPoll [f action]
+  (let [ des (.getAttr co :dest)
+         fname (.getName f)
+         cf  (if (and (not= action :FP-DELETED) (CU/notnil? des))
+                (try
+                    (FileUtils/moveFileToDirectory f des false)
+                    (File. des fname)
+                  (catch Throwable e# (warn e#) nil))
+                f) ]
+    (.dispatch co nil);;FILEEvent(this, fn, cf, action))
+    ))
 
 
 (defmethod comp-configure ::FilePicker [co cfg]
+  (let [ root (CU/subs-var (SU/nsb (:target-folder cfg)))
+         dest (CU/subs-var (SU/nsb (:recv-folder cfg)))
+         mask (SU/nsb (:fmask cfg)) ]
+    (cfg-loopable co cfg)
+    (CU/test-nestr "file-root-folder" root)
+    (.setAttr! co :target (doto (File. root) (.mkdirs)))
+    (.setAttr! co :mask 
+      (cond
+        (.startsWith mask "*.")
+        (SuffixFileFilter. (.substring mask 1))
+
+        (.endsWith mask "*")
+        (PrefixFileFilter. (.substring mask 0 (dec (.length mask))))
+
+        (> (.length mask) 0)
+        (RegexFileFilter. mask) ;;WildcardFileFilter(mask)
+
+        :else
+        FileFileFilter/FILE ) )
+    (when (SU/hgl? dest)
+      (.setAttr! co :dest (doto (File. dest) (.mkdirs))))
+
+    (info "Monitoring folder: " root)
+    (info "Recv folder: " (SU/nsn dest))
+
+    co))
+
+(defmethod comp-initialize ::FilePicker [co]
+  (let [ obs (FileAlterationObserver.
+               (.getAttr co :target)
+               (.getAttr co :mask))
+         intv (.getAttr co :intervalMillis)
+         mon (FileAlterationMonitor. intv)
+         lnr (proxy [FileAlterationListenerAdaptor][]
+               (onFileCreate [f]
+                 (postPoll co f :FP-CREATED))
+               (onFileChange [f]
+                 (postPoll co f :FP-CHANGED))
+               (onFileDelete [f] 
+                 (postPoll co f :FP-DELETED))) ]
+    (.addListener obs lnr)
+    (.addObserver mon obs)
+    (.setAttr! co :monitor mon)
+    co))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+(defmethod loopable-wakeup ::FilePicker [co]
+  (-> (.getAttr co :monitor) (.start)))
 
 
 

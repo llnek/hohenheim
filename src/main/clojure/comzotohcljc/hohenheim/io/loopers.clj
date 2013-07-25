@@ -76,7 +76,7 @@
     co)) )
 
 
-(defn- cfg-loopable [co cfg]
+(defn cfg-loopable [co cfg]
   (let [ intv (:interval-secs cfg)
          ds (:delay-secs cfg)
          dw (SU/nsb (:delay-when cfg)) ]
