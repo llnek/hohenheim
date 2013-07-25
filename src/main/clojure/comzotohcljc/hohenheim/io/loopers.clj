@@ -42,30 +42,38 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-
-(defn- config-timertask [co]
+(defn- config-repeat-timer [tm dw ds intv func]
   (let [ tt (proxy [TimerTask][]
               (run [_]
                 (try
-                    (loopable-wakeup co)
-                  (catch Throwable e# (warn e#)))))
-         t (.getAttr co :timer)
-         intv (.getAttr co :intervalMillis)
-         ds (.getAttr co :delayMillis)
-         dw (.getAttr co :delayWhen) ]
-    (if (number? intv)
-      (do
-        (when (isa? Date dw)
-          (.schedule t tt (cast Date dw) intv) )
-        (when (number? ds)
-          (.schedule t tt ds intv)) )
-      (do
-        (when (isa? Date dw)
-          (.schedule t tt (cast Date dw)) )
-        (when (number? ds)
-          (.schedule t tt ds))) )
-    co))
+                    (when (fn? func) (func))
+                  (catch Throwable e# (warn e#))))) ]
+    (when (isa? Date dw)
+      (.schedule tm tt (cast Date dw) intv) )
+    (when (number? ds)
+      (.schedule tm tt ds intv))) )
 
+
+(defn- config-timer [tm dw ds func]
+  (let [ tt (proxy [TimerTask][]
+              (run [_]
+                (when (fn? func) (func)))) ]
+    (when (isa? Date dw)
+      (.schedule tm tt (cast Date dw)) )
+    (when (number? ds)
+      (.schedule tm tt ds))) )
+
+
+(defn- config-timertask [co]
+  (let [ intv (.getAttr co :intervalMillis)
+         t (.getAttr co :timer)
+         ds (.getAttr co :delayMillis)
+         dw (.getAttr co :delayWhen)
+         func (fn [] (loopable-wakeup co)) ]
+    (if (number? intv)
+      (config-repeat-timer t dw ds intv func)
+      (config-timer t dw ds func)
+    co)) )
 
 
 (defn- cfg-loopable [co cfg]
@@ -140,40 +148,33 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Threaded Timer
 
-(defmethod comp-configure :ThreadedTimer [co cfg]
-  (let [ ready (atom true)
-         tictoc (atom true) ]
-    (cfg-loopable co cfg)
-    (.setAttr! co :readyToLoop ready)
-    (.setAttr! co :tictoc tictoc)
-    co))
-
-(defn- loopy [co]
-    if ( ! _readyToLoop) false else {
-      if (_tictoc) {
-        _tictoc=false
-        safeWait( delayMillis )
-      }
-      else {
-        safeWait( intervalMillis )
-      }
-      _readyToLoop
-    }
-  }
+(defn- do-one-loop [intv]
+  (do
+    (try
+        (nil)
+      (catch Throwable e# (warn e#)))
+    (PU/safe-wait intv)) )
 
 (defmethod ioes-start :ThreadedTimer [co]
-  (do
-    (PU/coroutine
-      (fn []
-        while ( loopy ) try {
-          onOneLoop()
-        } catch {
-          case e:Throwable => tlog().warn("",e)
-        }
-        return
-      }
-    })
+  (let [ ds (.getAttr co :delayMillis)
+         dw (.getAttr co :delayWhen)
+         intv (.getAttr co :intervalMillis)
+         loopy (atom true)
+         func (fn []
+                (PU/coroutine (fn []
+                                (while @loopy (do-one-loop intv))))) ]
+    (if (or (number? ds) (isa? Date dw))
+      (let [ func (fn [] ) ]
+        (config-timer (Timer.) dw ds func))
+      (func))
+    (.setAttr! co :loopy loopy)
+    (ioes-started co)))
 
+
+(defmethod ioes-stop :ThreadedTimer [co]
+  (let [ loopy (.getAttr co :loopy) ]
+    (reset! loopy false)
+    (ioes-stopped co)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -184,8 +185,3 @@
 (def ^:private loopers-eof nil)
 
 
-        ) (MU/get-cldr))
-    (ioes-started co)))
-
-    asyncExec(new Runnable() {
-      def run() {
