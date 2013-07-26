@@ -30,10 +30,15 @@
   KeyStore$PrivateKeyEntry))
 (import '(javax.net.ssl KeyManagerFactory TrustManagerFactory))
 (import '(javax.security.auth.x500 X500Principal))
+
+
 (require '[clojure.math.numeric-tower :as math])
 (require '[comzotohcljc.util.coreutils :as CU])
 (require '[comzotohcljc.crypto.cryptors :as CR])
 (require '[comzotohcljc.crypto.cryptutils :as CO])
+
+(use '[comzotohcljc.crypto.cryptors :only(PasswordAPI) ])
+
 
 
 (defn- onNewKey [^KeyStore keystore nm ^PrivateKey pkey pm]
@@ -79,7 +84,12 @@
     "JKS" (CO/get-jksStore)
     (throw (IllegalArgumentException. "wrong keystore type."))))
 
-(deftype CryptoStore [^KeyStore keystore ^comzotohcljc.crypto.cryptors.PasswordAPI passwdObj] CryptoStoreAPI
+(defn make-crypto-store ""
+
+  [^KeyStore keystore
+   ^comzotohcljc.crypto.cryptors.PasswordAPI passwdObj]
+
+  (reify CryptoStoreAPI
 
   (addKeyEntity [this bits pwdObj]
     ;; we load the p12 content into an empty keystore, then extract the entry
@@ -127,7 +137,7 @@
       (doseq [ c (seq certs) ]
         (.setCertificateEntry keystore (CO/new-alias) (cast Certificate c)))))
 
-)
+))
 
 
 

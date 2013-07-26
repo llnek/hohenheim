@@ -76,7 +76,7 @@
 ;; main netty classes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- make-server-bootstrap ^{ :doc "Make a netty server bootstrap." }
+(defn make-server-bootstrap ^{ :doc "Make a netty server bootstrap." }
   [options]
   (let [ bs (ServerBootstrap. (NioServerSocketChannelFactory.
             (Executors/newCachedThreadPool)
@@ -315,7 +315,7 @@
 ;; make our internal channel handler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- pipelinehdlr [usercb]
+(defn make-pipelineHandler [usercb]
   (proxy [SimpleChannelHandler] []
 
     (exceptionCaught [ctx ev]
@@ -349,7 +349,7 @@
           ;;(.addLast "encoder" (HttpResponseEncoder.))
           (.addLast "codec" (HttpServerCodec.))
           (.addLast "chunker" (ChunkedWriteHandler.))
-          (.addLast "handler" (pipelinehdlr usercb))) ))))
+          (.addLast "handler" (make-pipelineHandler usercb))) ))))
 
 (defn- make-pipeClient [^SSLContext sslctx usercb]
   (reify ChannelPipelineFactory
@@ -364,7 +364,7 @@
           ;;(.addLast "encoder" (HttpResponseEncoder.))
           (.addLast "codec" (HttpClientCodec.))
           (.addLast "chunker" (ChunkedWriteHandler.))
-          (.addLast "handler" (pipelinehdlr usercb))) ))))
+          (.addLast "handler" (make-pipelineHandler usercb))) ))))
 
 (defn- make-xxx-server 
   ([host port keyUrl pwdObj usercb ] (make-xxx-server host port keyUrl pwdObj usercb {}))

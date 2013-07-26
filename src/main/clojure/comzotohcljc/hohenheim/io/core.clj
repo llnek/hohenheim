@@ -56,6 +56,7 @@
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
           (version [_] ver)
+          (parent [_] container)
           (id [_] "")
 
         Disposable
