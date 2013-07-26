@@ -58,6 +58,10 @@
             (-> (ContinuationSupport/getContinuation req)
               (.complete)))) )) ) )
 
+(defn- maybeClose [evt cf]
+  (when-not (.isKeepAlive evt)
+    (when-not (nil? cf)
+      (.addListener cf ChannelFutureListener/CLOSE ))))
 
 (defn- netty-reply [ch evt res]
   (let [ rsp (DefaultHttpResponse. HTTP_1_1
