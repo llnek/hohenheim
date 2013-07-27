@@ -18,8 +18,10 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns ^{ :doc "Util functions related to stream/io."  :author "kenl" }
-  comzotohcljc.util.ioutils)
+(ns ^{ :doc "Util functions related to stream/io."
+       :author "kenl" }
+
+  comzotohcljc.util.io )
 
 (import '(java.io
   ByteArrayInputStream ByteArrayOutputStream DataInputStream
@@ -32,13 +34,17 @@
 (import '(org.apache.commons.io IOUtils))
 (import '(org.xml.sax InputSource))
 (import '(java.nio.charset Charset))
-(require '[ comzotohcljc.util.coreutils :as CU])
+
+(require '[ comzotohcljc.util.core :as CU])
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (def ^:private HEX_CHS [ \0 \1 \2 \3 \4 \5 \6 \7 \8 \9 \A \B \C \D \E \F ])
 (def ^:private SZ_10MEG (* 1024 1024 10))
 
-(defn make-tmpfile ^{ :doc "Create a temp file in the temp dir." }
+(defn make-tmpfile "Create a temp file in the temp dir."
   ([] (make-tmpfile "" ""))
   ([^String pfx ^String sux]
     (File/createTempFile
@@ -46,23 +52,23 @@
       (if (StringUtils/isEmpty sux) ".dat" sux)
       (com.zotoh.frwk.io.IOUtils/workDir)) ))
 
-(defn newly-tmpfile ^{ :doc "Create a new temp file, optionally open it for write as stream." }
+(defn newly-tmpfile "Create a new temp file, optionally open it for write as stream."
   ([] (newly-tmpfile false))
   ([open]
     (let [ f (make-tmpfile) ]
       (if open [ f (FileOutputStream. f) ] [ f nil ]))) )
 
-(defn streamify ^{ :doc "Wrapped these bytes in an input-stream." }
+(defn streamify "Wrapped these bytes in an input-stream."
   [bits]
   (if (nil? bits)
     nil
     (ByteArrayInputStream. bits)) )
 
-(defn make-baos ^{ :doc "Make a byte array output stream." }
+(defn make-baos "Make a byte array output stream."
   []
   (ByteArrayOutputStream. (int 4096)))
 
-(defn hexify-chars ^{ :doc "Turn bytes into hex chars." }
+(defn hexify-chars "Turn bytes into hex chars."
   [^bytes bits]
   (let [ len (* 2 (if (nil? bits) 0 (alength bits)))
          out (char-array len) ]
@@ -76,11 +82,13 @@
             (recur (inc k) (+ 2 pos)) ))))
     out))
 
-(defn hexify-string ^{ :doc "Turn bytes into hex string." }
+(defn hexify-string "Turn bytes into hex string."
   [^bytes bits]
   (if (nil? bits) nil (String. (hexify-chars bits))) )
 
-(defn gzip ^{ :doc "Gzip these bytes." }
+(defmulti open-file "Open this file path." class)
+
+(defn gzip "Gzip these bytes."
   [^bytes bits]
   (if (nil? bits)
     nil
@@ -89,19 +97,16 @@
                 (.write g bits, 0, (alength bits)))
       (.toByteArray baos))))
 
-(defn gunzip ^{ :doc "Gunzip these bytes." }
+(defn gunzip "Gunzip these bytes."
   [^bytes bits]
   (if (nil? bits)
     nil
     (IOUtils/toByteArray (GZIPInputStream. (streamify bits))) ))
 
-(defn reset-stream! ^{ :doc "Call reset on this input stream." }
+(defn reset-stream! "Call reset on this input stream."
   [inp]
-  (try
-    (if-not (nil? inp)  (.reset inp))
-    (catch Throwable t nil)) )
-
-(defmulti ^{ :doc "Open this file path." } open-file class)
+  (CU/Guard
+    (if-not (nil? inp)  (.reset inp)) ))
 
 (defmethod open-file String
   [ ^String fp]
@@ -111,54 +116,56 @@
   [^File f]
   (if (nil? f) nil (XStream. f)))
 
-(defn from-gzb64 ^{ :doc "Unzip content which is base64 encoded + gziped." }
+(defn from-gzb64 "Unzip content which is base64 encoded + gziped."
   [^String gzb64]
   (if (nil? gzb64) nil (gunzip (Base64/decodeBase64 gzb64))) )
 
-(defn to-gzb64  ^{ :doc "Zip content and then base64 encode it." }
+(defn to-gzb64 "Zip content and then base64 encode it."
   [^bytes bits]
   (if (nil? bits) nil (Base64/encodeBase64String (gzip bits))) )
 
-(defn available ^{ :doc "Get the available bytes in this stream." }
+(defn available "Get the available bytes in this stream."
   [^InputStream inp]
   (if (nil? inp) 0 (.available inp)) )
 
-(defn copy-stream ^{ :doc "Copy content from this input-stream to a temp file." }
+(defn copy-stream "Copy content from this input-stream to a temp file."
   [^InputStream inp]
   (let [ t (newly-tmpfile true) ]
     (with-open [ os (nth t 1) ]
       (IOUtils/copy inp os))
     (nth t 0)))
 
-(defn copy-bytes ^{ :doc "Copy x number of bytes from the source input-stream." }
+(defn copy-bytes "Copy x number of bytes from the source input-stream."
   [^InputStream src ^OutputStream out bytesToCopy]
   (when-not (<= bytesToCopy 0)
     (IOUtils/copyLarge src out 0 bytesToCopy)) )
 
-(defn reset-source! ^{ :doc "Reset an input source." }
+(defn reset-source! "Reset an input source."
   [^InputSource inpsrc]
-  (if-not (nil? inpsrc)
+  (when-not (nil? inpsrc)
     (let [ rdr (.getCharacterStream inpsrc)
            ism (.getByteStream inpsrc) ]
-      (try
-        (when-not (nil? ism) (.reset ism))
-        (catch Throwable t nil))
-      (try
-        (when-not (nil? rdr) (.reset rdr))
-        (catch Throwable t nil)) )) )
+      (CU/Guard
+        (when-not (nil? ism) (.reset ism)) )
 
-(defn make-xdata ^{ :doc "Return a newly created XData." }
+      (CU/Guard
+        (when-not (nil? rdr) (.reset rdr)) ))))
+
+(defn make-xdata "Return a newly created XData."
   ([] (make-xdata false))
   ([usefile] (if usefile (XData. (make-tmpfile)) (XData.)) ))
 
 (defn- swap-bytes [baos]
-  (let [ bits (.toByteArray baos) t (newly-tmpfile true) ]
+  (let [ bits (.toByteArray baos)
+         t (newly-tmpfile true) ]
     (doto (nth t 1) (.write bits) (.flush))
     (.close baos)
     t))
 
 (defn- swap-read-bytes [inp baos]
-  (let [ t (swap-bytes baos) bits (byte-array 4096) os (nth t 1) ]
+  (let [ bits (byte-array 4096)
+         t (swap-bytes baos)
+         os (nth t 1) ]
     (try
       (loop [ c (.read inp bits) ]
         (if (< c 0)
@@ -171,7 +178,8 @@
         (.close os)))) )
 
 (defn- slurp-bytes [inp lmt]
-  (let [ bits (byte-array 4096) baos (make-baos) ]
+  (let [ bits (byte-array 4096)
+         baos (make-baos) ]
     (loop [ c (.read inp bits) cnt 0 ]
       (if (< c 0)
         (XData. baos)
@@ -184,13 +192,18 @@
               (recur (.read inp bits) (+ c cnt)) )))))) )
 
 (defn- swap-chars [wtr]
-  (let [ bits (.toCharArray wtr) t (newly-tmpfile true) os (OutputStreamWriter. (nth t 1)) ]
+  (let [ bits (.toCharArray wtr)
+         t (newly-tmpfile true)
+         os (OutputStreamWriter. (nth t 1)) ]
     (doto os (.write bits) (.flush))
     (.close wtr)
     [t os]))
 
 (defn- swap-read-chars [inp wtr]
-  (let [ v (swap-chars wtr) bits (char-array 4096) t (nth v 0) os (nth v 1) ]
+  (let [ v (swap-chars wtr)
+         bits (char-array 4096)
+         t (nth v 0)
+         os (nth v 1) ]
     (try
       (loop [ c (.read inp bits) ]
         (if (< c 0)
@@ -203,7 +216,8 @@
         (.close os)))) )
 
 (defn- slurp-chars [inp lmt]
-  (let [ wtr (CharArrayWriter. (int 10000)) bits (char-array 4096) ]
+  (let [ wtr (CharArrayWriter. (int 10000))
+         bits (char-array 4096) ]
     (loop [ c (.read inp bits) cnt 0 ]
       (if (< c 0)
         (XData. wtr)
@@ -215,15 +229,15 @@
               (swap-read-chars inp wtr)
               (recur (.read inp bits) (+ c cnt)))))))) )
 
-(defn read-bytes ^{ :doc "Read bytes and return a XData." }
+(defn read-bytes "Read bytes and return a XData."
   ([^InputStream inp usefile] (slurp-bytes inp (if usefile 1 (com.zotoh.frwk.io.IOUtils/streamLimit))))
   ([^InputStream inp] (slurp-bytes inp (com.zotoh.frwk.io.IOUtils/streamLimit))) )
 
-(defn read-chars ^{ :doc "Read chars and return a XData." }
+(defn read-chars "Read chars and return a XData."
   ([^Reader rdr] (slurp-chars rdr (com.zotoh.frwk.io.IOUtils/streamLimit)))
   ([^Reader rdr usefile] (slurp-chars rdr (if usefile 1 (com.zotoh.frwk.io.IOUtils/streamLimit)))))
 
-(defn morph-chars ^{ :doc "Convert these bytes to chars." }
+(defn morph-chars "Convert these bytes to chars."
   ([^bytes bits] (morph-chars bits (Charset/forName "utf-8")) )
   ([^bytes bits ^Charset charSet]
 ;;    (1 to min(b.length, count)).foreach { (i) =>
@@ -234,7 +248,7 @@
       nil
       (IOUtils/toCharArray (streamify bits) charSet))) )
 
-(defn diff? ^{ :doc "Tests if both streams are the same or different at byte level." }
+(defn diff? "Tests if both streams are the same or different at byte level."
   [inp1 inp2]
   (cond
     (and (nil? inp1) (nil? inp2)) false
@@ -242,5 +256,5 @@
     :else (not (IOUtils/contentEquals inp1 inp2))) )
 
 
-(def ^:private ioutils-eof nil)
+(def ^:private io-eof nil)
 

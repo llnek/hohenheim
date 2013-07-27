@@ -18,16 +18,22 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns ^{ :doc "Ways to generate an unique id." :author "kenl" }
+(ns ^{ :doc "Ways to generate an unique id." 
+       :author "kenl" }
+
   comzotohcljc.util.guids)
 
-(import '(java.net InetAddress) )
 (import '(java.lang StringBuilder) )
+(import '(java.net InetAddress) )
 (import '(java.lang Math) )
-(require '[ comzotohcljc.util.coreutils :as CU ] )
-(require '[ comzotohcljc.util.strutils :as SU ] )
-(require '[ comzotohcljc.util.byteutils :as BU ] )
-(require '[ comzotohcljc.util.seqnumgen :as SQ ] )
+(require '[ comzotohcljc.util.core :as CU ] )
+(require '[ comzotohcljc.util.str :as SU ] )
+(require '[ comzotohcljc.util.bytes :as BU ] )
+(require '[ comzotohcljc.util.seqnum :as SQ ] )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 ;;(def ^:private  _CHARS (.toCharArray "0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz"))
@@ -38,7 +44,8 @@
 (def ^:private INT_MASK "00000000")
 
 (defn- fmt [pad mask]
-  (let [ mlen (.length mask) plen (.length pad) ]
+  (let [ mlen (.length mask)
+         plen (.length pad) ]
     (if (>= mlen plen)
       (.substring mask 0 plen)
       (.toString (.replace (StringBuilder. pad) (- plen mlen) plen mask ) ))) )
@@ -51,20 +58,22 @@
     [ (SU/left s (/ n 2)) (SU/right s (max 0 (- n (/ n 2 )) )) ] ))
 
 (defn- maybeSetIP []
-  (try
-    (let [ neta (InetAddress/getLocalHost) b (.getAddress neta) ]
+  (CU/TryC
+    (let [ neta (InetAddress/getLocalHost)
+           b (.getAddress neta) ]
       (if (.isLoopbackAddress neta )
         (.nextLong (CU/new-random))
         (if (= 4 (alength b)) (long (BU/read-int b)) (BU/read-long b) )
         ))
-    (catch Throwable e (.printStackTrace e))) )
+    ))
 
 (def ^:private _IP (Math/abs (maybeSetIP)) )
 
-(defn new-uuid ^{ :doc "rfc4122, version 4 form." }
+(defn new-uuid "RFC4122, version 4 form."
   []
   ;; At i==19 set the high bits of clock sequence as per rfc4122, sec. 4.1.5
-  (let [ rc (char-array _UUIDLEN) rnd (CU/new-random) ]
+  (let [ rc (char-array _UUIDLEN)
+         rnd (CU/new-random) ]
     (dotimes [ n (alength rc) ]
       (aset-char rc n (case n
         (8 13 18 23) \-
@@ -74,12 +83,16 @@
           (aget _CHARS pos))) ))
     (String. rc)))
 
-(defn new-wwid ^{ :doc "Return a new guid based on time and ip-address." }
+(defn new-wwid "Return a new guid based on time and ip-address."
   []
   (let [ seed (.nextInt (CU/new-random) (Integer/MAX_VALUE))
          ts (splitHiLoTime) ]
-      (str (nth ts 0) (fmt-long _IP) (fmt-int seed) (fmt-int (SQ/next-int)) (nth ts 1)) ))
+      (str (nth ts 0) 
+           (fmt-long _IP) 
+           (fmt-int seed) 
+           (fmt-int (SQ/next-int)) 
+           (nth ts 1)) ))
 
 
-(def ^:private guid-eof  nil)
+(def ^:private guids-eof  nil)
 

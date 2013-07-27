@@ -20,18 +20,27 @@
 
 (ns ^{  :doc "Utility functions for class related or reflection related operations."
         :author "kenl" }
-  comzotohcljc.util.metautils)
+  comzotohcljc.util.meta)
 
 
 (import '(java.lang.reflect Field Method Modifier))
-(require '[ comzotohcljc.util.coreutils :as CU ] )
-(require '[ comzotohcljc.util.strutils :as SU ] )
+(require '[ comzotohcljc.util.core :as CU ] )
+(require '[ comzotohcljc.util.str :as SU ] )
 
-(defmulti ^{ :doc "Returns true if clazz is subclass of this base class." } is-child
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmulti is-child "Returns true if clazz is subclass of this base class."
   (fn [a b]
     (cond
-      (instance? Class b) :class
-      :else :object)))
+      (instance? Class b)
+      :class
+
+      :else
+      :object)))
 
 (defmethod is-child :class
   [^Class basz ^Class cz]
@@ -41,70 +50,70 @@
   [^Class basz obj]
   (if (or (nil? basz) (nil? obj)) false (is-child basz (.getClass obj))))
 
-(defn bytes-class ^{ :doc "Return the java class for byte[]." }
+(defn bytes-class "Return the java class for byte[]."
   []
   (Class/forName "[B"))
 
-(defn chars-class ^{ :doc "Return the java class for char[]." }
+(defn chars-class "Return the java class for char[]."
   []
   (Class/forName "[C"))
 
-(defn is-boolean? ^{ :doc "True if class is Boolean." }
+(defn is-boolean? "True if class is Boolean."
   [^Class classObj]
-  (if (SU/eq-any? (.getName classObj) ["boolean" "Boolean" "java.lang.Boolean"] ) true false))
+  (SU/eq-any? (.getName classObj) ["boolean" "Boolean" "java.lang.Boolean"] ))
 
-(defn is-char? ^{ :doc "True if class is Char." }
+(defn is-char? "True if class is Char."
   [^Class classObj]
-  (if (SU/eq-any? (.getName classObj) [ "char" "Char" "java.lang.Character" ] ) true false))
+  (SU/eq-any? (.getName classObj) [ "char" "Char" "java.lang.Character" ] ))
 
-(defn is-int? ^{ :doc "True if class is Int." }
+(defn is-int? "True if class is Int."
   [^Class classObj]
-  (if (SU/eq-any? (.getName classObj) [ "int" "Int" "java.lang.Integer" ] ) true false))
+  (SU/eq-any? (.getName classObj) [ "int" "Int" "java.lang.Integer" ] ))
 
-(defn is-long? ^{ :doc "True if class is Long." }
+(defn is-long? "True if class is Long."
   [^Class classObj]
-  (if (SU/eq-any? (.getName classObj) [ "long" "Long" "java.lang.Long" ] ) true false))
+  (SU/eq-any? (.getName classObj) [ "long" "Long" "java.lang.Long" ] ))
 
-(defn is-float? ^{ :doc "True if class is Float." }
+(defn is-float? "True if class is Float."
   [^Class classObj]
-  (if (SU/eq-any? (.getName classObj) [ "float" "Float" "java.lang.Float" ]) true false ))
+  (SU/eq-any? (.getName classObj) [ "float" "Float" "java.lang.Float" ]))
 
-(defn is-double? ^{ :doc "True if class is Double." }
+(defn is-double? "True if class is Double."
   [^Class classObj]
-  (if (SU/eq-any? (.getName classObj) [ "double" "Double" "java.lang.Double" ]) true false))
+  (SU/eq-any? (.getName classObj) [ "double" "Double" "java.lang.Double" ]))
 
-(defn is-byte? ^{ :doc "True if class is Byte." }
+(defn is-byte? "True if class is Byte."
   [^Class classObj]
-  (if (SU/eq-any? (.getName classObj) [ "byte" "Byte" "java.lang.Byte" ]) true false ))
+  (SU/eq-any? (.getName classObj) [ "byte" "Byte" "java.lang.Byte" ]))
 
-(defn is-short? ^{ :doc "True if class is Short." }
+(defn is-short? "True if class is Short."
   [^Class classObj]
-  (if (SU/eq-any? (.getName classObj) [ "short" "Short" "java.lang.Short" ]) true false))
+  (SU/eq-any? (.getName classObj) [ "short" "Short" "java.lang.Short" ]))
 
-(defn is-string? ^{ :doc "True if class is String." }
+(defn is-string? "True if class is String."
   [^Class classObj]
-  (if (SU/eq-any? (.getName classObj) [ "String" "java.lang.String" ]) true false) )
+  (SU/eq-any? (.getName classObj) [ "String" "java.lang.String" ]))
 
-(defn is-bytes? ^{ :doc "True if class is byte[]." }
+(defn is-bytes? "True if class is byte[]."
   [^Class classObj]
   (= classObj (bytes-class)) )
 
-(defn for-name ^{ :doc "Load a java class by name." }
+(defn for-name "Load a java class by name."
   ( [^String z] (for-name z nil))
   ( [^String z ^ClassLoader cl]
     (if (nil? cl) (java.lang.Class/forName z) (java.lang.Class/forName z true cl))) )
 
-(defn get-cldr ^{ :doc "Get the current classloader." }
+(defn get-cldr "Get the current classloader."
   ([] (get-cldr nil))
   ([^ClassLoader cl] (if (nil? cl) (.getContextClassLoader (Thread/currentThread)) cl)))
 
-(defn set-cldr ^{ :doc "Set current classloader." }
+(defn set-cldr "Set current classloader."
   [^ClassLoader cl]
   (let []
     (CU/test-nonil "class-loader" cl)
     (.setContextClassLoader (Thread/currentThread) cl)))
 
-(defn load-class ^{ :doc "Load this class by name." }
+(defn load-class "Load this class by name."
   ( [^String clazzName] (load-class clazzName nil))
   ( [^String clazzName ^ClassLoader cl]
     (if (not (SU/hgl? clazzName)) nil (.loadClass (get-cldr cl) clazzName))))
@@ -114,17 +123,17 @@
     (CU/test-nonil "java-class" cz)
     (.newInstance (.getDeclaredConstructor cz (make-array Class 0))  (make-array Object 0)  )))
 
-(defn make-obj ^{ :doc "Make an object of this class by calling the default constructor." }
+(defn make-obj "Make an object of this class by calling the default constructor."
   ([^String clazzName] (make-obj clazzName nil))
   ([^String clazzName ^ClassLoader cl]
    (if (not (SU/hgl? clazzName)) nil (ctorObj (load-class clazzName cl)))) )
 
-(defn list-parents ^{ :doc "List all parent classes." }
+(defn list-parents "List all parent classes."
   [^Class javaClass]
-  (let [ rc (loop [ sum [] par javaClass ]
+  (let [ rc (loop [ sum (transient []) par javaClass ]
               (if (nil? par)
-                sum
-                (recur (conj sum par) (.getSuperclass par))))  ]
+                (persistent! sum)
+                (recur (conj! sum par) (.getSuperclass par))))  ]
     ;; since we always add the original class, we need to ignore it on return
     (if (> (.size rc) 1) (rest rc) [] )))
 
@@ -136,32 +145,33 @@
                 (if (and (> level 0)
                          (or (Modifier/isStatic x) (Modifier/isPrivate x)) )
                   sum
-                  (assoc sum (.getName m) m)))) bin props) ))
+                  (assoc! sum (.getName m) m)))) bin props) ))
 
 (defn- listMtds [ ^Class cz level ]
   (let [ par (.getSuperclass cz) ]
-    (iterXXX cz level #(.getDeclaredMethods %) (if (nil? par) {} (listMtds par (inc level))))))
+    (iterXXX cz level #(.getDeclaredMethods %)
+             (if (nil? par) (transient {}) (listMtds par (inc level))))))
 
 (defn- listFlds [ ^Class cz level ]
   (let [ par (.getSuperclass cz) ]
-    (iterXXX cz level #(.getDeclaredFields %) (if (nil? par) {} (listFlds par (inc level))))))
+    (iterXXX cz level #(.getDeclaredFields %)
+             (if (nil? par) (transient {}) (listFlds par (inc level))))))
 
-(defn list-methods ^{ :doc "List all methods belonging to this class, including inherited ones." }
+(defn list-methods "List all methods belonging to this class, including inherited ones."
   [^Class javaClass]
-  (vals (if (nil? javaClass) {} (listMtds javaClass 0 ))) )
+  (vals (if (nil? javaClass)
+          {}
+          (persistent! (listMtds javaClass 0 ))   )) )
 
-(defn list-fields ^{ :doc "List all fields belonging to this class, including inherited ones." }
+(defn list-fields "List all fields belonging to this class, including inherited ones."
   [^Class javaClass]
-  (vals (if (nil? javaClass) {} (listFlds javaClass 0 ))) )
+  (vals (if (nil? javaClass)
+          {}
+          (persistent! (listFlds javaClass 0 ))     )) )
 
 
 
 
 
-
-
-
-
-
-(def ^:private metautils-eof nil)
+(def ^:private meta-eof nil)
 

@@ -20,9 +20,11 @@
 
 (ns ^{ :doc "This is a utility class that provides various MIME related functionality." 
        :author "kenl" }
-  comzotohcljc.util.mimeutils)
+
+  comzotohcljc.util.mime)
 
 (use '[clojure.tools.logging :only (info warn error debug)])
+
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.net URLDecoder URLEncoder))
 (import '(java.io InputStream File))
@@ -30,11 +32,14 @@
 (import '(java.util.regex Pattern))
 (import '(java.util Properties))
 (import '(javax.mail Message))
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.metautils :as MU])
-(require '[comzotohcljc.util.strutils :as SU])
-(require '[comzotohcljc.util.ioutils :as IO])
 
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.meta :as MU])
+(require '[comzotohcljc.util.str :as SU])
+(require '[comzotohcljc.util.io :as IO])
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (def ^:dynamic *CTE_QUOTED* "quoted-printable")
@@ -117,13 +122,14 @@
 (def ^:private _extRegex (Pattern/compile "^.*\\.([^.]+)$"))
 (def ^:private _mime_cache (atom {}))
 
+
 (defn- is-pkcs7mime? "" [s] (>= (.indexOf s "application/x-pkcs7-mime") 0))
 
-(defn mime-cache { :doc "Cache of most MIME types." }
+(defn mime-cache "Cache of most MIME types."
   []
   @_mime_cache)
 
-(defn get-charset ^{ :doc "Get charset from this content-type string." }
+(defn get-charset "Get charset from this content-type string."
   [^String cType]
   (let [ pos (-> (SU/nsb cType) (.toLowerCase) (.indexOf "charset="))
          rc "utf-8" ]
@@ -133,52 +139,57 @@
         (if (> p 0) (.substring s 0 p) s))
       rc)) )
 
-(defn is-signed? ^{ :doc "Returns true if this content-type indicates signed." }
+(defn is-signed? "Returns true if this content-type indicates signed."
   [^String cType]
   (let [ ct (.toLowerCase (SU/nsb cType)) ]
     (or (>= (.indexOf ct "multipart/signed") 0)
         (and (is-pkcs7mime? ct) (>= (.indexOf ct "signed-data") 0)))) )
 
-(defn is-encrypted? ^{ :doc "Returns true if this content-type indicates encrypted." }
+(defn is-encrypted? "Returns true if this content-type indicates encrypted."
   [^String cType]
   (let [ ct (.toLowerCase (SU/nsb cType)) ]
     (and (is-pkcs7mime? ct) (>= (.indexOf ct "enveloped-data") 0))) )
 
-(defn is-compressed? ^{ :doc "Returns true if this content-type indicates compressed." }
+(defn is-compressed? "Returns true if this content-type indicates compressed."
   [^String cType]
   (let [ ct (.toLowerCase (SU/nsb cType)) ]
     (and (>= (.indexOf ct "application/pkcs7-mime") 0) (>= (.indexOf ct "compressed-data") 0))) )
 
-(defn is-mdn? ^{ :doc "Returns true if this content-type indicates MDN." }
+(defn is-mdn? "Returns true if this content-type indicates MDN."
   [^String cType]
   (let [ ct (.toLowerCase (SU/nsb cType)) ]
     (and (>= (.indexOf ct "multipart/report") 0) (>= (.indexOf ct "disposition-notification") 0))) )
 
-(defn maybe-stream  ^{ :doc "Turn this object into some form of stream, if possible." }
+(defn maybe-stream "Turn this object into some form of stream, if possible."
   [obj]
   (cond
-    (instance? String obj) (IO/streamify (CU/bytesify (cast String obj)))
-    (instance? InputStream obj) (cast InputStream obj)
-    (instance? (MU/bytes-class) obj) (IO/streamify obj)
-    :else nil))
+    (instance? String obj)
+    (IO/streamify (CU/bytesify (cast String obj)))
 
-(defn url-decode  ^{ :doc "URL decode this string." }
+    (instance? InputStream obj)
+    (cast InputStream obj)
+
+    (instance? (MU/bytes-class) obj) 
+    (IO/streamify obj)
+
+    :else
+    nil))
+
+(defn url-decode "URL decode this string."
   [^String u]
   (if (nil? u)
     nil
-    (try
-      (URLDecoder/decode u "utf-8")
-      (catch Throwable e nil))))
+    (CU/Guard
+      (URLDecoder/decode u "utf-8") )))
 
-(defn url-encode ^{ :doc "URL encode this string." }
+(defn url-encode "URL encode this string."
   [^String u]
   (if (nil? u)
     nil
-    (try
-      (URLEncoder/encode u "utf-8")
-      (catch Throwable e nil))))
+    (CU/Guard
+      (URLEncoder/encode u "utf-8") )))
 
-(defn guess-mimetype ^{ :doc "Guess the MIME type of file." }
+(defn guess-mimetype "Guess the MIME type of file."
   ([^File file] (guess-mimetype file ""))
   ([^File file ^String dft]
     (let [ mc (.matcher _extRegex (.toLowerCase (.getName file)))
@@ -186,14 +197,14 @@
            p (SU/nsb (get (mime-cache) ex)) ]
       (if (SU/hgl? p) p dft))) )
 
-(defn guess-contenttype ^{ :doc "Guess the content-type of file." }
+(defn guess-contenttype "Guess the content-type of file."
   ([^File file] (guess-contenttype file "utf-8" "application/octet-stream" ))
   ([^File file ^String enc ^String dft]
     (let [ mt (guess-mimetype file)
            ct (if (SU/hgl? mt) mt dft) ]
       (if (not (.startsWith ct "text/")) ct (str ct "; charset=" enc)))) )
 
-(defn setup-cache  ^{ :doc "Load file mime-types as a map." }
+(defn setup-cache "Load file mime-types as a map."
   [^URL fileUrl]
   (with-open [ inp (.openStream fileUrl) ]
     (let [ ps (Properties.) ]
@@ -205,18 +216,5 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-(def ^:private mimeutils-eof nil)
+(def ^:private mime-eof nil)
 

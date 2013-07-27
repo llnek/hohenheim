@@ -20,18 +20,24 @@
 
 (ns ^{ :doc "Locale resources."
        :author "kenl" }
-  comzotohcljc.i18n.i18nutils)
+
+  comzotohcljc.i18n.resources)
 
 (import '(java.util PropertyResourceBundle ResourceBundle Locale))
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.io File FileInputStream))
 (import '(java.net URL))
-(require '[ comzotohcljc.util.metautils :as MU])
-(require '[ comzotohcljc.util.coreutils :as CU])
-(require '[ comzotohcljc.util.strutils :as SU])
+
+(require '[ comzotohcljc.util.meta :as MU])
+(require '[ comzotohcljc.util.core :as CU])
+(require '[ comzotohcljc.util.str :as SU])
 
 
-(defmulti ^{ :doc "Load a properties file containing localized string." } load-resource class)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmulti load-resource "Load properties file with localized strings." class)
 
 (defmethod load-resource File
   [^File aFile]
@@ -40,16 +46,16 @@
 (defmethod load-resource URL
   [^URL url]
   (with-open [ inp (.openStream url) ]
-      (PropertyResourceBundle. inp)))
+    (PropertyResourceBundle. inp)))
 
-(defn get-resource ^{ :doc "Return a resource bundle." }
+(defn get-resource "Return a resource bundle."
   ([^String baseName ^Locale locale] (get-resource baseName locale nil))
   ([^String baseName ^Locale locale ^ClassLoader cl]
     (if (or (nil? baseName)(nil? locale))
       nil
       (ResourceBundle/getBundle baseName locale (MU/get-cldr cl))) ))
 
-(defn get-string ^{ :doc "Return the string value for this key, pms may contain values for positional substitutions." }
+(defn get-string "Return the string value for this key, pms may contain values for positional substitutions."
   [^ResourceBundle bundle ^String pkey pms]
   (let [ kv (SU/nsb (.getString bundle pkey)) ]
     (if (empty? pms)
@@ -57,8 +63,9 @@
       (loop [ src kv pos 0 ]
         (if (>= pos (.size pms))
           src
-          (recur (StringUtils/replace src "{}" (SU/nsb (nth pms pos)) 1) (inc pos)))))))
+          (recur (StringUtils/replace src "{}" (SU/nsb (nth pms pos)) 1)
+                 (inc pos)))))))
 
 
-(def ^:private i18nutils-eof nil)
+(def ^:private resources-eof nil)
 

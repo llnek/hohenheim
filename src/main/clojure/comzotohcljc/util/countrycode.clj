@@ -18,8 +18,15 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns ^{ :doc "A class that maps country-codes to the country-names." :author "kenl" }
+(ns ^{ :doc "A class that maps country-codes to the country-names." 
+       :author "kenl" }
+
   comzotohcljc.util.countrycode )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (def ^:private _CCODES {
     "AF"  "Afghanistan"
@@ -259,19 +266,19 @@
 (def ^:private _CCODESEQ (seq _CCODES))
 
 
-(defn find-country ^{ :doc "Return the full country name." }
+(defn find-country "Return the full country name."
   [^String code]
   (_CCODES (.toUpperCase code)))
 
-(defn list-codes ^{ :doc "List all the country codes." }
+(defn list-codes "List all the country codes."
   []
   (keys _CCODES))
 
-(defn usa? ^{ :doc "Returns true if the code is US." }
+(defn usa? "Returns true if the code is US."
   [^String code]
   (= "US" (.toUpperCase code)))
 
-(defn find-code ^{ :doc "Return the country code." }
+(defn find-code "Return the country code."
   [^String country]
   (let [ rs (filter #(= (nth % 1) country) _CCODESEQ) ]
     (if (nil? rs) nil (nth (first rs) 0))))

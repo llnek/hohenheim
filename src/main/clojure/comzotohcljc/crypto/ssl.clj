@@ -26,18 +26,16 @@
 (import '(javax.net.ssl SSLEngine SSLContext))
 (import '(java.net URL))
 
-(require '[comzotohcljc.crypto.cryptutils :as CY])
 (require '[comzotohcljc.crypto.stores :as CS])
+(require '[comzotohcljc.crypto.core :as CY])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-sslContext
-
-  "Make a server-side SSLContext."
-
-  ([^URL keyUrl ^comzotohcljc.crypto.cryptors.PasswordAPI pwdObj]
-   (make-sslServer keyUrl pwdObj "TLS"))
-  ([^URL keyUrl ^comzotohcljc.crypto.cryptors.PasswordAPI pwdObj flavor]
+(defn make-sslContext "Make a server-side SSLContext."
+  ([^URL keyUrl ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+   (make-sslContext keyUrl pwdObj "TLS"))
+  ([^URL keyUrl ^comzotohcljc.crypto.codec.PasswordAPI pwdObj flavor]
     (let [ ctx (SSLContext/getInstance flavor)
            ks (with-open [ inp (.openStream keyUrl) ]
                 (if (CY/pkcs-file? keyUrl)

@@ -18,20 +18,27 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns ^{ :doc "Generate some sequence numbers." :author "kenl" }
-  comzotohcljc.util.seqnumgen)
+(ns ^{ :doc "Generate some sequence numbers." 
+       :author "kenl" }
+
+  comzotohcljc.util.seqnum )
 
 (import '(java.util.concurrent.atomic AtomicLong AtomicInteger) )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (def ^:private _numInt (AtomicInteger. 1))
 (def ^:private  _numLong (AtomicLong. 1))
 
-(defn next-int ^{ :doc "Return a sequence number (integer)." }
+
+(defn next-int "Return a sequence number (integer)."
   []
   (.getAndIncrement _numInt))
 
-(defn next-long ^{ :doc "Return a sequence number (long)." }
+(defn next-long "Return a sequence number (long)."
   []
   (.getAndIncrement _numLong))
 
@@ -39,5 +46,5 @@
 
 
 
-(def ^:private  seqnumgen-eof nil)
+(def ^:private  seqnum-eof nil)
 

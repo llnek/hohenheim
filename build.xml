@@ -39,21 +39,22 @@
   <target name="compile_clj">
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
-      <arg value="comzotohcljc.util.byteutils" />
-      <arg value="comzotohcljc.util.cmdlineseq" />
+      <arg value="comzotohcljc.util.bytes" />
+      <arg value="comzotohcljc.util.cmdline" />
       <arg value="comzotohcljc.util.constants" />
-      <arg value="comzotohcljc.util.coreutils" />
+      <arg value="comzotohcljc.util.core" />
       <arg value="comzotohcljc.util.countrycode" />
-      <arg value="comzotohcljc.util.dateutils" />
-      <arg value="comzotohcljc.util.fileutils" />
+      <arg value="comzotohcljc.util.dates" />
+      <arg value="comzotohcljc.util.files" />
       <arg value="comzotohcljc.util.guids" />
-      <arg value="comzotohcljc.util.ioutils" />
-      <arg value="comzotohcljc.util.metautils" />
-      <arg value="comzotohcljc.util.procutils" />
-      <arg value="comzotohcljc.util.seqnumgen" />
-      <arg value="comzotohcljc.util.strutils" />
+      <arg value="comzotohcljc.util.io" />
+      <arg value="comzotohcljc.util.meta" />
+      <arg value="comzotohcljc.util.process" />
+      <arg value="comzotohcljc.util.seqnum" />
+      <arg value="comzotohcljc.util.str" />
       <arg value="comzotohcljc.util.usastate" />
-      <arg value="comzotohcljc.util.win32ini" />
+      <arg value="comzotohcljc.util.ini" />
+
       <arg value="comzotohcljc.i18n.i18nutils" />
       <arg value="comzotohcljc.crypto.cryptutils" />
       <arg value="comzotohcljc.crypto.cryptors" />
@@ -87,6 +88,7 @@
       <arg value="comzotohcljc.wflow.switch" />
       <arg value="comzotohcljc.wflow.delays" />
       <arg value="comzotohcljc.wflow.ptask" />
+
     </java>
   </target>
 

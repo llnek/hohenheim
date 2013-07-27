@@ -18,8 +18,14 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns ^{ :doc "A class that maps the state-code to the state-name." :author "kenl" }
+(ns ^{ :doc "A class that maps the state-code to the state-name." 
+       :author "kenl" }
   comzotohcljc.util.usastate )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (def ^:private _CCODES {
     "AL"  "Alabama"
@@ -76,18 +82,22 @@
 
 (def ^:private _CCODESEQ (seq _CCODES))
 
-(defn list-codes ^{ :doc "List all the abbreviated states." }
+(defn list-codes "List all the abbreviated states."
   []
   (keys _CCODES))
 
-(defn find-state ^{ :doc "Return the full state name." }
+(defn find-state "Return the full state name."
   [^String code]
   (_CCODES (.toUpperCase code)))
 
-(defn find-code ^{ :doc "Return the abbreviated state code." }
+(defn find-code "Return the abbreviated state code."
   [^String state]
   (let [ rs (filter #(= (nth % 1) state) _CCODESEQ) ]
       (if (nil? rs) nil (nth (first rs) 0))))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (def ^:private usastate-eof nil)

@@ -18,10 +18,13 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns ^{ :doc "General file related utilities." :author "kenl" }
-  comzotohcljc.util.fileutils)
+(ns ^{ :doc "General file related utilities."
+       :author "kenl" }
+
+  comzotohcljc.util.files)
 
 (use '[clojure.tools.logging :only (info warn error debug)])
+
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.io
   File FileInputStream FileOutputStream
@@ -31,41 +34,61 @@
 (import '(org.apache.commons.io IOUtils))
 (import '(java.util.zip ZipFile ZipEntry))
 (import '(com.zotoh.frwk.io XData))
-(require '[ comzotohcljc.util.coreutils :as CU])
+(require '[ comzotohcljc.util.core :as CU])
 
 
 
-(defn file-readwrite? ^{ :doc "Returns true if file is readable & writable." }
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn file-readwrite? "Returns true if file is readable & writable."
   [^File fp]
-  (if (and (not (nil? fp)) (.exists fp) (.isFile fp) (.canRead fp) (.canWrite fp))
+  (if (and (not (nil? fp))
+           (.exists fp)
+           (.isFile fp)
+           (.canRead fp)
+           (.canWrite fp))
     true
     false) )
 
-(defn file-read? ^{ :doc "Returns true if file is readable." }
+(defn file-read? "Returns true if file is readable."
   [^File fp]
-  (if (and (not (nil? fp)) (.exists fp) (.isFile fp) (.canRead fp))
+  (if (and (not (nil? fp))
+           (.exists fp)
+           (.isFile fp)
+           (.canRead fp))
     true
     false) )
 
-(defn dir-readwrite? ^{ :doc "Returns true if directory is readable and writable." }
+(defn dir-readwrite? "Returns true if directory is readable and writable."
   [^File dir]
-  (if (and (not (nil? dir)) (.exists dir) (.isDirectory dir) (.canRead dir) (.canWrite dir) )
+  (if (and (not (nil? dir))
+           (.exists dir)
+           (.isDirectory dir)
+           (.canRead dir)
+           (.canWrite dir) )
     true
     false) )
 
-(defn dir-read? ^{ :doc "Returns true if directory is readable." }
+(defn dir-read? "Returns true if directory is readable."
   [^File dir]
-  (if (and (not (nil? dir)) (.exists dir) (.isDirectory dir) (.canRead dir) )
+  (if (and (not (nil? dir))
+           (.exists dir)
+           (.isDirectory dir)
+           (.canRead dir) )
     true
     false) )
 
-(defn can-exec? ^{ :doc "Returns true if file or directory is executable." }
+(defn can-exec? "Returns true if file or directory is executable."
   [^File fp]
-  (if (and (not (nil? fp)) (.exists fp) (.canExecute fp))
+  (if (and (not (nil? fp))
+           (.exists fp)
+           (.canExecute fp))
     true
     false) )
 
-(defn parent-path ^{ :doc "Get the path to the parent directory." }
+(defn parent-path "Get the path to the parent directory."
   [^String path]
   (if (StringUtils/isEmpty path)
     path
@@ -86,7 +109,7 @@
           (with-open [ os (FileOutputStream. f) ]
             (IOUtils/copy inp os)))))))
 
-(defn unzip ^{ :doc "Unzip contents of zip file to a target folder." }
+(defn unzip "Unzip contents of zip file to a target folder."
   [^File src ^File des]
   (let [ fpz (ZipFile. src)  ents (.entries fpz) dummy (.mkdirs des) ]
     (loop [ hasMore (.hasMoreElements ents) ]
@@ -96,7 +119,7 @@
           (doOneEntry fpz des (.nextElement ents))
           (recur (.hasMoreElements ents)))))))
 
-(defn save-file ^{ :doc "Save a file to a directory." }
+(defn save-file "Save a file to a directory."
   [^File dir ^String fname ^XData xdata]
   (let [ fp (File. dir fname) ]
     (FileUtils/deleteQuietly fp)
@@ -104,7 +127,7 @@
       (FileUtils/moveFile (.fileRef xdata) fp)
       (FileUtils/writeByteArrayToFile fp (.javaBytes xdata)))))
 
-(defn get-file ^{ :doc "Get a file from a directory." }
+(defn get-file "Get a file from a directory."
   [^File dir ^String fname]
   (let [ fp (File. dir fname) rc (XData.) ]
     (if (and (.exists fp) (.canRead fp))
@@ -115,10 +138,10 @@
 
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 
 
-
-(def ^:private fileutils-eof nil)
+(def ^:private files-eof nil)
 

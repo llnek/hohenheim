@@ -20,17 +20,22 @@
 
 (ns ^{ :doc "OS Process related utilities." 
        :author "kenl" }
-  comzotohcljc.util.procutils)
+
+  comzotohcljc.util.process)
 
 (import '(java.lang.management ManagementFactory))
 (import '(com.zotoh.frwk.util CoreUtils))
-(require '[ comzotohcljc.util.coreutils :as CU])
-(require '[ comzotohcljc.util.metautils :as MU])
-(require '[ comzotohcljc.util.strutils :as SU])
+
+(require '[ comzotohcljc.util.core :as CU])
+(require '[ comzotohcljc.util.meta :as MU])
+(require '[ comzotohcljc.util.str :as SU])
 
 
 
-(defn async-exec ^{ :doc "Run the code (runnable) in a separate daemon thread." }
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn async-exec "Run the code (runnable) in a separate daemon thread."
   ([runable] (async-exec runable (MU/get-cldr)))
   ([runable cl]
     (if (nil? runable)
@@ -40,25 +45,25 @@
         (.setDaemon true)
         (.start))) ))
 
-(defn coroutine ^{ :doc "Run this function asynchronously." }
+(defn coroutine "Run this function asynchronously."
   ([func] (coroutine func nil))
   ([func cl]
     (let [ r (reify Runnable
-               (run [_] (do (apply func)))) ]
+               (run [_] (when (fn? func) (func)))) ]
       (async-exec r cl))))
 
-(defn safe-wait ^{ :doc "Block current thread for some millisecs." }
+(defn safe-wait "Block current thread for some millisecs."
   [millisecs]
-  (try
-    (if (> millisecs 0) (Thread/sleep millisecs))
-    (catch Throwable t nil)))
+  (CU/Guard
+    (when (> millisecs 0) (Thread/sleep millisecs))
+    ))
 
-(defn pid ^{ :doc "Get the current process pid." }
+(defn pid "Get the current process pid."
   []
   (let [ ss (.split (SU/nsb (.getName (ManagementFactory/getRuntimeMXBean))) "@") ]
     (if (or (nil? ss) (empty ss)) "" (first ss))) )
 
 
 
-(def ^:private procutils-eof nil)
+(def ^:private process-eof nil)
 
