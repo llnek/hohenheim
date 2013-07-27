@@ -23,6 +23,7 @@
 
   comzotohcljc.crypto.ssl )
 
+(import '(javax.net.ssl X509TrustManager TrustManager))
 (import '(javax.net.ssl SSLEngine SSLContext))
 (import '(java.net URL))
 
@@ -47,6 +48,16 @@
         (-> cs (.trustManagerFactory) (.getTrustManagers))
         (CY/get-srand))
       ctx)) )
+
+
+(defn make-sslClientCtx "Make a client-side SSLContext."
+  [ssl]
+  (if (not ssl)
+    nil
+    (let [ ctx (SSLContext/getInstance "TLS") ]
+      (.init ctx nil (into-array TrustManager [(CY/make-simpleTrustMgr)]) nil)
+      ctx)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

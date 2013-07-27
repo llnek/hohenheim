@@ -21,17 +21,18 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.wflow.core )
 
 
-(use '[comzotohcljc.util.coreutils :only (MutableObjectAPI) ])
 (use '[clojure.tools.logging :only (info warn error debug)])
-
 (import '(com.zotoh.hohenheim.core Job))
 
-(require '[comzotohcljc.util.seqnumgen :as SN])
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.metautils :as MU])
+(use '[comzotohcljc.util.core :only (MutableObjectAPI) ])
+
+(require '[comzotohcljc.util.seqnum :as SN])
+(require '[comzotohcljc.util.core :as CU ])
+(require '[comzotohcljc.util.meta :as MU])
 
 
 
@@ -48,34 +49,52 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; for flow points
 (defmulti fw-configure! "" (fn [a b c] (:typeid (meta a))))
 (defmulti fw-realize! "" (fn [a] (:typeid (meta a))))
 (defmulti fw-evaluate! "" (fn [a b] (:typeid (meta a))))
 
+
+;; for activities
 (defmulti ac-realize! "" (fn [a b] (:typeid (meta a))))
 (defmulti ac-reify "" (fn [a b] (:typeid (meta a))))
+
+(defmacro fw-pipe* [fw]
+  `(.getf ~fw :pipeline))
+
+(defmacro fw-next* [fw]
+  `(.getf ~fw :next))
+
+(defmacro fw-id* [fw]
+  `(:typeid (meta ~fw)))
+
+(defmacro fw-gf* [fw p]
+  `(.getf ~fw ~p))
+
+(defmacro fw-sf* [fw p v]
+  `(.setf ~fw ~p ~v))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defn fw-rerun "" [fw]
-  (let [ pipe (.getf fw :pipeline) ]
+  (let [ pipe (fw-pipe* fw) ]
     (-> pipe (.container) (.core) (.reschedule fw))
     fw))
 
 (defn fw-runafter [fw]
-  (let [ pipe (.getf fw :pipeline)
+  (let [ pipe (fw-pipe* fw)
          c (-> pipe (.container)(.core))
-         id (:typeid (meta fw))
-         np (.getf fw :next) ]
+         id (fw-id* fw)
+         np (fw-next* fw) ]
     (cond
-      (= id :DelayPoint)
-      (.delay c np (.getf fw :delayMillis))
+      (= id :comzotohcljc.wflow.delays/DelayPoint)
+      (.delay c np (fw-gf* fw :delayMillis))
 
-      (= id :AsyncWaitPoint)
+      (= id :comzotohcljc.wflow.delays/AsyncWaitPoint)
       (.hold c np)
 
-      (= id :NihilPoint)
+      (= id :comzotohcljc.wflow.core/NihilPoint)
       (.stop pipe)
 
       :else
@@ -84,10 +103,10 @@
 
 
 (defn fw-run "" [fw]
-  (let [ pipe (.getf fw :pipeline)
+  (let [ pipe (fw-pipe* fw)
          c (-> pipe (.container)(.core))
          job (.job pipe)
-         np (.getf fw :next) ]
+         np (fw-next* fw) ]
     (with-local-vars [ rc nil err nil ]
       (.dequeue c fw)
       (try
@@ -103,25 +122,25 @@
 
 ;; attmt is data passed back from previous async call, if any
 (defn fw-popattmt! "" [fw]
-  (let [ c (.getf fw :attmt) ]
-    (.setf fw :attmt nil)
+  (let [ c (fw-gf* fw :attmt) ]
+    (fw-sf* fw :attmt nil)
     c))
 
 (defn fw-setattmt! "" [fw c]
   (do
-    (.setf fw :attmt c)
+    (fw-sf* fw :attmt c)
     fw))
 
 (defmethod fw-configure! :default [fw ac cur]
   (do
-    (.setf fw :pipeline (.getf cur :pipeline))
-    (.setf fw :pid (SN/next-long))
-    (.setf fw :template ac)
-    (.setf fw :next cur)
+    (fw-sf* fw :pipeline (fw-pipe* cur))
+    (fw-sf* fw :pid (SN/next-long))
+    (fw-sf* fw :template ac)
+    (fw-sf* fw :next cur)
     fw))
 
 (defmethod fw-realize! :default [fw]
-  (let [ a (.getf fw :template) ]
+  (let [ a (fw-gf* fw :template) ]
     (ac-realize! a fw)
     fw))
 
