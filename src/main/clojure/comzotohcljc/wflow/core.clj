@@ -18,7 +18,6 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-
 (ns ^{ :doc ""
        :author "kenl" }
 
@@ -128,7 +127,7 @@
 
 (defn fw-setattmt! "" [fw c]
   (do
-    (fw-sf* fw :attmt c)
+    (when-not (nil? fw) (fw-sf* fw :attmt c))
     fw))
 
 (defmethod fw-configure! :default [fw ac cur]
@@ -169,12 +168,12 @@
 
         Runnable
 
-          (run [me#] (CU/TryC (fw-run me#)))
+          (run [me#] (CU/Guard (fw-run me#)))
 
         FlowPoint
           ~@(filterv CU/notnil? args))
 
-      { :typeid ~(keyword (last args))  :isa :FlowPoint } )))
+      { :typeid  ~(keyword (str *ns* "/" (last args))) } )))
 
 (defmacro make-activity "" [ & args ]
   `(let [ impl# (CU/make-mmap) ]
@@ -192,15 +191,12 @@
           Activity
             ~@(filterv CU/notnil? args))
 
-       { :typeid ~(keyword (last args)) :isa :Activity } )) )
-
+       { :typeid  ~(keyword (str *ns* "/" (last args)))  } )) )
 
 (defmacro ac-spawnpoint "" [ ac cur & args ]
-  `(let [ pipe# (.getf ~cur :pipeline)
-          f# (make-flowpoint ~@args) ]
+  `(let [ f# (make-flowpoint ~@args) ]
     (fw-configure! f# ~ac ~cur)
     (fw-realize! f#)))
-
 
 (defn make-nihil "" [] (make-activity Nihil) )
 
@@ -209,6 +205,7 @@
     (fw-configure! f (make-nihil) f)
     (fw-realize! f)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol PipelineDelegateAPI
   (getStart [_] )
@@ -222,7 +219,7 @@
   (start [_] )
   (stop [_] ))
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn make-pipeline [job delegateClassName]
   (let [ delegate (MU/make-obj delegateClassName)
@@ -245,17 +242,13 @@
         PipelineAPI
 
           (isActive [_] (true? (.mm-g impl :active)))
-          (container [_] (.container job))
+          (container [_] (.parent job))
 
           (onError [this err cur]
             (let [ h (.getError delegate) ]
               (error err)
-              (let [ a (if (nil? h)
-                         nil
-                         (try
-                            (apply h err cur)
-                            (catch Throwable e#
-                              (do (error e#) nil)))) ]
+              (let [ a (if (fn? h)
+                         (CU/TryC (h err cur))) ]
                 (if (nil? a)
                   (ac-reify-nihil this)
                   a))))
@@ -265,9 +258,10 @@
               (let [ f1 (ac-reify-nihil this)
                      h (.getStart delegate) ]
                 (debug "Pipeline " pid " starting...")
-                (when (nil? h) (warn "no start function defined by delegate!"))
+                (when-not (fn? h)
+                  (warn "no start function defined by delegate!"))
                 (try
-                  (let [ a (if (nil? h) nil (apply h this))
+                  (let [ a (if (fn? h) (h this))
                          f2 (cond
                                 (or (nil? a) (satisfies? Nihil a))
                                 (ac-reify-nihil this)
@@ -279,20 +273,16 @@
                   (catch Throwable e#
                       (onError this e# @f9))))) )
 
-          (stop [_]
-            (try
+          (stop [this]
+            (CU/TryC
               (debug "Pipeline " pid " stopping...")
               (let [ h (.getStop delegate) ]
-                (when-not (nil? h)
-                  (apply h)))
-              (catch Throwable e# (error e#)))) )
+                (when (fn? h)
+                  (h this)))) ) )
 
-      { :typeid :Pipeline } )) )
-
+      { :typeid (keyword (str *ns* "/Pipeline")) } )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 
 (defn- no-flow [pipe job]
   (let [ f (fn [_] (ac-reify-nihil pipe))
@@ -301,7 +291,6 @@
              (getStop [_] nil)
              (getError [_] nil)) ]
     (make-pipeline job g)))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

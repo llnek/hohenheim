@@ -3,9 +3,9 @@
   comzotohcljc.dbio.dbdrivers)
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.strutils :as SU])
-(use '[comzotohcljc.dbio.dbutils])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
+(use '[comzotohcljc.dbio.core])
 
 (import '(com.zotoh.frwk.dbio DBIOError))
 (import '(java.util HashMap))

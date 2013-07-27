@@ -20,6 +20,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.wflow.delays)
 
 
@@ -27,8 +28,8 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 (import '(com.zotoh.hohenheim.core Job))
 
-(require '[comzotohcljc.util.seqnumgen :as SN])
-(require '[comzotohcljc.util.coreutils :as CU])
+(require '[comzotohcljc.util.seqnum :as SN])
+(require '[comzotohcljc.util.core :as CU])
 
 (use '[comzotohcljc.wflow.core])
 
@@ -47,7 +48,7 @@
   (reify
     FAsyncResumeToken
       (resume [_ resArg]
-        (let [ np (.getf fw :next) ]
+        (let [ np (fw-next* fw) ]
           (when-not (nil? np)
             (fw-setattmt! np resArg)
             (fw-rerun np))))) )
@@ -60,16 +61,15 @@
     (.setf b :delayMillis delayMillis)
     b))
 
-(defmethod ac-reify :Delay [ac cur]
+(defmethod ac-reify :comzotohcljc.wflow.delays/Delay
+  [ac cur]
   (ac-spawnpoint ac cur DelayPoint))
 
-(defmethod ac-realize! :Delay [ac fw]
+(defmethod ac-realize! :comzotohcljc.wflow.delays/Delay
+  [ac fw]
   (let [ d (.getf ac :delayMillis) ]
     (.setf fw :delayMillis d)
     fw))
-
-(defmethod fw-evaluate! :DelayPoint [fw job] fw)
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; AsyncWait
@@ -78,11 +78,10 @@
   (let [ b (make-activity AsyncWait) ]
     b))
 
-(defmethod ac-reify :AsyncWait [ac cur]
+(defmethod ac-reify :comzotohcljc.wflow.delays/AsyncWait
+  [ac cur]
   (ac-spawnpoint ac cur AsyncWaitPoint))
 
-(defmethod fw-evaluate! :AsyncWaitPoint [fw job] fw)
-(defmethod ac-realize! :AsyncWait [ac fw] fw)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

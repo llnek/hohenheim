@@ -1,13 +1,37 @@
+;;
+;; COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
+;;
+;; THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
+;; MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE
+;; VERSION 2.0 (THE "LICENSE").
+;;
+;; THIS LIBRARY IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL
+;; BUT WITHOUT ANY WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF
+;; MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+;;
+;; SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING PERMISSIONS
+;; AND LIMITATIONS UNDER THE LICENSE.
+;;
+;; You should have received a copy of the Apache License
+;; along with this distribution; if not you may obtain a copy of the
+;; License at
+;; http://www.apache.org/licenses/LICENSE-2.0
+;;
+
+
 (ns ^{ :doc ""
        :author "kenl" }
-  comzotohcljc.dbio.sqlops )
+
+  comzotohcljc.dbio.sql)
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.metautils :as MU])
-(require '[comzotohcljc.util.strutils :as SU])
-(require '[comzotohcljc.util.ioutils :as IO])
-(require '[comzotohcljc.dbio.dbutils :as DU])
+
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.meta :as MU])
+(require '[comzotohcljc.util.str :as SU])
+(require '[comzotohcljc.util.io :as IO])
+(require '[comzotohcljc.dbio.core :as DU])
+
 (use '[comzotohcljc.dbio.sqlserver])
 (use '[comzotohcljc.dbio.postgresql])
 (use '[comzotohcljc.dbio.mysql])
@@ -15,11 +39,14 @@
 (use '[comzotohcljc.dbio.h2])
 
 (import '(java.util Calendar GregorianCalendar TimeZone))
+(import '(com.zotoh.frwk.dbio DBIOError OptLockError))
 (import '(java.sql Types SQLException))
 (import '(java.math BigDecimal BigInteger))
-(import '(java.sql Date Timestamp Blob Clob Statement PreparedStatement Connection))
+(import '(java.sql
+  Date Timestamp Blob Clob
+  Statement PreparedStatement Connection))
 (import '(java.io Reader InputStream))
-(import '(com.zotoh.frwk.dbio DBIOError OptLockError))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -29,7 +56,7 @@
 (defn- uc-ent [ent] (.toUpperCase (name ent)))
 (defn- lc-ent [ent] (.toLowerCase (name ent)))
 
-(defn ese ^{ :doc "Escape string entity for sql." }
+(defn ese "Escape string entity for sql."
   ([ent] (uc-ent ent))
   ([ch ent] (str ch (uc-ent ent) ch))
   ([c1 ent c2] (str c1 (uc-ent ent) c2)))
@@ -67,15 +94,16 @@
   (newCompositeSQLr [_] )
   (newSimpleSQLr [_] ) )
 
-(deftype SimpleDB [jdbc options] DBAPI
-  (supportsOptimisticLock [_]
-    (if (contains? options :opt-lock) (:opt-lock options) true))
-  (vendor [_]  (DU/get-vendor jdbc))
-  (finz [_] nil)
-  (open [_] (-> nil (.getPool)(.nextFree))) ;;TODO
-  (newCompositeSQLr [this] nil)
-  (newSimpleSQLr [this] nil)
-)
+
+(defn dbio-simple "" [jdbc options]
+  (let [ dbv (DU/resolve-vendor jdbc) ]
+    (reify  DBAPI
+      (supportsOptimisticLock [_] (if (false? (:opt-lock options)) false true))
+      (vendor [_] dbv)
+      (finz [_] nil)
+      (open [_] (-> nil (.getPool)(.nextFree))) ;;TODO
+      (newCompositeSQLr [this] nil)
+      (newSimpleSQLr [this] nil) )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -112,8 +140,8 @@
     cv))
 
 (defn- model-injtor [cache zm row cn ct cv]
-  (let [ info (meta zm) cols (:columns info) 
-         fdef (get  cols cn) ]
+  (let [ cols (:columns (meta zm))
+         fdef (get cols cn) ]
     (if (nil? fdef)
       row
       (assoc row (:id fdef) cv))))
@@ -123,14 +151,14 @@
 
 (defn- row2obj [finj rs rsmeta]
   (let [ cc (.getColumnCount rsmeta)
-         row (atom {})
          rr (range 1 (inc cc)) ]
-    (doseq [ pos (seq rr) ]
-      (let [ cn (.getColumnName rsmeta (int pos))
-             ct (.getColumnType rsmeta (int pos))
-             cv (readOneCol ct pos rs) ]
-        (reset! row (finj @row cn ct cv))))
-    @row))
+    (with-local-vars [ row {} ]
+      (doseq [ pos (seq rr) ]
+        (let [ cn (.getColumnName rsmeta (int pos))
+               ct (.getColumnType rsmeta (int pos))
+               cv (readOneCol ct pos rs) ]
+          (var-set row (finj @row cn ct cv))))
+      @row)) )
 
 (defn- insert? [sql]
   (.startsWith (.toLowerCase (SU/strim sql)) "insert"))
@@ -161,7 +189,7 @@
     (instance? Date p) (.setDate ps pos p DU/*GMT-CAL*)
     (instance? Calendar p) (.setTimestamp ps pos (Timestamp. (.getTimeInMillis p)) DU/*GMT-CAL*)
 
-    :else (throw (DBIOError. (str "Unsupported param type: " (type p))))))
+    :else (DU/dbio-error (str "Unsupported param type: " (type p)))) )
 
 (defn- mssql-tweak-sqlstr [sqlstr token cmd]
   (loop [ stop false sql sqlstr ]
@@ -223,10 +251,10 @@
     (with-open [ stmt (build-stmt _db _conn sql pms) ]
       (with-open [ rs (.executeQuery stmt) ]
         (let [ rsmeta (.getMetaData rs) ]
-          (loop [ sum [] ok (.next rs) ]
+          (loop [ sum (transient []) ok (.next rs) ]
             (if (not ok)
-              sum
-              (recur (conj sum (apply func rs rsmeta)) (.next rs))))))))
+              (persistent! sum)
+              (recur (conj! sum (func rs rsmeta)) (.next rs))))))))
 
   (sql-execute [this sql pms]
     (with-open [ stmt (build-stmt _db _conn sql pms) ]
@@ -251,7 +279,7 @@
   (doQuery [_ conn sql pms model]
     (let [ zm (get _metaCache model) ]
       (when (nil? zm)
-        (throw (DBIOError. (str "Unknown model " model))))
+        (DU/dbio-error (str "Unknown model " model)))
       (let [ px (partial model-injtor _metaCache zm) 
              pf (partial row2obj px) ]
         (-> (SQuery. _db _metaCache conn) (.sql-select sql pms pf )))))
@@ -273,8 +301,10 @@
       (do (-> (SQuery. _db _metaCache conn) (.sql-execute sql [])) nil)))
 
   (doDelete [this conn obj]
-    (let [ info (meta obj) model (:typeid info) zm (get _metaCache model) ]
-      (when (nil? zm) (throw (DBIOError. (str "Unknown model " model))))
+    (let [ info (meta obj)
+           model (:typeid info)
+           zm (get _metaCache model) ]
+      (when (nil? zm) (DU/dbio-error (str "Unknown model " model)))
       (let [ lock (.supportsOptimisticLock _db)
              table (table-name zm)
              rowid (:rowid info)
@@ -286,40 +316,46 @@
         cnt)))
 
   (doInsert [this conn obj]
-    (let [ info (meta obj) model (:typeid info) zm (get _metaCache model) ]
-      (when (nil? zm) (throw (DBIOError. (str "Unknown model " model))))
+    (let [ info (meta obj)
+           model (:typeid info)
+           zm (get _metaCache model) ]
+      (when (nil? zm) (DU/dbio-error (str "Unknown model " model)))
       (let [ lock (.supportsOptimisticLock _db)
              table (table-name zm)
              flds (:fields (meta zm))
-             pms (atom [])
              now (CU/now-jtstamp)
-             s2 (StringBuilder.) s1 (StringBuilder.) ]
-        (doseq [ [k v] (seq obj) ]
-          (let [ fdef (get flds k) cn (:column fdef) ]
-            (when (and (not (nil? fdef))
-                       (not (:auto fdef))
-                       (not (:system fdef)))
-              (SU/add-delim! s1 "," (ese cn))
-              (SU/add-delim! s2 "," (if (nil? v) "NULL" "?"))
-              (when-not (nil? v)
-                (reset! pms (conj @pms v))))))
-
+             s2 (StringBuilder.)
+             s1 (StringBuilder.)
+             pms (with-local-vars [ ps (transient []) ]
+                   (doseq [ [k v] (seq obj) ]
+                     (let [ fdef (get flds k)
+                            cn (:column fdef) ]
+                       (when (and (not (nil? fdef))
+                                 (not (:auto fdef))
+                                 (not (:system fdef)))
+                          (SU/add-delim! s1 "," (ese cn))
+                          (SU/add-delim! s2 "," (if (nil? v) "NULL" "?"))
+                          (when-not (nil? v)
+                            (var-set ps (conj! @ps v))))))
+                   (persistent! @ps)) ]
         (if (= (.length s1) 0)
           nil
           (let [ out (doExecuteWithOutput this conn
                         (str "INSERT INTO " (ese table) "(" s1 ") VALUES (" s2 ")" ) 
-                        @pms { :pkey (col-name :rowid zm) } ) ]
+                        pms { :pkey (col-name :rowid zm) } ) ]
             (when (empty? out)
-              (throw (DBIOError. (str "Insert requires row-id to be returned."))))
+              (DU/dbio-error (str "Insert requires row-id to be returned.")))
             (let [ wm { :rowid (:pkey out) :verid 0 } ]
               (when-not (instance? Long (:rowid wm) )
-                (throw (DBIOError. (str "RowID data-type must be Long."))))
+                (DU/dbio-error (str "RowID data-type must be Long.")))
               (vary-meta obj merge-meta wm))))
       )))
 
   (doUpdate [this conn obj]
-    (let [ info (meta obj) model (:typeid info) zm (get _metaCache model) ]
-      (when (nil? zm) (throw (DBIOError. (str "Unknown model " model))))
+    (let [ info (meta obj)
+           model (:typeid info)
+           zm (get _metaCache model) ]
+      (when (nil? zm) (DU/dbio-error (str "Unknown model " model)))
       (let [ lock (.supportsOptimisticLock _db)
              cver (CU/nnz (:verid info))
              table (table-name zm)
@@ -327,33 +363,37 @@
              flds (:fields (meta zm))
              sb1 (StringBuilder.)
              nver (inc cver)
-             pms (atom [])
-             now (CU/now-jtstamp) ]
-        (doseq [ [k v] (seq obj) ]
-          (let [ fdef (get flds k) cn (col-name fdef) ]
-            (when (and (not (nil? fdef))
-                       (:updatable fdef)
-                       (not (:auto fdef)) (not (:system fdef)) )
-              (doto sb1
-                (SU/add-delim! "," (ese cn))
-                (.append (if (nil? v) "=NULL" "=?")))
-              (when-not (nil? v)
-                (reset! pms (conj @pms v))))))
+             now (CU/now-jtstamp)
+             pms (with-local-vars [ ps (transient []) ]
+                      (doseq [ [k v] (seq obj) ]
+                        (let [ fdef (get flds k)
+                               cn (col-name fdef) ]
+                          (when (and (not (nil? fdef))
+                                     (:updatable fdef)
+                                     (not (:auto fdef)) (not (:system fdef)) )
+                            (doto sb1
+                              (SU/add-delim! "," (ese cn))
+                              (.append (if (nil? v) "=NULL" "=?")))
+                            (when-not (nil? v)
+                              (var-set ps (conj! @ps v))))))
+                   (persistent! @ps)) ]
         (if (= (.length sb1) 0)
           nil
-          (do
+          (with-local-vars [ ps (transient pms) ]
             (-> (SU/add-delim! sb1 "," (ese (col-name :last-modify zm)))
                 (.append "=?"))
-            (reset! pms (conj @pms now))
+            (var-set  ps (conj! @ps now))
             (when lock ;; up the version
               (-> (SU/add-delim! sb1 "," (ese (col-name :verid zm)))
                   (.append "=?"))
-              (reset! pms (conj @pms nver)))
+              (var-set ps (conj! @ps nver)))
             ;; for the where clause
-            (reset! pms (conj @pms rowid))
-            (when lock (reset! pms (conj @pms cver)))
-            (let [ cnt (doExecute this conn (str "UPDATE " (ese table) " SET " sb1 " WHERE "
-                                            (fmtUpdateWhere lock zm)) @pms) ]
+            (var-set ps (conj! @ps rowid))
+            (when lock (var-set  ps (conj! @ps cver)))
+            (let [ cnt (doExecute this conn 
+                          (str "UPDATE " (ese table) " SET " sb1 " WHERE "
+                              (fmtUpdateWhere lock zm))
+                                  (persistent! @ps)) ]
               (when lock (lockError "update" cnt table rowid))
               (vary-meta obj merge-meta { :verid nver :last-modify now })
               )))
@@ -385,5 +425,5 @@
   (count* [_  model] )
   (purge [_  model] ) )
 
-(def ^:private sqlops-eof nil)
+(def ^:private sql-eof nil)
 

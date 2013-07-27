@@ -3,10 +3,10 @@
   comzotohcljc.dbio.oracle)
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.strutils :as SU])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
 (use '[comzotohcljc.dbio.dbdrivers])
-(use '[comzotohcljc.dbio.dbutils])
+(use '[comzotohcljc.dbio.core])
 
 
 (defn- create_sequence_trigger [db table col]

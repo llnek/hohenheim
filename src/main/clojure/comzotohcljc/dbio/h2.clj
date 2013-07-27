@@ -4,10 +4,10 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (import '(com.zotoh.frwk.dbio DBIOError))
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.strutils :as SU])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
 (use '[comzotohcljc.dbio.dbdrivers])
-(use '[comzotohcljc.dbio.dbutils])
+(use '[comzotohcljc.dbio.core])
 
 (deftype H2 [] DBDriver
   (getId [_] :h2)

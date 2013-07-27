@@ -20,14 +20,15 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
-  comzotohcljc.wflow.ptask )
+
+  comzotohcljc.wflow.user )
 
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (import '(com.zotoh.hohenheim.core Job))
 
-(require '[comzotohcljc.util.seqnumgen :as SN])
-(require '[comzotohcljc.util.coreutils :as CU])
+(require '[comzotohcljc.util.seqnum :as SN])
+(require '[comzotohcljc.util.core :as CU])
 
 (use '[comzotohcljc.wflow.core])
 
@@ -45,27 +46,30 @@
         (let [ c (fw-popattmt! fw) ]
           (.mm-s impl :res nil)
           (.mm-s impl :cur fw)
-          (apply cb fw job c))))))
+          (cb fw job c))))))
 
 (defn make-ptask [work]
   (let [ b (make-activity PTask) ]
     (.setf b :task work)
     b))
 
-(defmethod ac-reify :PTask [ac cur]
+(defmethod ac-reify :comzotohcljc.wflow.user/PTask
+  [ac cur]
   (ac-spawnpoint ac cur PTaskPoint))
 
-(defmethod ac-realize! :PTask [ac fw]
+(defmethod ac-realize! :comzotohcljc.wflow.user/PTask
+  [ac fw]
   (let [ w (.getf ac :task) ]
     (.setf fw :task w)
     fw))
 
-(defmethod fw-evaluate! :PTaskPoint [fw job]
+(defmethod fw-evaluate! :comzotohcljc.wflow.user/PTaskPoint
+  [fw job]
   (do
     (debug "[" (.getf fw :pid) "] about to perform work.")
-    (let [ pipe (.getf fw :pipeline)
+    (let [ pipe (fw-pipe* fw)
            w (.getf fw :task)
-           np (.getf fw :next)
+           np (fw-next* fw)
            na (.perform w fw job) ]
       (with-local-vars [rc np]
         (when-not (nil? na)
@@ -77,6 +81,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(def ^:private ptask-eof nil)
+(def ^:private user-eof nil)
 
 
