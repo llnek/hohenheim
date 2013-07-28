@@ -1,14 +1,19 @@
 (ns ^{ :doc ""
        :author "kenl" }
-  comzotohcljc.dbio.dbdrivers)
+
+  comzotohcljc.dbio.drivers)
 
 (use '[clojure.tools.logging :only (info warn error debug)])
+
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 (use '[comzotohcljc.dbio.core])
 
 (import '(com.zotoh.frwk.dbio DBIOError))
 (import '(java.util HashMap))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol DBDriver
   (getTestString [_] )
@@ -33,111 +38,114 @@
 (defn genCol [fld]
   (.toUpperCase (:column fld)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmulti genBegin (fn [a & more] (class a)))
 (defmulti genExec (fn [a & more] (class a)))
+(defmulti genDrop (fn [a & more] (class a)))
+
+(defmulti genEndSQL (fn [a & more] (class a)))
+(defmulti genGrant (fn [a & more] (class a)))
+(defmulti genEnd (fn [a & more] (class a)))
+
+(defmulti genAutoInteger (fn [a & more] (class a)))
+(defmulti genDouble (fn [a & more] (class a)))
+(defmulti genLong (fn [a & more] (class a)))
+(defmulti genFloat (fn [a & more] (class a)))
+(defmulti genAutoLong (fn [a & more] (class a)))
+(defmulti getTSDefault (fn [a & more] (class a)))
+(defmulti genTimestamp (fn [a & more] (class a)))
+(defmulti genDate (fn [a & more] (class a)))
+(defmulti genCal (fn [a & more] (class a)))
+(defmulti genBool (fn [a & more] (class a)))
+(defmulti genInteger (fn [a & more] (class a)))
+
+(defmulti getFloatKeyword (fn [a & more] (class a)))
+(defmulti getIntKeyword (fn [a & more] (class a)))
+(defmulti getTSKeyword (fn [a & more] (class a)))
+(defmulti getDateKeyword (fn [a & more] (class a)))
+(defmulti getBoolKeyword (fn [a & more] (class a)))
+(defmulti getLongKeyword (fn [a & more] (class a)))
+(defmulti getDoubleKeyword (fn [a & more] (class a)))
+(defmulti getStringKeyword (fn [a & more] (class a)))
+(defmulti getBlobKeyword (fn [a & more] (class a)))
+(defmulti genBytes (fn [a & more] (class a)))
+(defmulti genString (fn [a & more] (class a)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (defmethod genExec :default [db] (str ";\n" (genSep db)))
 
-(defmulti genDrop (fn [a & more] (class a)))
 (defmethod genDrop :default [db table]
   (str "DROP TABLE " table (genExec db) "\n\n"))
 
-(defmulti genBegin (fn [a & more] (class a)))
 (defmethod genBegin :default [db table]
   (str "CREATE TABLE " table "\n(\n"))
 
-(defmulti genEnd (fn [a & more] (class a)))
 (defmethod genEnd :default [db table] (str "\n)" (genExec db) "\n\n"))
 
-(defmulti genGrant (fn [a & more] (class a)))
 (defmethod genGrant :default [db table] "")
 
-(defmulti genEndSQL (fn [a & more] (class a)))
 (defmethod genEndSQL :default [db] "")
 
 (defn genColDef [db col ty opt? dft]
   (str (getPad db) (.toUpperCase col) " " ty " " (nullClause db opt?)
        (if (nil? dft) "" (str " DEFAULT " dft))))
 
-(defmulti getFloatKeyword (fn [a & more] (class a)))
+
 (defmethod getFloatKeyword :default [db] "FLOAT")
-
-(defmulti getIntKeyword (fn [a & more] (class a)))
 (defmethod getIntKeyword :default [db] "INTEGER")
-
-(defmulti getTSKeyword (fn [a & more] (class a)))
 (defmethod getTSKeyword :default [db] "TIMESTAMP")
-
-(defmulti getDateKeyword (fn [a & more] (class a)))
 (defmethod getDateKeyword :default [db] "DATE")
-
-(defmulti getBoolKeyword (fn [a & more] (class a)))
 (defmethod getBoolKeyword :default [db] "INTEGER")
-
-(defmulti getLongKeyword (fn [a & more] (class a)))
 (defmethod getLongKeyword :default [db] "BIGINT")
-
-(defmulti getDoubleKeyword (fn [a & more] (class a)))
 (defmethod getDoubleKeyword :default [db] "DOUBLE PRECISION")
-
-(defmulti getStringKeyword (fn [a & more] (class a)))
 (defmethod getStringKeyword :default [db] "VARCHAR")
-
-(defmulti getBlobKeyword (fn [a & more] (class a)))
 (defmethod getBlobKeyword :default [db] "BLOB")
 
-(defmulti genBytes (fn [a & more] (class a)))
 (defmethod genBytes :default [db fld]
   (genColDef db (:column fld) (getBlobKeyword db) (:null fld) nil))
 
-(defmulti genString (fn [a & more] (class a)))
 (defmethod genString :default [db fld]
   (genColDef  db (:column fld)
     (str (getStringKeyword db) "(" (:size fld) ")")
     (:null fld)
     (if (:default fld) (:default-value fld) nil)))
 
-(defmulti genInteger (fn [a & more] (class a)))
 (defmethod genInteger :default [db fld]
   (genColDef db (:column fld) (getIntKeyword db) (:null fld)
     (if (:default fld) (:default-value fld) nil)))
 
-(defmulti genAutoInteger (fn [a & more] (class a)))
 (defmethod genAutoInteger :default [db table fld] "")
 
-(defmulti genDouble (fn [a & more] (class a)))
 (defmethod genDouble :default [db fld]
   (genColDef db (:column fld) (getDoubleKeyword db) (:null fld)
     (if (:default fld) (:default-value fld) nil)))
 
-(defmulti genFloat (fn [a & more] (class a)))
+
 (defmethod genFloat :default [db fld]
   (genColDef db (:column fld) (getFloatKeyword db) (:null fld)
     (if (:default fld) (:default-value fld) nil)))
 
-(defmulti genLong (fn [a & more] (class a)))
 (defmethod genLong :default [db fld]
   (genColDef db (:column fld) (getLongKeyword db) (:null fld)
     (if (:default fld) (:default-value fld) nil)))
 
-(defmulti genAutoLong (fn [a & more] (class a)))
 (defmethod genAutoLong :default [db table fld] "")
 
-(defmulti getTSDefault (fn [a & more] (class a)))
 (defmethod getTSDefault :default [db] "CURRENT_TIMESTAMP")
 
-(defmulti genTimestamp (fn [a & more] (class a)))
 (defmethod genTimestamp :default [db fld]
   (genColDef db (:column fld) (getTSKeyword db) (:null fld)
     (if (:default fld) (getTSDefault db) nil)))
 
-(defmulti genDate (fn [a & more] (class a)))
 (defmethod genDate :default [db fld]
   (genColDef db (:column fld) (getDateKeyword db) (:null fld)
     (if (:default fld) (getTSDefault db) nil)))
 
-(defmulti genCal (fn [a & more] (class a)))
 (defmethod genCal :default [db fld] (genTimestamp db fld))
 
-(defmulti genBool (fn [a & more] (class a)))
 (defmethod genBool :default [db fld]
   (genColDef db (:column fld) (getBoolKeyword db) (:null fld)
       (if (:default fld) (:default-value fld) nil)))
@@ -211,8 +219,9 @@
            inx (last d) ]
       (str s1 (if (SU/hgl? inx) inx "") (genGrant db table))))
 
-(defn getDDL  ^{ :doc "" }
-  [db metaCache]
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn getDDL  "" [db metaCache]
   (binding [ *DDL_BVS* (HashMap.) ]
     (let [ ms (.getMetas metaCache)
            drops (StringBuilder.)
@@ -225,6 +234,8 @@
             (-> body (.append (genOneTable db ms tdef))))))
       (str "" drops body (genEndSQL db)))) )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private dbdrivers-eof nil)
+
+(def ^:private drivers-eof nil)
 
