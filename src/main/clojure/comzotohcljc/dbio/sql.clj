@@ -82,17 +82,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn sql-filter-clause [filters]
+(defn sql-filter-clause "" [filters]
   (let [ wc (reduce (fn [sum en]
-                (SU/add-delim! sum " AND "
-                   (str (ese (first en)) (if (nil? (last en)) " IS NULL " " = ? "))))
-                (StringBuilder.)
-                (seq filters)) ]
+                      (SU/add-delim! sum " AND "
+                        (str (ese (first en))
+                             (if (nil? (last en)) " IS NULL " " = ? "))))
+                    (StringBuilder.)
+                    (seq filters)) ]
     [ (SU/nsb wc) (CU/flatten-nil (vals filters)) ] ))
 
 (defn- readCol [sqlType pos rset]
@@ -106,17 +102,17 @@
                   (instance? Reader obj) obj
                   :else nil) ]
     (cond
-      (not (nil? rdr)) (with-open [r rdr] (IO/read-chars r))
-      (not (nil? inp)) (with-open [p inp] (IO/read-bytes p))
+      (CU/notnil? rdr) (with-open [r rdr] (IO/read-chars r))
+      (CU/notnil? inp) (with-open [p inp] (IO/read-bytes p))
       :else obj)))
 
 (defn- readOneCol [sqlType pos rset]
-  (let [ cv (case sqlType
-                Types/TIMESTAMP (.getTimestamp rset (int pos) DU/*GMT-CAL*)
-                Types/DATE (.getDate rset (int pos) DU/*GMT-CAL*)
-                (readCol sqlType pos rset)) ]
-    cv))
+  (case sqlType
+      Types/TIMESTAMP (.getTimestamp rset (int pos) DU/*GMT-CAL*)
+      Types/DATE (.getDate rset (int pos) DU/*GMT-CAL*)
+      (readCol sqlType pos rset)) )
 
+;; row is a transient object.
 (defn- model-injtor [cache zm row cn ct cv]
   (let [ cols (:columns (meta zm))
          fdef (get cols cn) ]
@@ -124,6 +120,8 @@
       row
       (assoc! row (:id fdef) cv))))
 
+;; generic resultset, no model defined.
+;; row is a transient object.
 (defn- std-injtor [row cn ct cv]
   (assoc! row (keyword (.toUpperCase cn)) cv))
 
@@ -182,16 +180,19 @@
           (recur false (str (first rc) " WITH (" cmd ") " (last rc)) ))))))
 
 (defn- jiggleSQL [db sqlstr]
-  (let [ v (.vendor db)  sql (SU/strim sqlstr) lcs (.toLowerCase sql) ]
-    (when (instance? comzotohcljc.dbio.sqlserver.SQLServer v)
+  (let [ sql (SU/strim sqlstr)
+         lcs (.toLowerCase sql)
+         v (.vendor db)   ]
+    (if (instance? comzotohcljc.dbio.sqlserver.SQLServer v)
       (cond
         (.startsWith lcs "select") (mssql-tweak-sqlstr sql :where "NOLOCK")
         (.startsWith lcs "delete") (mssql-tweak-sqlstr sql :where "ROWLOCK")
         (.startsWith lcs "update") (mssql-tweak-sqlstr sql :set "ROWLOCK")
-        :else sql))))
+        :else sql)
+      sql)))
 
 (defn- build-stmt [db conn sqlstr params]
-  (let [ sql (jiggleSQL db sqlstr)
+  (let [ sql sqlstr ;; (jiggleSQL db sqlstr)
          ps (if (insert? sql)
               (.prepareStatement conn sql Statement/RETURN_GENERATED_KEYS)
               (.prepareStatement conn sql)) ]

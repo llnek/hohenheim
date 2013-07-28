@@ -28,21 +28,14 @@
 
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.io :as IO])
+
 (require '[comzotohcljc.dbio.core :as DU])
-
 (use '[comzotohcljc.dbio.sql])
-
-(import '(java.util GregorianCalendar TimeZone))
-(import '(java.sql Types))
-(import '(java.math BigDecimal BigInteger))
-(import '(java.sql Date Timestamp Blob Clob))
-(import '(java.io Reader InputStream))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- mkTransactable [db metaCache proc conn]
+(defn- mk-tx [db metaCache proc conn]
   (reify SQLr
 
     (findAll [this model ordering] (findSome this model {} ordering))
@@ -83,11 +76,10 @@
     (reify Transactable
 
       (execWith [this func]
-        (let [ conn (begin this)
-               tx (mkTransactable db metaCache proc conn) ]
-          (with-local-vars [ rc nil ]
+        (with-local-vars [ rc nil ]
+          (let [ conn (begin this) ]
             (try
-              (var-set rc (func tx))
+              (var-set rc (func (mk-tx db metaCache proc conn)))
               (commit this conn)
               @rc
               (catch Throwable e#
@@ -95,9 +87,7 @@
               (finally (.close db conn))))) )
 
       (rollback [_ conn] (CU/Guard (.rollback conn)))
-
       (commit [_ conn] (.commit conn))
-
       (begin [_]
         (doto (.open db)
           (.setAutoCommit false)))   )) )

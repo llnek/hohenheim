@@ -28,16 +28,9 @@
 
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.io :as IO])
+
 (require '[comzotohcljc.dbio.core :as DU])
-
 (use '[comzotohcljc.dbio.sql])
-
-(import '(java.util GregorianCalendar TimeZone))
-(import '(java.sql Types))
-(import '(java.math BigDecimal BigInteger))
-(import '(java.sql Date Timestamp Blob Clob))
-(import '(java.io Reader InputStream))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -62,7 +55,9 @@
                    tbl (table-name zm)
                    s (str "SELECT * FROM " (ese tbl))
                    [wc pms] (sql-filter-clause filters)
-                   extra (if (SU/hgl? ordering) (str " ORDER BY " ordering) "") ]
+                   extra (if (SU/hgl? ordering)
+                             (str " ORDER BY " ordering)
+                             "") ]
               (if (SU/hgl? wc)
                 (.doQuery proc conn (str s " WHERE " wc extra) pms model)
                 (.doQuery proc conn (str s extra) [] model)))
@@ -119,6 +114,7 @@
       (purge [this model]
         (let [ conn (.open db) ]
           (try
+            (.setAutoCommit conn true)
             (.doPurge proc conn model)
           (finally (.close db conn)))))   )))
 

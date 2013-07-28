@@ -54,23 +54,24 @@
       <arg value="comzotohcljc.util.str" />
       <arg value="comzotohcljc.util.usastate" />
       <arg value="comzotohcljc.util.ini" />
-
-      <arg value="comzotohcljc.i18n.i18nutils" />
-      <arg value="comzotohcljc.crypto.cryptutils" />
-      <arg value="comzotohcljc.crypto.cryptors" />
+      <arg value="comzotohcljc.i18n.resources" />
+      <arg value="comzotohcljc.crypto.core" />
+      <arg value="comzotohcljc.crypto.codec" />
       <arg value="comzotohcljc.crypto.stores" />
-      <arg value="comzotohcljc.net.netutils" />
-      <arg value="comzotohcljc.netty.nettyio" />
-      <arg value="comzotohcljc.dbio.dbutils" />
+      <arg value="comzotohcljc.net.comms" />
+      <arg value="comzotohcljc.netty.comms" />
+      <arg value="comzotohcljc.dbio.core" />
       <arg value="comzotohcljc.dbio.sqlserver" />
       <arg value="comzotohcljc.dbio.h2" />
       <arg value="comzotohcljc.dbio.oracle" />
       <arg value="comzotohcljc.dbio.mysql" />
       <arg value="comzotohcljc.dbio.postgresql" />
-      <arg value="comzotohcljc.dbio.dbdrivers" />
-      <arg value="comzotohcljc.dbio.sqlops" />
+      <arg value="comzotohcljc.dbio.drivers" />
+      <arg value="comzotohcljc.dbio.sql" />
       <arg value="comzotohcljc.dbio.simple" />
       <arg value="comzotohcljc.dbio.composite" />
+      <arg value="comzotohcljc.dbio.connect" />
+      <!--
       <arg value="comzotohcljc.hohenheim.core.constants" />
       <arg value="comzotohcljc.hohenheim.core.climain" />
       <arg value="comzotohcljc.hohenheim.etc.cmdline" />
@@ -88,7 +89,7 @@
       <arg value="comzotohcljc.wflow.switch" />
       <arg value="comzotohcljc.wflow.delays" />
       <arg value="comzotohcljc.wflow.ptask" />
-
+-->
     </java>
   </target>
 

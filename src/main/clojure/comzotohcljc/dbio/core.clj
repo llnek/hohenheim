@@ -27,7 +27,7 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[clojure.set])
 
-(import '(java.sql 
+(import '(java.sql
   SQLException DatabaseMetaData
   Connection Driver DriverManager))
 (import '(java.util
@@ -47,7 +47,10 @@
 (def ^:dynamic *USE_DDL_SEP* true)
 (def ^:dynamic *DDL_SEP* "-- :")
 (def ^:dynamic *DDL_BVS* nil)
+
 (defrecord JDBCInfo [driver url user pwdObj] )
+(defn make-jdbc [driver url user pwdObj]
+  (JDBCInfo. driver url user pwdObj))
 
 (def ^:dynamic *DBTYPES* {
     :sqlserver { :test-string "select count(*) from sysusers" }
@@ -177,12 +180,13 @@
     :created-on {:column "dbio_created_on" :domain :timestamp
                   :system true :default true :updatable false}
     :created-by {:column "dbio_created_by" :system true :domain :string } }))
-  
+
 (defprotocol MetaCacheAPI (getMetas [_] ))
 (defprotocol SchemaAPI (getModels [_] ))
-(deftype Schema [theModels]
-  SchemaAPI
-  (getModels [_] theModels))
+
+(defn make-Schema [theModels]
+  (reify SchemaAPI
+    (getModels [_] theModels)) )
 
 (defn- resolve-local-assoc [ms zm]
   (let [ socs (:assocs zm)
@@ -194,20 +198,20 @@
           (let [ kind (:kind soc)
                  rhs (:rhs soc)
                  col (case kind
-                        :o2m 
+                        :o2m
                         (str (name rhs) "|" "fk_"
                              (name zid) "_" (name id))
-                        :o2o 
+                        :o2o
                         (str (name zid) "|" "fk_"
                              (name rhs) "_" (name id))
-                        :m2m 
+                        :m2m
                         (if (nil? (get ms (:joined soc)))
-                          (dbio-error 
+                          (dbio-error
                             (str "Missing joined model for m2m assoc " id))
                           "")
 
                         (dbio-error (str "Invalid assoc type " kind))) ]
-            (when (SU/hgl? col) 
+            (when (SU/hgl? col)
               (var-set rc (conj! @rc col)))))
         (persistent! @rc) ))))
 
@@ -230,9 +234,9 @@
              id (keyword (nth ss 0))
              fid (keyword (nth ss 1))
              pojo (get ms id) ]
-        (var-set rc 
-                 (assoc @rc id 
-                        (with-db-field pojo fid 
+        (var-set rc
+                 (assoc @rc id
+                        (with-db-field pojo fid
                                        { :domain :long :assoc-key true } )))))
     @rc))
 
@@ -242,7 +246,7 @@
       (keyword? par) (if (nil? (get ms par))
                        (dbio-error (str "Unknown model " par))
                        m)
-      (nil? par) 
+      (nil? par)
       (assoc m :parent BASEMODEL-MONIKER)
 
       :else (dbio-error (str "Invalid parent " par)))))
@@ -311,9 +315,9 @@
     (doseq [ [k m] (seq cache) ]
       (let [ flds (collect-db-fields cache m)
              cols (colmap-fields flds) ]
-        (var-set sum 
-                 (assoc! @sum k 
-                         (with-meta m 
+        (var-set sum
+                 (assoc! @sum k
+                         (with-meta m
                                     { :columns cols :fields flds } ) ))))
     (persistent! @sum)) )
 
@@ -328,50 +332,6 @@
 
 
 
-(defmodel address
-  (with-db-fields {
-    :addr1 { :size 200 :null false }
-    :addr2 { :size 64}
-    :city { :null false}
-    :state {:null false}
-    :zip {:null false}
-    :country {:null false}
-                   })
-  (with-db-indexes { :i1 #{ :city :state :country }
-    :i2 #{ :zip :country }
-    :state #{ :state }
-    :zip #{ :zip } } ))
-
-(defmodel person
-  (with-db-abstract)
-  (with-db-fields {
-    :fname { :null false }
-    :lname { :null false }
-    :age { :domain :int }
-    :pic { :domain :bytes }
-                   })
-  (with-db-assocs {
-    :addr { :kind :o2m :singly true :rhs :address }
-    :spouse { :kind :o2o :rhs :person }
-    :accts { :kind :o2m :rhs :bankacct }
-                   })
-  (with-db-indexes { :i1 #{ :age } })
-  (with-db-uniques { :u2 #{ :fname :lname } }))
-
-(defmodel president
-  (with-db-parent-model :person))
-
-(defmodel bankacct
-  (with-db-fields {
-    :acctid { :null false }
-    :amount { :null false :domain :double }
-                   })
-  (with-db-uniques { :u2 #{ :acctid } }))
-
-
-(def testschema (Schema. [ president address person bankacct ]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- safeGetConn [jdbc]
@@ -383,7 +343,7 @@
                (doto (Properties.) (.put "password" (SU/nsb (:pwdObj jdbc)))
                                    (.put "user" user)
                                    (.put "username" user))
-               (Properties.)) ] 
+               (Properties.)) ]
     (when (nil? d)
       (dbio-error (str "Can't load Jdbc Url: " url)))
     (when
@@ -459,8 +419,8 @@
     (CU/Guard
       (let [ sql (str "SELECT COUNT(*) FROM  " (.toUpperCase table)) ]
         (with-open [ stmt (.createStatement conn) ]
-          (with-open [ res (.executeQuery stmt) ]
-            (when (and (not (nil? res)) (.next res))
+          (with-open [ res (.executeQuery stmt sql) ]
+            (when (and (CU/notnil? res) (.next res))
               (var-set rc (> (.getInt res (int 1)) 0)))))) )
     @rc))
 
@@ -481,8 +441,8 @@
                  cn (.toUpperCase (.getString rs (int 4)))
                  ctype (.getInt rs (int 5)) ]
             (recur
-              (assoc! sum (keyword cn) 
-                  { :column cn :sql-type ctype :null opt 
+              (assoc! sum (keyword cn)
+                  { :column cn :sql-type ctype :null opt
                     :pkey (clojure.core/contains? @pkeys cn) })
               (.next rs))))))
 
@@ -490,7 +450,7 @@
                       :supportsTransactions (.supportsTransactions mt) } )))
 
 (defn load-table-meta "" [conn table]
-  (let [ mt (.getMetaData conn) dbv (resolve-vendor conn) 
+  (let [ mt (.getMetaData conn) dbv (resolve-vendor conn)
          catalog nil
          schema (if (= (:id dbv) :oracle) "%" nil)
          tbl (cond
@@ -577,7 +537,7 @@
    (with-open [ conn (make-connection jdbc) ]
      (upload-ddl conn ddl)))
 
-(defmethod upload-ddl Connection 
+(defmethod upload-ddl Connection
   [conn ddl]
     (let [ dbn (.toLowerCase (-> (.getMetaData conn)(.getDatabaseProductName)))
            lines (splitLines ddl) ]

@@ -1,3 +1,23 @@
+;;
+;; COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
+;;
+;; THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
+;; MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE
+;; VERSION 2.0 (THE "LICENSE").
+;;
+;; THIS LIBRARY IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL
+;; BUT WITHOUT ANY WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF
+;; MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+;;
+;; SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING PERMISSIONS
+;; AND LIMITATIONS UNDER THE LICENSE.
+;;
+;; You should have received a copy of the Apache License
+;; along with this distribution; if not you may obtain a copy of the
+;; License at
+;; http://www.apache.org/licenses/LICENSE-2.0
+;;
+
 
 (ns ^{ :doc ""
        :author "kenl" }
@@ -20,7 +40,7 @@
   (getTestString [_] )
   (getId [_] ))
 
-(defn- getcolname [flds fid] 
+(defn- getcolname [flds fid]
   (let [ c (:column (get flds fid)) ]
     (if (SU/hgl? c) (.toUpperCase c) c)))
 
@@ -151,65 +171,74 @@
   (genColDef db (:column fld) (getBoolKeyword db) (:null fld)
       (if (:default fld) (:default-value fld) nil)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn- genExIndexes [db cache table flds zm]
-  (let [ m (collect-db-indexes cache zm) bf (StringBuilder.) ]
-    (doseq [ en (seq m) ]
-      (let [ nm (first en) cols (map #(getcolname flds %) (last en)) ]
-        (when (empty? cols) (throw (DBIOError. (str "Cannot have empty index: " nm))))
-        (.append bf (str "CREATE INDEX " 
+  (let [ m (collect-db-indexes cache zm)
+         bf (StringBuilder.) ]
+    (doseq [ [nm nv] (seq m) ]
+      (let [ cols (map #(getcolname flds %) nv) ]
+        (when (empty? cols) (dbio-error (str "Cannot have empty index: " nm)))
+        (.append bf (str "CREATE INDEX "
                          (.toLowerCase (str table "_" (name nm)))
                          " ON " table
                     " ( " (clojure.string/join "," cols) " )" (genExec db) "\n\n" ))))
     (.toString bf)))
 
 (defn- genUniques [db cache flds zm]
-  (let [ m (collect-db-uniques cache zm) bf (StringBuilder.) ]
-    (doseq [ en (seq m) ]
-      (let [ nm (first en) cols (map #(getcolname flds %) (last en)) ]
-        (when (empty? cols) (throw (DBIOError. (str "Cannot have empty unique: " (name nm)))))
+  (let [ m (collect-db-uniques cache zm)
+         bf (StringBuilder.) ]
+    (doseq [ [nm nv] (seq m) ]
+      (let [ cols (map #(getcolname flds %) nv) ]
+        (when (empty? cols) (dbio-error (str "Cannot have empty unique: " (name nm))))
         (SU/add-delim! bf ",\n"
             (str (getPad db) "UNIQUE(" (clojure.string/join "," cols) ")"))))
     (.toString bf)))
 
 (defn- genPrimaryKey [db zm pks]
-    (str (getPad db) "PRIMARY KEY(" 
+    (str (getPad db) "PRIMARY KEY("
          (.toUpperCase (SU/nsb (clojure.string/join "," pks)) )
          ")"))
 
 (defn- genBody [db cache table zm]
-  (let [ inx (StringBuilder.) bf (StringBuilder.) pkeys (atom #{})
-         iix (atom 1)
-         flds (collect-db-fields cache zm) ]
-    ;; 1st do the columns
-    (doseq [ en (seq flds) ]
-      (let [ fld (last en) cn (.toUpperCase (:column fld))
-             dt (:domain fld)
-             col (case dt
-                  :boolean (genBool db fld)
-                  :timestamp (genTimestamp db fld)
-                  :date (genDate db fld)
-                  :calendar (genCal db fld)
-                  :int (if (:auto fld) (genAutoInteger db table fld) (genInteger db fld))
-                  :long (if (:auto fld) (genAutoLong db table fld) (genLong db fld))
-                  :double (genDouble db fld)
-                  :float (genFloat db fld)
-                  :string (genString db fld)
-                  :bytes (genBytes db fld)
-                  (throw (DBIOError. (str "Unsupported domain type " dt)))) ]
-        (when (:pkey fld) (reset! pkeys (conj @pkeys cn)))
-        (SU/add-delim! bf ",\n" col)))
-    ;; now do the assocs
-    ;; now explicit indexes
-    (-> inx (.append (genExIndexes db cache table flds zm)))
-    ;; now uniques, primary keys and done.
-    (when (> (.length bf) 0)
-      (when (> (.size @pkeys) 0)
-        (.append bf (str ",\n" (genPrimaryKey db zm @pkeys))))
-      (let [ s (genUniques db cache flds zm) ]
-        (when (SU/hgl? s)
-          (.append bf (str ",\n" s)))))
+  (let [ flds (collect-db-fields cache zm)
+         inx (StringBuilder.)
+         bf (StringBuilder.) ]
+    (with-local-vars [ pkeys (transient #{}) ]
+      ;; 1st do the columns
+      (doseq [ [fid fld] (seq flds) ]
+        (let [ cn (.toUpperCase (:column fld))
+               dt (:domain fld)
+               col (case dt
+                    :boolean (genBool db fld)
+                    :timestamp (genTimestamp db fld)
+                    :date (genDate db fld)
+                    :calendar (genCal db fld)
+                    :int (if (:auto fld)
+                           (genAutoInteger db table fld)
+                           (genInteger db fld))
+                    :long (if (:auto fld)
+                            (genAutoLong db table fld)
+                            (genLong db fld))
+                    :double (genDouble db fld)
+                    :float (genFloat db fld)
+                    :string (genString db fld)
+                    :bytes (genBytes db fld)
+                    (dbio-error (str "Unsupported domain type " dt))) ]
+          (when (:pkey fld) (var-set pkeys (conj! @pkeys cn)))
+          (SU/add-delim! bf ",\n" col)))
+      ;; now do the assocs
+      ;; now explicit indexes
+      (-> inx (.append (genExIndexes db cache table flds zm)))
+      ;; now uniques, primary keys and done.
+      (when (> (.length bf) 0)
+        (when (> (count @pkeys) 0)
+          (.append bf (str ",\n" (genPrimaryKey db zm (persistent! @pkeys)))))
+        (let [ s (genUniques db cache flds zm) ]
+          (when (SU/hgl? s)
+            (.append bf (str ",\n" s)))))
 
-    [ (.toString bf) (.toString inx) ] ))
+    [ (.toString bf) (.toString inx) ] )) )
 
 (defn- genOneTable [db ms zm]
   (let [ table (.toUpperCase (:table zm))
@@ -227,8 +256,8 @@
     (let [ ms (.getMetas metaCache)
            drops (StringBuilder.)
            body (StringBuilder.) ]
-      (doseq [ en (seq ms) ]
-        (let [ tdef (last en) id (first en) tbl (:table tdef) ]
+      (doseq [ [id tdef] (seq ms) ]
+        (let [ tbl (:table tdef) ]
           (when (and (not (:abstract tdef)) (SU/hgl? tbl))
             (debug "model id: " (name id) " table: " tbl)
             (-> drops (.append (genDrop db (.toUpperCase tbl) )))

@@ -5,7 +5,7 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
-(use '[comzotohcljc.dbio.dbdrivers])
+(use '[comzotohcljc.dbio.drivers])
 (use '[comzotohcljc.dbio.core])
 
 (deftype Postgresql [] DBDriver
