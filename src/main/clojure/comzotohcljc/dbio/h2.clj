@@ -1,13 +1,20 @@
+
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.dbio.h2)
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(import '(com.zotoh.frwk.dbio DBIOError))
+
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
-(use '[comzotohcljc.dbio.dbdrivers])
+(use '[comzotohcljc.dbio.drivers])
 (use '[comzotohcljc.dbio.core])
+
+(import '(com.zotoh.frwk.dbio DBIOError))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype H2 [] DBDriver
   (getId [_] :h2)
@@ -35,6 +42,8 @@
 
 
 ;;(println (getDDL (H2.) (make-MetaCache testschema)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private h2-eof nil)
 

@@ -508,13 +508,13 @@
 
 (defprotocol JDBCPoolAPI
   (shutdown [_] )
-  (next-free [_] ))
+  (nextFree [_] ))
 
 (defn- makePool [jdbc impl]
   (reify JDBCPoolAPI
 
     (shutdown [_] (.shutdown impl))
-    (next-free  [_]
+    (nextFree  [_]
       (try
           (.getConnection impl)
         (catch Throwable e#

@@ -31,7 +31,7 @@
 (require '[comzotohcljc.util.io :as IO])
 (require '[comzotohcljc.dbio.core :as DU])
 
-(use '[comzotohcljc.dbio.sqlops])
+(use '[comzotohcljc.dbio.sql])
 
 (import '(java.util GregorianCalendar TimeZone))
 (import '(java.sql Types))
@@ -42,84 +42,85 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn simpleSQLr "" [db metaCache proc]
-  (reify SQLr
+(defn simpleSQLr "" [db metaCache]
+  (let [ proc (make-proc db metaCache) ]
+    (reify SQLr
 
-    (findAll [this model ordering] (findSome this model {} ordering))
-    (findAll [this model] (findAll this model ""))
+      (findAll [this model ordering] (findSome this model {} ordering))
+      (findAll [this model] (findAll this model ""))
 
-    (findOne [this model filters]
-      (let [ rset (findSome this model filters "") ]
-        (if (empty? rset) nil (first rset))))
+      (findOne [this model filters]
+        (let [ rset (findSome this model filters "") ]
+          (if (empty? rset) nil (first rset))))
 
-    (findSome [this  model filters] (findSome this model filters ""))
+      (findSome [this  model filters] (findSome this model filters ""))
 
-    (findSome [this model filters ordering]
-      (let [ conn (.open db) ]
-        (try
-          (let [ zm (get metaCache model)
-                 tbl (table-name zm)
-                 s (str "SELECT * FROM " (ese tbl))
-                 [wc pms] (sql-filter-clause filters)
-                 extra (if (SU/hgl? ordering) (str " ORDER BY " ordering) "") ]
-            (if (SU/hgl? wc)
-              (.doQuery proc conn (str s " WHERE " wc extra) pms model)
-              (.doQuery proc conn (str s extra) [] model)))
-          (finally
-            (.close db conn)))))
+      (findSome [this model filters ordering]
+        (let [ conn (.open db) ]
+          (try
+            (let [ zm (get metaCache model)
+                   tbl (table-name zm)
+                   s (str "SELECT * FROM " (ese tbl))
+                   [wc pms] (sql-filter-clause filters)
+                   extra (if (SU/hgl? ordering) (str " ORDER BY " ordering) "") ]
+              (if (SU/hgl? wc)
+                (.doQuery proc conn (str s " WHERE " wc extra) pms model)
+                (.doQuery proc conn (str s extra) [] model)))
+            (finally
+              (.close db conn)))))
 
-    (update [this obj]
-      (let [ conn (.open db) ]
-        (try
-          (.setAutoCommit conn true)
-          (.doUpdate proc conn obj)
+      (update [this obj]
+        (let [ conn (.open db) ]
+          (try
+            (.setAutoCommit conn true)
+            (.doUpdate proc conn obj)
+            (finally (.close db conn)))))
+
+      (delete [this obj]
+        (let [ conn (.open db) ]
+          (try
+            (.setAutoCommit conn true)
+            (.doDelete proc conn obj)
+            (finally (.close db conn)))))
+
+      (insert [this obj]
+        (let [ conn (.open db) ]
+          (try
+            (.setAutoCommit conn true)
+            (.doInsert proc conn obj)
+            (finally (.close db conn)))))
+
+      (select [this sql params]
+        (let [ conn (.open db) ]
+          (try
+            (.doQuery proc conn sql params)
           (finally (.close db conn)))))
 
-    (delete [this obj]
-      (let [ conn (.open db) ]
-        (try
-          (.setAutoCommit conn true)
-          (.doDelete proc conn obj)
+      (executeWithOutput [this sql pms]
+        (let [ conn (.open db) ]
+          (try
+            (.setAutoCommit conn true)
+            (.doExecuteWithOutput proc conn sql pms)
           (finally (.close db conn)))))
 
-    (insert [this obj]
-      (let [ conn (.open db) ]
-        (try
-          (.setAutoCommit conn true)
-          (.doInsert proc conn obj)
+      (execute [this sql pms]
+        (let [ conn (.open db) ]
+          (try
+            (.setAutoCommit conn true)
+            (doExecute proc conn sql pms)
           (finally (.close db conn)))))
 
-    (select [this sql params]
-      (let [ conn (.open db) ]
-        (try
-          (.doQuery proc conn sql params)
-        (finally (.close db conn)))))
+      (count* [this model]
+        (let [ conn (.open db) ]
+          (try
+            (.doCount proc conn model)
+          (finally (.close db conn)))))
 
-    (executeWithOutput [this sql pms]
-      (let [ conn (.open db) ]
-        (try
-          (.setAutoCommit conn true)
-          (.doExecuteWithOutput proc conn sql pms)
-        (finally (.close db conn)))))
-
-    (execute [this sql pms]
-      (let [ conn (.open db) ]
-        (try
-          (.setAutoCommit conn true)
-          (doExecute proc conn sql pms)
-        (finally (.close db conn)))))
-
-    (count* [this model]
-      (let [ conn (.open db) ]
-        (try
-          (.doCount proc conn model)
-        (finally (.close db conn)))))
-
-    (purge [this model]
-      (let [ conn (.open db) ]
-        (try
-          (.doPurge proc conn model)
-        (finally (.close db conn)))))   ))
+      (purge [this model]
+        (let [ conn (.open db) ]
+          (try
+            (.doPurge proc conn model)
+          (finally (.close db conn)))))   )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

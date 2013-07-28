@@ -78,29 +78,29 @@
     (purge [this model] (.doPurge proc conn model) )  ) )
 
 
-(defn compositeSQLr [db metaCache] 
-  (reify Transactable
+(defn compositeSQLr [db metaCache]
+  (let [ proc (make-proc db metaCache) ]
+    (reify Transactable
 
-    (execWith [this func]
-      (let [ proc (comzotohcljc.dbio.sqlops.SQLProc. db metaCache)
-             conn (begin this)
-             tx (mkTransactable db metaCache proc conn) ]
-        (with-local-vars [ rc nil ]
-          (try
-            (var-set rc (func tx))
-            (commit this conn)
-            @rc
-            (catch Throwable e#
-              (do (rollback this conn) (warn e#) (throw e#)))
-            (finally (.close db conn))))) )
+      (execWith [this func]
+        (let [ conn (begin this)
+               tx (mkTransactable db metaCache proc conn) ]
+          (with-local-vars [ rc nil ]
+            (try
+              (var-set rc (func tx))
+              (commit this conn)
+              @rc
+              (catch Throwable e#
+                (do (rollback this conn) (warn e#) (throw e#)))
+              (finally (.close db conn))))) )
 
-    (rollback [_ conn] (CU/Guard (.rollback conn)))
+      (rollback [_ conn] (CU/Guard (.rollback conn)))
 
-    (commit [_ conn] (.commit conn))
+      (commit [_ conn] (.commit conn))
 
-    (begin [_]
-      (doto (.open db)
-        (.setAutoCommit false)))   ))
+      (begin [_]
+        (doto (.open db)
+          (.setAutoCommit false)))   )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
