@@ -35,7 +35,6 @@
 
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -44,7 +43,6 @@
 
 (defprotocol NihilPoint)
 (defprotocol Nihil)
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -67,28 +65,28 @@
 (defmacro fw-id* [fw]
   `(:typeid (meta ~fw)))
 
+(comment
 (defmacro fw-gf* [fw p]
   `(.getf ~fw ~p))
 
 (defmacro fw-sf* [fw p v]
   `(.setf ~fw ~p ~v))
+)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-(defn fw-rerun "" [fw]
-  (let [ pipe (fw-pipe* fw) ]
-    (-> pipe (.container) (.core) (.reschedule fw))
-    fw))
-
 (defn fw-runafter [fw]
   (let [ pipe (fw-pipe* fw)
-         c (-> pipe (.container)(.core))
+         np (fw-next* fw)
          id (fw-id* fw)
-         np (fw-next* fw) ]
+         c (->
+             pipe
+             (.container)
+             (.core)) ]
+
     (cond
       (= id :comzotohcljc.wflow.delays/DelayPoint)
-      (.delay c np (fw-gf* fw :delayMillis))
+      (.delay c np (.getf fw :delayMillis))
 
       (= id :comzotohcljc.wflow.delays/AsyncWaitPoint)
       (.hold c np)
@@ -101,11 +99,24 @@
     fw))
 
 
+(defn fw-rerun "" [fw]
+  (let [ pipe (fw-pipe* fw) ]
+    (-> pipe
+      (.container)
+      (.core)
+      (.reschedule fw))
+    fw))
+
+
 (defn fw-run "" [fw]
   (let [ pipe (fw-pipe* fw)
-         c (-> pipe (.container)(.core))
          job (.job pipe)
-         np (fw-next* fw) ]
+         np (fw-next* fw)
+         c (->
+             pipe
+             (.container)
+             (.core)) ]
+
     (with-local-vars [ rc nil err nil ]
       (.dequeue c fw)
       (try
@@ -121,25 +132,25 @@
 
 ;; attmt is data passed back from previous async call, if any
 (defn fw-popattmt! "" [fw]
-  (let [ c (fw-gf* fw :attmt) ]
-    (fw-sf* fw :attmt nil)
+  (let [ c (.getf fw :attmt) ]
+    (.setf! fw :attmt nil)
     c))
 
 (defn fw-setattmt! "" [fw c]
   (do
-    (when-not (nil? fw) (fw-sf* fw :attmt c))
+    (when-not (nil? fw) (.setf! fw :attmt c))
     fw))
 
 (defmethod fw-configure! :default [fw ac cur]
   (do
-    (fw-sf* fw :pipeline (fw-pipe* cur))
-    (fw-sf* fw :pid (SN/next-long))
-    (fw-sf* fw :template ac)
-    (fw-sf* fw :next cur)
+    (.setf! fw :pipeline (fw-pipe* cur))
+    (.setf! fw :pid (SN/next-long))
+    (.setf! fw :template ac)
+    (.setf! fw :next cur)
     fw))
 
 (defmethod fw-realize! :default [fw]
-  (let [ a (fw-gf* fw :template) ]
+  (let [ a (.getf fw :template) ]
     (ac-realize! a fw)
     fw))
 
@@ -147,8 +158,6 @@
 
 (defmethod ac-realize! :default [ac fw] fw)
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -193,10 +202,13 @@
 
        { :typeid  ~(keyword (str *ns* "/" (last args)))  } )) )
 
+
 (defmacro ac-spawnpoint "" [ ac cur & args ]
   `(let [ f# (make-flowpoint ~@args) ]
     (fw-configure! f# ~ac ~cur)
     (fw-realize! f#)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn make-nihil "" [] (make-activity Nihil) )
 
@@ -208,9 +220,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol PipelineDelegateAPI
-  (getStart [_] )
-  (getStop [_] )
-  (getError [_] ))
+  "External User implementation interface."
+  (getStart [_] ) ;; (fn [pipe] return Activity )
+  (getStop [_] ) ;; (fn [pipe return nil)
+  (getError [_] )) ;; (fn [pipe error current] return next-flow? )
 
 (defprotocol PipelineAPI
   (container [_] )
@@ -248,7 +261,7 @@
             (let [ h (.getError delegate) ]
               (error err)
               (let [ a (if (fn? h)
-                         (CU/TryC (h err cur))) ]
+                         (CU/TryC (h this err cur))) ]
                 (if (nil? a)
                   (ac-reify-nihil this)
                   a))))

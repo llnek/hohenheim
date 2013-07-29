@@ -58,7 +58,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; If
 
-(defn make-if [expr then else]
+(defn make-if "Create a If Activity."
+  [expr then else]
   (let [ b (make-activity Conditional If) ]
     (.setf b :test expr)
     (.setf b :then then)
@@ -95,7 +96,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While
 
-(defn make-while [expr body]
+(defn make-while "Create a While Activity."
+  [expr body]
   (let [ b (make-activity Conditional While) ]
     (.setf b :test expr)
     (.setf b :then body)
@@ -149,7 +151,8 @@
 ;; For
 
 ;; expr == ForLoopCountExpr
-(defn make-for [expr body]
+(defn make-for "Create a For Activity."
+  [expr body]
   (let [ b (make-activity Conditional While For) ]
     (.setf b :test expr)
     (.setf b :body body)
@@ -159,7 +162,7 @@
   [ac cur]
   (ac-spawnpoint ac cur ConditionalPoint WhilePoint ForPoint))
 
-(deftype ForLoopExpr [ ^:unsynchronized-mutable started
+(deftype ^:private ForLoopExpr [ ^:unsynchronized-mutable started
                        ^:unsynchronized-mutable loopCnt
                        loopCountExpr ] BoolExpr
   (evaluate [_ job]
@@ -190,7 +193,8 @@
 ;; Switch
 ;;
 
-(defn make-switch [choiceExpr]
+(defn make-switch "Create a Switch Activity."
+  [choiceExpr]
   (let [ a (make-activity Switch) ]
     (.setf a :test choiceExpr)
     (.setf a :default nil)
@@ -203,8 +207,8 @@
 
 (defmethod ac-realize! :comzotohcljc.wflow.conditionals/Switch
   [ac cur]
-  (let [ cs (.getf ac :choices)
-         df (.getf cur :default)
+  (let [ df (.getf cur :default)
+         cs (.getf ac :choices)
          np (fw-next* cur)
          t  (persistent! (reduce (fn [sum en]
                                     (assoc! sum (first en)

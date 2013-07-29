@@ -20,6 +20,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.wflow.composites )
 
 
@@ -33,11 +34,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol MutableListAPI
+(defprotocol ^:private MutableListAPI
+  ""
   (is-empty? [_] )
   (length [_])
   (shift [_]))
-(deftype MutableList [ ^:unsynchronized-mutable data] MutableListAPI
+
+(deftype ^:private MutableList
+  [ ^:unsynchronized-mutable data] MutableListAPI
+
   (is-empty? [_] (= 0 (count data) ))
   (length [_] (count data))
   (shift [this]
@@ -47,16 +52,17 @@
         (set! data (pop data))
         f))))
 
-(defprotocol InnerPointsAPI
+(defprotocol ^:private InnerPointsAPI
   (isEmpty [_])
   (size [_])
   (nextPoint [_]))
 
 ;; children == (vec ... activities )
-(defn make-innerPoints [outerPoint children]
+(defn- make-innerPoints [outerPoint children]
   (let [ impl (MutableList. (into () (reverse children))) ]
     (reify
       InnerPointsAPI
+
       (isEmpty [_] (.is-empty? impl))
       (size [_] (.size impl))
       (nextPoint [_]
@@ -71,7 +77,7 @@
 (defprotocol CompositePoint)
 (defprotocol Composite)
 
-(defn composite-add! [b a]
+(defn- composite-add! [b a]
   (when-not (nil? a)
     (let [ c (.getf b :children) ]
       (.setf b :children (conj c a))))
@@ -83,7 +89,8 @@
 (defprotocol BlockPoint)
 (defprotocol Block)
 
-(defn make-block [ & args ]
+(defn make-block "Create a new Block Activity."
+  [ & args ]
   (let [ b (make-activity Composite Block)
          v (if (empty? args)
              []
@@ -106,6 +113,7 @@
   (let [ w (.getf fw :inner-points)
          c (fw-popattmt! fw)
          np (fw-next* fw) ]
+
     (with-local-vars [ rc nil ]
       (if (or (nil? w) (.isEmpty w))
         (do
@@ -133,7 +141,8 @@
 (defprotocol OrJoinPoint)
 (defprotocol OrJoin)
 
-(defn make-nulljoin []
+(defn- make-nulljoin "Create a NULL Join Activity."
+  []
   (let [ a (make-activity Join NullJoin) ]
     (.setf a :branches 0)
     (.setf a :body nil)
@@ -150,7 +159,8 @@
   [ac fw] fw)
 
 
-(defn make-andjoin [body]
+(defn make-andjoin "Create an And Join Activity."
+  [body]
   (let [ a (make-activity Join AndJoin) ]
     (.setf a :body body)
     (.setf a :branches 0)
@@ -179,6 +189,7 @@
          np (fw-next* fw)
          n (.getf fw :counter)
          nn (.incrementAndGet n) ]
+
     (debug "branches " b ", counter " nn ", join(pid) = " fw)
     (with-local-vars [ rc nil ]
       ;; all branches have returned, proceed...
@@ -188,7 +199,8 @@
         (fw-realize! fw))
       @rc)))
 
-(defn make-orjoin [body]
+(defn make-orjoin "Create a Or Join Activity."
+  [body]
   (let [ a (make-activity Join OrJoin) ]
     (.setf a :body body)
     (.setf a :branches 0)
@@ -203,6 +215,7 @@
   (let [ n (.getf ac :branches)
          b (.getf ac :body)
          np (fw-next* fw) ]
+
     (when-not (nil? b)
       (.setf fw :body (ac-reify b np)) )
     (.setf fw :branches n)
@@ -217,6 +230,7 @@
          body (.getf fw :body)
          n (.getf fw :counter)
          nn (.incrementAndGet n) ]
+
     (debug "branches " b ", counter " nn ", join(pid) = " fw)
     (with-local-vars [ rc nil ]
       (cond
@@ -263,6 +277,7 @@
   (let [ w (:getf fw :inner-points)
          pipe (fw-pipe* fw)
          c (fw-popattmt! fw) ]
+
     (while (and (CU/notnil? w) (not (.isEmpty w)))
       (let [ n (.nextPoint w) ]
         (fw-setattmt! n c)

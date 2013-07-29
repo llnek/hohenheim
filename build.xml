@@ -54,6 +54,7 @@
       <arg value="comzotohcljc.util.str" />
       <arg value="comzotohcljc.util.usastate" />
       <arg value="comzotohcljc.util.ini" />
+      <arg value="comzotohcljc.util.scheduler" />
       <arg value="comzotohcljc.i18n.resources" />
       <arg value="comzotohcljc.crypto.core" />
       <arg value="comzotohcljc.crypto.codec" />
@@ -79,17 +80,15 @@
       <arg value="comzotohcljc.hohenheim.impl.defaults" />
       <arg value="comzotohcljc.hohenheim.impl.deployer" />
       <arg value="comzotohcljc.hohenheim.impl.jobcreator" />
-      <arg value="comzotohcljc.hohenheim.impl.scheduler" />
       <arg value="comzotohcljc.hohenheim.impl.container" />
       <arg value="comzotohcljc.hohenheim.impl.kernel" />
       <arg value="comzotohcljc.hohenheim.impl.execvisor" />
+-->
       <arg value="comzotohcljc.wflow.core" />
       <arg value="comzotohcljc.wflow.composites" />
       <arg value="comzotohcljc.wflow.conditionals" />
-      <arg value="comzotohcljc.wflow.switch" />
       <arg value="comzotohcljc.wflow.delays" />
-      <arg value="comzotohcljc.wflow.ptask" />
--->
+      <arg value="comzotohcljc.wflow.user" />
     </java>
   </target>
 

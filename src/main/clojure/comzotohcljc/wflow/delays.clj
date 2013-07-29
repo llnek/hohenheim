@@ -56,7 +56,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Delay
 
-(defn make-delay [delayMillis]
+(defn make-delay "Create a Delay Activity."
+  [delayMillis]
   (let [ b (make-activity Delay) ]
     (.setf b :delayMillis delayMillis)
     b))
@@ -74,7 +75,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; AsyncWait
 
-(defn make-asyncwait []
+(defn make-asyncwait "Make a AsyncWait Activity."
+  []
   (let [ b (make-activity AsyncWait) ]
     b))
 

@@ -39,7 +39,7 @@
 (defprotocol Work
   (perform [_ fw job] ))
 
-(defn make-ptask-work [cb]
+(defn- make-ptask-work [cb]
   (let [ impl (CU/make-mmap) ]
     (reify Work
       (perform [_ fw job]
@@ -48,9 +48,10 @@
           (.mm-s impl :cur fw)
           (cb fw job c))))))
 
-(defn make-ptask [work]
+(defn make-ptask "Create a PTask Activity."
+  [cb]
   (let [ b (make-activity PTask) ]
-    (.setf b :task work)
+    (.setf! b :task (make-ptask-work cb))
     b))
 
 (defmethod ac-reify :comzotohcljc.wflow.user/PTask
@@ -60,7 +61,7 @@
 (defmethod ac-realize! :comzotohcljc.wflow.user/PTask
   [ac fw]
   (let [ w (.getf ac :task) ]
-    (.setf fw :task w)
+    (.setf! fw :task w)
     fw))
 
 (defmethod fw-evaluate! :comzotohcljc.wflow.user/PTaskPoint
