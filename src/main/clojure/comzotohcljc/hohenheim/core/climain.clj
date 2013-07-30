@@ -20,21 +20,22 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.hohenheim.core.climain )
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(require '[comzotohcljc.util.procutils :as PU])
-(require '[comzotohcljc.util.metautils :as MU])
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.strutils :as SU])
-(require '[comzotohcljc.util.fileutils :as FU])
-(require '[comzotohcljc.i18n.i18nutils :as LN])
-(require '[comzotohcljc.util.win32ini :as WI])
+(require '[comzotohcljc.i18n.resources :as LN])
+(require '[comzotohcljc.util.process :as PU])
+(require '[comzotohcljc.util.meta :as MU])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
+(require '[comzotohcljc.util.files :as FU])
+(require '[comzotohcljc.util.ini :as WI])
 
+(use '[comzotohcljc.hohenheim.impl.execvisor :only (make-execvisor) ])
 (use '[comzotohcljc.hohenheim.core.constants])
 (use '[comzotohcljc.hohenheim.impl.defaults])
-(use '[comzotohcljc.hohenheim.impl.execvisor :only (make-execvisor) ])
 
 (import '(com.zotoh.hohenheim.core
   Startable ConfigError
@@ -44,10 +45,6 @@
 (import '(java.io File))
 (import '(org.apache.commons.io FileUtils))
 
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(def SHOW-STOPPER (agent 0))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- inizContext [baseDir]
@@ -58,8 +55,8 @@
     (precondDir cfg)
     (precondFile f)
     (doto (make-context)
-      (.setf K_BASEDIR home)
-      (.setf K_CFGDIR cfg))))
+      (.setf! K_BASEDIR home)
+      (.setf! K_CFGDIR cfg))))
 
 (defn- setupClassLoader [ctx]
   (let [ root (.getf ctx K_ROOT_CZLR)

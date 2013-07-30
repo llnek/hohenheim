@@ -20,10 +20,9 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.hohenheim.core.constants )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -79,12 +78,12 @@
 (def CFG_APP_CF  (str DN_CONF  "/"  "app.conf" ))
 
 
-(def K_HOHENHEIM_APPDOMAIN :hoheheim-app-domain )
-(def K_HOHENHEIM_APPID :hoheheim-appid )
-(def K_HOHENHEIM_APPTASK :hoheheim-app-task )
+(def K_HOHENHEIM_APPDOMAIN :hohenheim-app-domain )
+(def K_HOHENHEIM_APPID :hohenheim-appid )
+(def K_HOHENHEIM_APPTASK :hohenheim-app-task )
 (def K_JMXMGM :jmx-management )
-(def K_HOMEDIR :hoheheim-home )
-(def K_PROPS :hoheheim-conf )
+(def K_HOMEDIR :hohenheim-home )
+(def K_PROPS :hohenheim-conf )
 (def K_ROUTE_INFO :route-info )
 (def K_CLISH :cli-shell )
 (def K_COMPS :components )
