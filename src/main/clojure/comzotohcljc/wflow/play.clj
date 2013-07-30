@@ -16,7 +16,7 @@
 
   (getStart [_]
     (fn [pipe]
-      (make-ptask (fn [fw job arg] (println "called!!!")))
+      (make-ptask (fn [fw job arg] (println " WTF , you called me ???????? ")))
       ))
 
   (getStop [_]
@@ -25,15 +25,17 @@
   (getError [_] ))
 
 
+(def SCH (make-scheduler nil))
+(.activate SCH {} )
+
 (defprotocol CCC
   (core [_] ))
 
 (defn makeccc []
   (reify
     CCC
-    (core [_] )))
+    (core [_] SCH )))
 
-(def SCH (make-scheduler nil))
 (def CTR (makeccc))
 
 (defn makejob []
@@ -47,18 +49,26 @@
             (clrf! [_ k] (.mm-r impl k))
 
       Job
-      (container [_] CTR)
+      (parent [_] CTR)
       (id [_] 333)
       (event[_] nil))) )
 
 
-(.activate SCH {} )
 
-(def PIPE (make-pipeline (makejob) "comzotohcljc.wflow.play.PPP"))
+
+
+
+(def JOB (makejob))
+(def PIPE (make-pipeline JOB "comzotohcljc.wflow.play.PPP"))
 
 (.start PIPE)
 
 
+(comment
+(def pt (make-ptask (fn [ fw job arg]  (println "WTF Dude!" )) ) )
+(def fw (ac-reify pt (ac-reify-nihil PIPE)))
+(fw-evaluate! fw JOB)
+)
 
 
 ;;(.stop SCH {} )

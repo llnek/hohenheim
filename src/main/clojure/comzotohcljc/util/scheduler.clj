@@ -27,8 +27,9 @@
 
 (import '(com.zotoh.frwk.util
   RunnableWithId Schedulable TCore ))
-(import '(java.util Properties Timer TimerTask))
-(import '(java.util HashMap))
+(import '(java.util
+  HashMap Properties
+  Timer TimerTask))
 
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
@@ -39,8 +40,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- xrefPID [w]
-  (if (isa? w RunnableWithId)
-    (.getId w)
+  (if (instance? RunnableWithId w)
+    (let [p (.getId w) ]
+      (debug "flow-point has pid " p)
+      p)
     nil))
 
 (defprotocol SchedulerAPI ""

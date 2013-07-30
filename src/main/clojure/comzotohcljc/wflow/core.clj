@@ -25,6 +25,8 @@
 
 
 (use '[clojure.tools.logging :only (info warn error debug)])
+
+(import '(com.zotoh.frwk.util RunnableWithId))
 (import '(com.zotoh.hohenheim.core Job))
 
 (use '[comzotohcljc.util.core :only (MutableObjectAPI) ])
@@ -116,10 +118,10 @@
              pipe
              (.container)
              (.core)) ]
-
+    (debug "nested inside fw-run: pipe= " pipe ", job= " job ", fw=" fw ", next=" np)
     (with-local-vars [ rc nil err nil ]
-      (.dequeue c fw)
       (try
+          (.dequeue c fw)
           (var-set rc (fw-evaluate! fw job))
         (catch Throwable e#
           (var-set err (.onError pipe e# fw))))
@@ -163,7 +165,7 @@
 
 
 (defmacro make-flowpoint "" [ & args ]
-  `(let [ impl# (CU/make-mmap) ]
+  `(let [ impl# (CU/make-mmap) nid# (SN/next-long) ]
     (with-meta
       (reify
 
@@ -175,9 +177,16 @@
           (clear! [_] (.mm-c impl#))
           (clrf! [_ k3#] (.mm-r impl# k3#))
 
+        RunnableWithId
+          (getId [_] nid# )
+
         Runnable
 
-          (run [me#] (CU/Guard (fw-run me#)))
+          (run [me2#]
+            (CU/TryC
+              (debug "inside java-runnable:run()")
+              (debug "pipeline object = " (.getf me2# :pipeline))
+              (fw-run me2#)))
 
         FlowPoint
           ~@(filterv CU/notnil? args))
@@ -214,6 +223,7 @@
 
 (defn ac-reify-nihil "" [pipe]
   (let [ f (make-flowpoint NihilPoint) ]
+    (.setf! f :pipeline pipe)
     (fw-configure! f (make-nihil) f)
     (fw-realize! f)))
 
@@ -222,25 +232,26 @@
 (defprotocol PipelineDelegateAPI
   "External User implementation interface."
   (getStart [_] ) ;; (fn [pipe] return Activity )
-  (getStop [_] ) ;; (fn [pipe return nil)
+  (getStop [_] ) ;; (fn [pipe] return nil)
   (getError [_] )) ;; (fn [pipe error current] return next-flow? )
 
 (defprotocol PipelineAPI
   (container [_] )
   (isActive [_] )
+  (job [_] )
   (onError [_ error curPoint] )
   (start [_] )
   (stop [_] ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-pipeline [job delegateClassName]
+(defn make-pipeline [theJob delegateClassName]
   (let [ delegate (MU/make-obj delegateClassName)
          pid (SN/next-long)
          impl (CU/make-mmap) ]
     (CU/test-cond "Delegate does not implement PipelineDelegateAPI"
                   (satisfies? PipelineDelegateAPI delegate))
-    (CU/test-nonil "the-job" job)
+    (CU/test-nonil "the-job" theJob)
     (debug "Pipeline (" pid ") being created...")
     (with-meta
       (reify
@@ -255,11 +266,11 @@
         PipelineAPI
 
           (isActive [_] (true? (.mm-g impl :active)))
-          (container [_] (.parent job))
+          (container [_] (.parent theJob))
 
           (onError [this err cur]
             (let [ h (.getError delegate) ]
-              (error err)
+              (error "" err)
               (let [ a (if (fn? h)
                          (CU/TryC (h this err cur))) ]
                 (if (nil? a)
@@ -284,7 +295,10 @@
                     (-> this (.container) (.core) (.run @f9))
                     (.mm-s impl :active true))
                   (catch Throwable e#
+                    (.printStackTrace e#)
                       (onError this e# @f9))))) )
+
+          (job [_] theJob)
 
           (stop [this]
             (CU/TryC
