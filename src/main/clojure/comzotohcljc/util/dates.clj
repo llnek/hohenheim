@@ -63,7 +63,7 @@
 (defn parse-timestamp "Convert string into a valid Timestamp object.
   *tstr* conforming to the format \"yyyy-mm-dd hh:mm:ss.[fff...]\""
   [^String tstr]
-  (CU/Guard
+  (CU/Try!
     (Timestamp/valueOf tstr) ))
 
 (defn parse-date "Convert string into a Date object."

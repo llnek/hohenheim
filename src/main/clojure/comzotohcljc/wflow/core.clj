@@ -270,7 +270,7 @@
 
           (onError [this err cur]
             (let [ h (.getError delegate) ]
-              (error "" err)
+              (error err "")
               (let [ a (if (fn? h)
                          (CU/TryC (h this err cur))) ]
                 (if (nil? a)

@@ -99,6 +99,7 @@
 (defn- pre-parse [cli args]
   (let [ bh (File. (first args))
          ctx (inizContext bh) ]
+    (info "Inside pre-parse()")
     (precondDir (File. bh DN_PATCH))
     (precondDir (File. bh DN_CORE))
     (precondDir (File. bh DN_LIB))
@@ -127,6 +128,7 @@
 
 (defn- enableRemoteShutdown []
   (let [ port (CU/conv-long (System/getProperty "hohenheim.kill.port") 4444) ]
+    (info "Enabling remote shutdown...")
     nil))
 
 (defn- stop-cli [ctx trigger]
@@ -134,7 +136,8 @@
          execv (.getf ctx K_EXECV) ]
     (when-not (nil? pid) (FileUtils/deleteQuietly pid))
     (info "About to stop Hohenheim...")
-    (when-not (nil? execv) (.stop execv))
+    (when-not (nil? execv)
+      (.stop execv))
     (info "Hohenheim stopped.")
     (deliver trigger 911)))
 
@@ -143,7 +146,7 @@
          trigger (promise) ]
     (.addShutdownHook (Runtime/getRuntime)
           (Thread. (reify Runnable
-                      (run [_] (CU/TryC (stop-cli ctx trigger))))))
+                      (run [_] (CU/Try! (stop-cli ctx trigger))))))
     (enableRemoteShutdown)
     (debug "Added shutdown hook.")
     [ctx trigger] ))
@@ -168,9 +171,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-
-
-(defn- make-climain [ args ]
+(defn- make-climain [ & args ]
   (let [ impl (CU/make-mmap) ]
     (reify
 

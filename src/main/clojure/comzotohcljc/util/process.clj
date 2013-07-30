@@ -54,7 +54,7 @@
 
 (defn safe-wait "Block current thread for some millisecs."
   [millisecs]
-  (CU/Guard
+  (CU/Try!
     (when (> millisecs 0) (Thread/sleep millisecs))
     ))
 

@@ -20,6 +20,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.hohenheim.impl.deployer )
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
@@ -29,8 +30,8 @@
 (use '[comzotohcljc.hohenheim.impl.defaults])
 (use '[comzotohcljc.hohenheim.core.constants])
 
-(require '[ comzotohcljc.util.coreutils :as CU ] )
-(require '[ comzotohcljc.util.fileutils :as FU ] )
+(require '[ comzotohcljc.util.core :as CU ] )
+(require '[ comzotohcljc.util.files :as FU ] )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -80,18 +81,20 @@
                 (warn "cannot undeploy app: " app
                       ", doesn't exist - no operation taken.")))) )
 
-      { :typeid :Deployer } )))
+      { :typeid (keyword (str *ns* "/Deployer")) } )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod comp-contextualize :Deployer [co ctx]
+(defmethod comp-contextualize :comzotohcljc.hohenheim.impl.deployer/Deployer
+  [co ctx]
   (do
     (precondDir (maybeDir ctx K_BASEDIR))
     (precondDir (maybeDir ctx K_PODSDIR))
     (precondDir (maybeDir ctx K_PLAYDIR))
     (comp-clone-context co ctx)))
 
-(defmethod comp-initialize :Deployer [co]
+(defmethod comp-initialize :comzotohcljc.hohenheim.impl.deployer/Deployer
+  [co]
   (let [ ctx (.getCtx co)
          py (.getf ctx K_PLAYDIR)
          pd (.getf ctx K_PODSDIR)

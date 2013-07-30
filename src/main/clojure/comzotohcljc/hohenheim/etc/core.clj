@@ -19,21 +19,22 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.hohenheim.etc.core
   (:gen-class))
 
 (use '[clojure.tools.logging :only (info debug)])
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.strutils :as SU])
-(require '[comzotohcljc.util.fileutils :as FU])
-(require '[comzotohcljc.i18n.i18nutils :as LU])
+
 (require '[comzotohcljc.hohenheim.etc.cmdline :as CL])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
+(require '[comzotohcljc.util.files :as FU])
+(require '[comzotohcljc.i18n.resources :as LU])
+
 (import '(com.zotoh.hohenheim.etc CmdHelpError))
 (import '(java.util Locale))
 (import '(java.io File))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -59,7 +60,7 @@
   ["demo samples" "Generate a set of samples."]
   ["version" "Show version info."] ])
 
-(defn- drawHelpLines [^String fmt arr]
+(defn- drawHelpLines [^String fmt ^clojure.lang.IPersistentCollection arr]
   (doseq [ [k v] (seq arr) ]
     (-> System/out (.format fmt (into-array Object [k v]) ))))
 
@@ -77,7 +78,7 @@
 ;;println("#### apprunner loader = " + getClass().getClassLoader().getClass().getName())
 ;;println("#### sys loader = " + ClassLoader.getSystemClassLoader().getClass().getName())
 ;;mkCZldrs(home)
-(defn- parseArgs [rcb args]
+(defn- parseArgs [rcb & args]
   (let [ h (File. (first args)) ]
     (CU/test-cond (str "Cannot access Hohenheim home " h) (FU/dir-read? h))
       (if (not (contains? (CL/get-commands) (keyword (nth args 1))))
@@ -96,18 +97,6 @@
         (if (fn? rc)
           (rc)
           (usage))))))
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -105,7 +105,7 @@
 
 (defn reset-stream! "Call reset on this input stream."
   [inp]
-  (CU/Guard
+  (CU/Try!
     (if-not (nil? inp)  (.reset inp)) ))
 
 (defmethod open-file String
@@ -145,10 +145,10 @@
   (when-not (nil? inpsrc)
     (let [ rdr (.getCharacterStream inpsrc)
            ism (.getByteStream inpsrc) ]
-      (CU/Guard
+      (CU/Try!
         (when-not (nil? ism) (.reset ism)) )
 
-      (CU/Guard
+      (CU/Try!
         (when-not (nil? rdr) (.reset rdr)) ))))
 
 (defn make-xdata "Return a newly created XData."

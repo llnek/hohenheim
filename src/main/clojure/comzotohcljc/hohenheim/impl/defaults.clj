@@ -20,6 +20,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.hohenheim.impl.defaults )
 
 (import '(com.zotoh.frwk.util CoreUtils))
@@ -27,13 +28,13 @@
   RegistryError ServiceError ConfigError AppClassLoader))
 (import '(java.io File))
 
-(use '[ comzotohcljc.util.coreutils :only (MutableObjectAPI) ] )
 (use '[clojure.tools.logging :only (info warn error debug)])
+(use '[ comzotohcljc.util.core :only (MutableObjectAPI) ] )
 (use '[comzotohcljc.hohenheim.core.constants])
 
-(require '[ comzotohcljc.util.coreutils :as CU ] )
-(require '[ comzotohcljc.util.strutils :as SU ] )
-(require '[ comzotohcljc.util.fileutils :as FU ] )
+(require '[ comzotohcljc.util.files :as FU ] )
+(require '[ comzotohcljc.util.core :as CU ] )
+(require '[ comzotohcljc.util.str :as SU ] )
 
 
 
@@ -172,7 +173,7 @@
                          (str "Component \"" cid "\" already exists" ))))
               (.mm-s impl :cache (assoc cache cid c)))) )
 
-      { :typeid regoType } )) )
+      { :typeid (keyword (str *ns* "/" (name regoType))) } )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -181,7 +182,7 @@
     (when-not (nil? ctx)
       (let [ x (make-context) ]
         (doseq [ [k v] (.seq* ctx) ]
-          (.setf x k v))
+          (.setf! x k v))
         (.setCtx! co x)))
     co))
 

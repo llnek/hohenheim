@@ -49,13 +49,13 @@
 (def ^:private _BOOLS #{ "true" "yes"  "on"  "ok"  "active"  "1"} )
 (def ^:private _PUNCS #{ \_ \- \. \( \) \space } )
 
-(defmacro Guard
-  [ & exprs ]
-  `(try (do ~@exprs) (catch Throwable e# nil )) )
-
 (defmacro TryC
   [ & exprs ]
-  `(try (do ~@exprs) (catch Throwable e# (warn e#) )) )
+  `(try (do ~@exprs) (catch Throwable e# (warn e# "") )) )
+
+(defmacro Try!
+  [ & exprs ]
+  `(try (do ~@exprs) (catch Throwable e# nil )) )
 
 
 (deftype NICHTS [])

@@ -217,7 +217,7 @@
 
 (defn dbg-provider ""
   [^PrintStream os]
-  (CU/Guard
+  (CU/Try!
     (.list *BCProvider* os)))
 
 (defn get-srand "Get a secure random."
@@ -581,7 +581,7 @@
     (if (SU/hgl? cType)
       (try
         (SU/nsb (MimeUtility/javaCharset (-> (ContentType. cType) (.getParameter "charset"))))
-        (catch Throwable e (do (warn "" e) "")))
+        (catch Throwable e# (do (warn e# "") "")))
       ""))
   ([cType dft]
     (let [ cs (get-charset cType) ]

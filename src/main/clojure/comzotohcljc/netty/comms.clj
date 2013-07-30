@@ -448,7 +448,7 @@
       (before-send [_ ch msg] nil)
       (onerror [_ ch msginfo exp]
         (do
-          (error exp)
+          (error exp "")
           (reply-xxx ch (HttpResponseStatus/INTERNAL_SERVER_ERROR))))
       (onres [_ ch msginfo xdata] nil)
       (onreq [_ ch msginfo xdata]

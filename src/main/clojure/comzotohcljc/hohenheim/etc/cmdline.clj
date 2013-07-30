@@ -20,6 +20,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.hohenheim.etc.cmdline )
 
 (use '[clojure.tools.logging :only (info warn error debug)])
@@ -32,10 +33,10 @@
 ;;(import '(org.apache.tools.ant Main))
 
 (require '[comzotohcljc.hohenheim.core.climain :as CLI])
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.metautils :as MU])
-(require '[comzotohcljc.util.strutils :as SU])
-(require '[comzotohcljc.util.cmdlineseq :as CQ])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.meta :as MU])
+(require '[comzotohcljc.util.str :as SU])
+(require '[comzotohcljc.util.cmdline :as CQ])
 
 (use '[comzotohcljc.hohenheim.core.constants])
 
@@ -62,9 +63,9 @@
         target ])))
 
 (defn- runTargetExtra [target options]
-  (let [ rc (reduce (fn [sum en]
-                      (str "-D" (first en) "=" (SU/nsb (last en) )))
-                 [] (seq options)) ]
+  (let [ rc (persistent! (reduce (fn [sum en]
+                      (conj! sum (str "-D" (first en) "=" (SU/nsb (last en) ))))
+                 (transient []) (seq options))) ]
     (org.apache.tools.ant.Main/start
       (into-array String
         (-> rc
@@ -76,7 +77,6 @@
       nil
       (MU/get-cldr))))
 
-
 (defn- onCreatePrompt []
   (let [ domain (-> (str "com." (SU/nsb (CU/getuser))) (.toLowerCase))
          q1 (CQ/make-CmdSeqQ "domain" "What is the application domain"
@@ -86,7 +86,7 @@
                        "" "" true
                        (fn [ans jps] (do (.put jps "app-id" ans) "" )))
          ps (CQ/cli-converse {"domain" q1 "app" q2} "domain") ]
-    [ (not (nil? ps)) ps ] ))
+    [ (CU/notnil? ps) ps ] ))
 
 (defn- onCreateApp [args options]
   (let [ cb (fn [t ps] (runTargetExtra t ps)) ]
@@ -175,8 +175,7 @@
   )
 
 (defn- onVersion [args]
-  (let [ s (FileUtils/readFileToString
-             (File. (getHomeDir) "VERSION") "utf-8") ]
+  (let [ s (FileUtils/readFileToString (File. (getHomeDir) "VERSION") "utf-8") ]
     (if (SU/hgl? s)
       (println s)
       (println "Unknown version."))))
@@ -244,11 +243,13 @@
   })
 
 
-(defn eval-command "" [home rcb args]
+(defn eval-command "" [home rcb & args]
   (let [ v (get _ARGS (keyword (first args))) ]
-    (when (nil? v) (throw (CmdHelpError.)))
-    (binding [ *HOHENHEIM-HOME-DIR* home *HOHENHEIM-RSBUNDLE* rcb]
-      (apply v rcb args))))
+    (when (nil? v)
+      (throw (CmdHelpError.)))
+    (binding [ *HOHENHEIM-HOME-DIR* home
+               *HOHENHEIM-RSBUNDLE* rcb]
+      (apply v args))))
 
 (defn get-commands "" [] (keys _ARGS))
 

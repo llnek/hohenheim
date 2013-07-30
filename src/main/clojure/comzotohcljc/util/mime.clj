@@ -179,14 +179,14 @@
   [^String u]
   (if (nil? u)
     nil
-    (CU/Guard
+    (CU/Try!
       (URLDecoder/decode u "utf-8") )))
 
 (defn url-encode "URL encode this string."
   [^String u]
   (if (nil? u)
     nil
-    (CU/Guard
+    (CU/Try!
       (URLEncoder/encode u "utf-8") )))
 
 (defn guess-mimetype "Guess the MIME type of file."

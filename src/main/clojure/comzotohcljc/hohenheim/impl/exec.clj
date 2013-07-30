@@ -20,7 +20,8 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
-  comzotohcljc.hohenheim.impl.execvisor )
+
+  comzotohcljc.hohenheim.impl.exec )
 
 (import '(org.apache.commons.io.filefilter DirectoryFileFilter))
 (import '(org.apache.commons.io FilenameUtils FileUtils))
@@ -34,10 +35,10 @@
 (use '[comzotohcljc.hohenheim.impl.kernel :only (make-kernel make-podmeta) ])
 (use '[comzotohcljc.hohenheim.impl.deployer :only (make-deployer) ])
 
-(require '[ comzotohcljc.util.coreutils :as CU ] )
-(require '[ comzotohcljc.util.metautils :as MU ] )
-(require '[ comzotohcljc.util.strutils :as SU ] )
-(require '[ comzotohcljc.util.win32ini :as WI ] )
+(require '[ comzotohcljc.util.core :as CU ] )
+(require '[ comzotohcljc.util.meta :as MU ] )
+(require '[ comzotohcljc.util.str :as SU ] )
+(require '[ comzotohcljc.util.ini :as WI ] )
 
 
 
@@ -82,6 +83,8 @@
     (CU/test-nestr "POD-MainClass" cz)
     (CU/test-nestr "POD-Version" ver)
 
+    (info "Checking manifest for app: " app ", version: " ver ", main-class: " cz)
+
     ;;ps.gets("Manifest-Version")
     ;;.gets("Implementation-Title")
     ;;.gets("Implementation-Vendor-URL")
@@ -97,6 +100,7 @@
 (defn- inspect-pod [execv des]
   (let [ app (FilenameUtils/getBaseName (CU/nice-fpath des))
          mf (File. des MN_FILE) ]
+    (info "About to inspect dir: " des)
     (try
         (precondDir (File. des POD_INF))
         (precondDir (File. des POD_CLASSES))
@@ -108,7 +112,7 @@
         (precondFile mf)
         (chkManifest execv app des mf)
       (catch Throwable e#
-        (error e#)))) )
+        (error e# "")))) )
 
 (defn- inspect-pods [co]
   (let [ fs (-> (.getf (.getCtx co) K_PLAYDIR)
@@ -160,21 +164,22 @@
                    k (.lookup root K_KERNEL) ]
               (.stop k)))  )
 
-       { :typeid :Execvisor } )))
+       { :typeid (keyword (str *ns* "/Execvisor")) } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod comp-initialize :Execvisor [co]
+(defmethod comp-initialize :comzotohcljc.hohenheim.impl.exec/Execvisor
+  [co]
   (let [ cf (.getf (.getCtx co) K_PROPS)
          comps (.getSection cf K_COMPS)
          regs (.getSection cf K_REGS)
          jmx  (.getSection cf K_JMXMGM) ]
 
+    (info "Initializing component: Execvisor: " co)
     (CU/test-nonil "conf file: components" comps)
     (CU/test-nonil "conf file: registries" regs)
     (CU/test-nonil "conf file: jmx mgmt" jmx)
-
     (System/setProperty "file.encoding" "utf-8")
 
     (let [ home (.homeDir co)
@@ -215,12 +220,12 @@
       (.reg root apps)
       (.reg root bks)
       (.setf! (.getCtx co) K_EXECV co)
-      (->> { :ctx (.getCtx co) }
-        (synthesize-component root)
-        (synthesize-component bks)
-        (synthesize-component apps)
-        (synthesize-component deployer)
-        (synthesize-component knl)) )
+      (let [ options { :ctx (.getCtx co) } ]
+        (synthesize-component root options)
+        (synthesize-component bks options)
+        (synthesize-component apps options)
+        (synthesize-component deployer options)
+        (synthesize-component knl options)) )
 
     ))
 
@@ -249,28 +254,27 @@
           (enabled? [_] (true? (.mm-g impl :active)))
           (metaUrl [_] (.mm-g impl K_META)) )
 
-      { :typeid :BlockMeta } )))
+      { :typeid (keyword (str *ns* "/BlockMeta")) } )))
 
 
-(defmethod comp-initialize :BlockMeta [co]
-  (let [ cfg (WI/parse-inifile (.metaUrl co))
+(defmethod comp-initialize :comzotohcljc.hohenheim.impl.exec/BlockMeta
+  [co]
+  (let [ url (.metaUrl co) cfg (WI/parse-inifile url)
          inf (.getSection cfg "info") ]
     (CU/test-nonil "Invalid block-meta file, no info section." inf)
-
+    (info "Initializing BlockMeta: " url)
     (let [ cz (SU/strim (.optString "info" "block-type" "")) ]
       (when (SU/hgl? cz)
         (.setAttr! co :id (keyword cz))
-        (try
+        (CU/TryC
           (MU/load-class cz)
-          (.setAttr! co :active true)
-          (catch Throwable e#
-            (warn e#))))
+          (.setAttr! co :active true) ))
       (.setAttr! co :version (SU/strim (.optString "info" "version" "")))
       (.setAttr! co :name (SU/strim (.optString "info" "name" "")))
-
       co)))
 
-(defmethod comp-initialize :BlocksRegistry [co]
+(defmethod comp-initialize :comzotohcljc.hohenheim.impl.defaults/BlocksRegistry
+  [co]
   (let [ ctx (.getCtx co)
          bDir (.getf ctx K_BKSDIR)
          fs (FileUtils/listFiles bDir (into-array String ["meta"]) false) ]
@@ -278,7 +282,7 @@
       (let [ b (-> (make-blockmeta (-> f (.toURI)(.toURL)))
                    (synthesize-component {}) ) ]
         (.reg co b)
-        (info "added one block: " (.id b)) ))))
+        (info "Added one block: " (.id b)) ))))
 
 
 
@@ -299,5 +303,5 @@
 
 
 
-(def ^:private execvisor-eof nil)
+(def ^:private exec-eof nil)
 

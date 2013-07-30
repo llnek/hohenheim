@@ -83,10 +83,10 @@
               (commit this conn)
               @rc
               (catch Throwable e#
-                (do (rollback this conn) (warn e#) (throw e#)))
+                (do (rollback this conn) (warn e# "") (throw e#)))
               (finally (.close db conn))))) )
 
-      (rollback [_ conn] (CU/Guard (.rollback conn)))
+      (rollback [_ conn] (CU/Try! (.rollback conn)))
       (commit [_ conn] (.commit conn))
       (begin [_]
         (doto (.open db)

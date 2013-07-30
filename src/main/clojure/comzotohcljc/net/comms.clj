@@ -95,7 +95,7 @@
          ct (if (nil? ent) nil (.getContentType ent))
          cv (if (nil? ct) "" (SU/strim (.getValue ct)))
          cl (.toLowerCase cv) ]
-    (CU/Guard
+    (CU/Try!
       (debug "content-encoding: " (.getContentEncoding ent))
       (debug "content-type: " cv))
     (let [ bits (get-bits ent)
@@ -109,7 +109,7 @@
 
 (defn- p-error [rsp exp]
   (do
-    (CU/Guard (EntityUtils/consumeQuietly (.getEntity rsp)))
+    (CU/Try! (EntityUtils/consumeQuietly (.getEntity rsp)))
     (throw exp)) )
 
 (defn- p-redirect [rsp]

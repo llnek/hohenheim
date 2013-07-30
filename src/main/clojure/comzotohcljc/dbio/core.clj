@@ -395,7 +395,7 @@
 (defmethod table-exist? Connection
   [conn table]
   (with-local-vars [ rc false ]
-    (CU/Guard
+    (CU/Try!
       (let [ mt (.getMetaData conn)
              tbl (cond
                     (.storesUpperCaseIdentifiers mt) (.toUpperCase table)
@@ -416,7 +416,7 @@
 (defmethod row-exist? Connection
   [conn table]
   (with-local-vars [ rc false ]
-    (CU/Guard
+    (CU/Try!
       (let [ sql (str "SELECT COUNT(*) FROM  " (.toUpperCase table)) ]
         (with-open [ stmt (.createStatement conn) ]
           (with-open [ res (.executeQuery stmt sql) ]

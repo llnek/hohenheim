@@ -74,7 +74,7 @@
          c (.get tloc) ;; c == java hashmap
          m (.get c hc) ]
     (when-not (nil? m)
-      (CU/Guard (.shutdown m))
+      (CU/Try! (.shutdown m))
       (.remove c hc))))
 
 (defn- maybe-get-pool [hc jdbc options]
