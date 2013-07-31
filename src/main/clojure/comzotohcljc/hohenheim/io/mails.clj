@@ -83,12 +83,10 @@
 (def POP3S "pop3s")
 (def POP3C "pop3")
 
-(defprotocol POP3)
-
 (defn make-pop3client "" [container]
-  (make-event-emitter container ::POP3))
+  (make-event-emitter container :czc.hhh.io/POP3))
 
-(defn ioes-reify-event ::POP3
+(defn ioes-reify-event :czc.hhh.io/POP3
   [co args]
   (make-email-event co (first args)))
 
@@ -133,7 +131,7 @@
           (read-pop3 co (.getMessages fd)))))))
 
 
-(defmethod loopable-oneloop ::POP3
+(defmethod loopable-oneloop :czc.hhh.io/POP3
   [co]
   (try
       (connect-pop3 co)
@@ -155,7 +153,7 @@
     (.setAttr! co :pwd (CR/pwdify (if (SU/hgl? pwd) pwd "")) )
     co))
 
-(defmethod comp-configure ::POP3
+(defmethod comp-configure :czc.hhh.io/POP3
   [co cfg]
   (let [ demo (System/getProperty "hohenheim.demo.pop3" "") ]
     (std-config co cfg)
@@ -175,14 +173,12 @@
 (def IMAPS "imaps" )
 (def IMAP "imap" )
 
-(defprotocol IMAP)
-
 (defn make-imapclient "" [container]
-  (make-event-emitter container ::IMAP))
+  (make-event-emitter container :czc.hhh.io/IMAP))
 
-(defmethod ioes-reify-event [co & args]
+(defmethod ioes-reify-event :czc.hhh.io/IMAP
+  [co & args]
   (make-email-event co (first args)))
-
 
 (defn- connect-imap [co] (connect-pop3 co))
 
@@ -190,7 +186,7 @@
 
 (defn- scan-imap [co] (scan-pop3 co))
 
-(defmethod loopable-oneloop ::IMAP
+(defmethod loopable-oneloop :czc.hhh.io/IMAP
   [co]
   (try
       (connect-imap co)
@@ -201,7 +197,7 @@
       (closeStore co))) )
 
 
-(defmethod comp-configure ::IMAP
+(defmethod comp-configure :czc.hhh.io/IMAP
   [co cfg]
   (let [ demo (System/getProperty "hohenheim.demo.imap" "") ]
     (std-confi co cfg)
@@ -216,6 +212,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+(derive :czc.hhh.io/IMAP :czc.hhh.io/ThreadedTimer)
+(derive :czc.hhh.io/POP3 :czc.hhh.io/ThreadedTimer)
 
 
 (def ^:private mails-eof nil)

@@ -54,12 +54,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; FilePicker
 
-(defprotocol FilePicker)
-
 (defn make-filepicker [container]
-  (make-event-emitter container ::FilePicker))
+  (make-event-emitter container :czc.hhh.io/FilePicker))
 
-(defmethod ioes-reify-event ::FilePicker
+(defmethod ioes-reify-event :czc.hhh.io/FilePicker
   [co & args]
   (make-filepicker-event co (nth args 0)
                          (nth args 1)
@@ -76,7 +74,7 @@
     (.dispatch co (ioes-reify-event co fname cf action))))
 
 
-(defmethod comp-configure ::FilePicker
+(defmethod comp-configure :czc.hhh.io/FilePicker
   [co cfg]
   (let [ root (CU/subs-var (SU/nsb (:target-folder cfg)))
          dest (CU/subs-var (SU/nsb (:recv-folder cfg)))
@@ -105,7 +103,7 @@
 
     co))
 
-(defmethod comp-initialize ::FilePicker
+(defmethod comp-initialize :czc.hhh.io/FilePicker
   [co]
   (let [ obs (FileAlterationObserver.
                (.getAttr co :target)
@@ -125,7 +123,7 @@
     co))
 
 
-(defmethod loopable-wakeup ::FilePicker
+(defmethod loopable-oneloop :czc.hhh.io/FilePicker
   [co]
   (-> (.getAttr co :monitor) (.start)))
 
@@ -134,8 +132,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(derive ::FilePicker ::ThreadedTimer)
-
+(derive :czc.hhh.io/FilePicker :czc.hhh.io/ThreadedTimer)
 
 
 (def ^:private files-eof nil)

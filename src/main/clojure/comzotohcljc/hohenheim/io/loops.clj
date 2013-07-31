@@ -36,7 +36,6 @@
 
 (defmulti loopable-oneloop "" (fn [a & args] (:typeid (meta a)) ))
 (defmulti loopable-wakeup "" (fn [a & args] (:typeid (meta a)) ))
-
 (defmulti loopable-schedule "" (fn [a] (:typeid (meta a)) ))
 
 
@@ -101,29 +100,27 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Repeating Timer
 
-(defprotocol RepeatingTimer)
-
 (defn make-repeating-timer [container]
-  (make-event-emitter container ::RepeatingTimer))
+  (make-event-emitter container :czc.hhh.io/RepeatingTimer))
 
-(defmethod ioes-reify-event ::RepeatingTimer
+(defmethod ioes-reify-event :czc.hhh.io/RepeatingTimer
   [co & args]
   (make-timer-event co true))
 
-(defmethod comp-configure ::RepeatingTimer
+(defmethod comp-configure :czc.hhh.io/RepeatingTimer
   [co cfg]
   (cfg-loopable co cfg))
 
-(defmethod ioes-start ::RepeatingTimer
+(defmethod ioes-start :czc.hhh.io/RepeatingTimer
   [co]
   (start-timer co))
 
-(defmethod ioes-stop ::RepeatingTimer
+(defmethod ioes-stop :czc.hhh.io/RepeatingTimer
   [co]
   (kill-timer co)
   (ioes-stopped co))
 
-(defmethod loopable-wakeup ::RepeatingTimer
+(defmethod loopable-wakeup :czc.hhh.io/RepeatingTimer
   [co & args]
   (.dispatch co (ioes-reify-event co)))
 
@@ -137,31 +134,29 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Once Timer
 
-(defprotocol OnceTimer)
-
 (defn make-once-timer [container]
-  (make-event-emitter container ::OnceTimer))
+  (make-event-emitter container :czc.hhh.io/OnceTimer))
 
-(defmethod ioes-reify-event ::OnceTimer
+(defmethod ioes-reify-event :czc.hhh.io/OnceTimer
   [co & args]
   (make-timer-event co false))
 
-(defmethod comp-configure ::OnceTimer
+(defmethod comp-configure :czc.hhh.io/OnceTimer
   [co cfg]
   ;; get rid of interval millis field, if any
   (cfg-loopable co (dissoc cfg :interval-secs)))
 
-(defmethod ioes-start ::OnceTimer
+(defmethod ioes-start :czc.hhh.io/OnceTimer
   [co]
   (start-timer co)
   (ioes-started co))
 
-(defmethod ioes-stop ::OnceTimer
+(defmethod ioes-stop :czc.hhh.io/OnceTimer
   [co]
   (kill-timer co)
   (ioes-stopped co))
 
-(defmethod loopable-wakeup ::OnceTimer
+(defmethod loopable-wakeup :czc.hhh.io/OnceTimer
   [co & args]
   (do
     (.dispatch co (ioes-reify-event co))
@@ -170,11 +165,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Threaded Timer
 
-(defprotocol ThreadedTimer)
-
 (defmethod loopable-oneloop :default [co] nil)
 
-(defmethod loopable-wakeup ::ThreadedTimer
+(defmethod loopable-wakeup :czc.hhh.io/ThreadedTimer
   [co & args]
   (do
     (CU/TryC
@@ -182,7 +175,7 @@
     (PU/safe-wait (first args) )) )
 
 
-(defmethod ioes-start ::ThreadedTimer
+(defmethod ioes-start :czc.hhh.io/ThreadedTimer
   [co]
   (let [ ds (.getAttr co :delayMillis)
          dw (.getAttr co :delayWhen)
@@ -199,7 +192,7 @@
     (ioes-started co)))
 
 
-(defmethod ioes-stop ::ThreadedTimer
+(defmethod ioes-stop :czc.hhh.io/ThreadedTimer
   [co]
   (let [ loopy (.getAttr co :loopy) ]
     (reset! loopy false)
@@ -208,7 +201,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-
+(derive :czc.hhh.io/RepeatingTimer :czc.hhh.io/Emitter)
+(derive :czc.hhh.io/OnceTimer :czc.hhh.io/Emitter)
+(derive :czc.hhh.io/ThreadedTimer :czc.hhh.io/RepeatingTimer)
 
 
 (def ^:private loops-eof nil)

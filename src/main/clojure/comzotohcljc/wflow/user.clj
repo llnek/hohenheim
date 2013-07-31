@@ -74,7 +74,7 @@
            na (.perform w fw job) ]
       (with-local-vars [rc np]
         (when-not (nil? na)
-          (if (satisfies? Nihil na)
+          (if (= :czc.wflow/Nihil (.moniker na))
             (var-set rc (ac-reify-nihil pipe))
             (var-set rc (ac-reify na @rc))))
         @rc))))

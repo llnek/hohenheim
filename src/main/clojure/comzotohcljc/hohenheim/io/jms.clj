@@ -56,12 +56,10 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol JMSClient)
-
 (defn make-jmsclient "" [container]
-  (make-event-emitter container ::JMSClient))
+  (make-event-emitter container :czc.hhh.io/JMS))
 
-(defmethod ioes-reify-event ::JMSClient
+(defmethod ioes-reify-event :czc.hhh.io/JMS
   [co & args]
   (make-jms-event co (first args)))
 
@@ -69,7 +67,7 @@
       ;;if (msg!=null) block { () => msg.acknowledge() }
   (.dispatch co (ioes-reify-event co msg)))
 
-(defmethod comp-configure ::JMSClient
+(defmethod comp-configure :czc.hhh.io/JMS
   [co cfg]
   (do
     (.setAttr! co :contextFactory (:contextfactory cfg))
@@ -143,7 +141,7 @@
     conn))
 
 
-(def ioes-start ::JMSClient
+(def ioes-start :czc.hhh.io/JMS
   [co]
   (let [ cf (.getAttr co :contextFactory)
          pl (.getAttr co :providerUrl)
@@ -184,7 +182,7 @@
       (ioes-started co))))
 
 
-(def ioes-stop ::JMSClient
+(def ioes-stop :czc.hhh.io/JMS
   [co]
   (let [ c (.getAttr co :conn) ]
     (when-not (nil? c)
@@ -195,7 +193,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(derive ::JMSClient :comzotohcljc.hohenheim.io.core/EventEmitter)
+(derive :czc.hhh.io/JMS :czc.hhh.io/Emitter)
 
 (def ^:private jms-eof nil)
 

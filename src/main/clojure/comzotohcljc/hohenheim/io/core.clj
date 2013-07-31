@@ -24,31 +24,55 @@
 
   comzotohcljc.hohenheim.io.core )
 
+(import '(com.zotoh.hohenheim.core Disposable Startable))
+
+(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[comzotohcljc.hohenheim.core.sys])
 
 (require '[comzotohcljc.util.core :as CU])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defprotocol EmitterAPI
+  (enabled? [_] )
+  (active? [_] )
+
+  (suspend [_] )
+  (resume [_] )
+
+  (release [_ wevt] )
+  (hold [_ wevt] )
+  (dispatch [_ ev] ))
 
 (defmulti ioes-dispatch "" (fn [a & args] (:typeid (meta a))))
+(defmulti ioes-dispose "" (fn [a] (:typeid (meta a))))
 (defmulti ioes-start "" (fn [a] (:typeid (meta a))))
 (defmulti ioes-stop "" (fn [a] (:typeid (meta a))))
+(defmulti ioes-suspend "" (fn [a] (:typeid (meta a))))
+(defmulti ioes-resume "" (fn [a] (:typeid (meta a))))
 
-(defmacro make-event-emitter [container id]
-  `(with-meta (make-emitter ~container)
-     { :typeid ~id } ))
+(defmulti ioes-stopped "" (fn [a] (:typeid (meta a))))
+(defmulti ioes-started "" (fn [a] (:typeid (meta a))))
 
-(defn ioes-started [co]
+(defmethod ioes-started :default [co]
   (info "Emitter " co " started - OK"))
 
-(defn ioes-stopped [co]
+(defmethod ioes-stopped :default [co]
   (info "Emitter " co " stopped - OK"))
 
+(defmethod ioes-dispose :default [co]
+  (info "Emitter " co " disposed - OK"))
+
+(defmethod ioes-suspend :default [co]
+  (throw (Exception. "Not Implemented")))
+
+(defmethod ioes-resume :default [co]
+  (throw (Exception. "Not Implemented")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-emitter "" [container]
+(defn make-emitter "" [container id]
   (let [ impl (CU/make-mmap) ]
     (.mm-s impl :backlog (atom {}) )
     (with-meta
@@ -58,30 +82,29 @@
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
-          (parent [_] nil)
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
-          (version [_] ver)
+          (version [_] "1.0")
           (parent [_] container)
           (id [_] "")
 
         Disposable
 
-          (dispose [_] )
+          (dispose [this] (ioes-dispose this))
 
         Startable
 
-          (start [_] )
-          (stop [_] )
+          (start [this] (ioes-start this))
+          (stop [this] (ioes-stop this))
 
         EmitterAPI
 
           (enabled? [_] (if (false? (.mm-g impl :enabled)) false true ))
           (active? [_] (if (false? (.mm-g impl :active)) false true))
 
-          (suspend [_] )
-          (resume [_] )
+          (suspend [this] (ioes-suspend this))
+          (resume [this] (ioes-resume this))
 
           (release [_ wevt]
             (when-not (nil? wevt)
@@ -99,12 +122,12 @@
             (CU/TryC
                 (.notifyObservers container ev) )) )
 
-      { } )))
-
-
+      { :typeid id } )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(derive :czc.hhh.io/HTTP :czc.hhh.io/Emitter)
 
 (def ^:private core-eof nil)
 

@@ -30,21 +30,13 @@
 (import '(com.zotoh.hohenheim.core Job))
 
 (use '[comzotohcljc.util.core :only (MutableObjectAPI) ])
+(require '[comzotohcljc.wflow.activity :as ACT ])
+(require '[comzotohcljc.wflow.point :as POI ])
 
 (require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU ])
 (require '[comzotohcljc.util.meta :as MU])
 
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(defprotocol FlowPoint)
-(defprotocol Activity)
-
-(defprotocol NihilPoint)
-(defprotocol Nihil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -87,13 +79,13 @@
              (.core)) ]
 
     (cond
-      (= id :comzotohcljc.wflow.delays/DelayPoint)
+      (= id :czc.wflow/DelayPoint)
       (.delay c np (.getf fw :delayMillis))
 
-      (= id :comzotohcljc.wflow.delays/AsyncWaitPoint)
+      (= id :czc.wflow/AsyncWaitPoint)
       (.hold c np)
 
-      (= id :comzotohcljc.wflow.core/NihilPoint)
+      (= id :czc.wflow/NihilPoint)
       (.stop pipe)
 
       :else
@@ -164,70 +156,74 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmacro make-flowpoint "" [ & args ]
-  `(let [ impl# (CU/make-mmap) nid# (SN/next-long) ]
+(defn make-flowpoint "" [ id ]
+  (let [ impl (CU/make-mmap) nid (SN/next-long) ]
     (with-meta
       (reify
 
         MutableObjectAPI
 
           (seq* [_] (CU/test-cond "not implemented" false))
-          (setf! [_ k1# v1#] (.mm-s impl# k1# v1#))
-          (getf [_ k2#] (.mm-g impl# k2#))
-          (clear! [_] (.mm-c impl#))
-          (clrf! [_ k3#] (.mm-r impl# k3#))
+          (setf! [_ k v] (.mm-s impl k v))
+          (getf [_ k] (.mm-g impl k))
+          (clear! [_] (.mm-c impl))
+          (clrf! [_ k] (.mm-r impl k))
 
         RunnableWithId
-          (getId [_] nid# )
+          (getId [_] nid)
 
         Runnable
 
-          (run [me2#]
+          (run [this]
             (CU/TryC
               (debug "inside java-runnable:run()")
-              (debug "pipeline object = " (.getf me2# :pipeline))
-              (fw-run me2#)))
+              (debug "pipeline object = " (.getf this :pipeline))
+              (fw-run this)))
 
-        FlowPoint
-          ~@(filterv CU/notnil? args))
+        comzotohcljc.wflow.point.FlowPoint
+          (moniker [this] (:typeid (meta this))) )
 
-      { :typeid  ~(keyword (str *ns* "/" (last args))) } )))
+      { :typeid  id } )) )
 
-(defmacro make-activity "" [ & args ]
-  `(let [ impl# (CU/make-mmap) ]
+(defn make-activity "" [ id ]
+  (let [ impl (CU/make-mmap) ]
      (with-meta
        (reify
 
           MutableObjectAPI
 
           (seq* [_] (CU/test-cond "not implemented" false))
-          (setf! [_ k1# v1#] (.mm-s impl# k1# v1#))
-          (getf [_ k2#] (.mm-g impl# k2#))
-          (clear! [_] (.mm-c impl#))
-          (clrf! [_ k3#] (.mm-r impl# k3#))
+          (setf! [_ k v] (.mm-s impl k v))
+          (getf [_ k] (.mm-g impl k))
+          (clear! [_] (.mm-c impl))
+          (clrf! [_ k] (.mm-r impl k))
 
-          Activity
-            ~@(filterv CU/notnil? args))
+          comzotohcljc.wflow.activity.Activity
+            (moniker [this] (:typeid (meta this))) )
 
-       { :typeid  ~(keyword (str *ns* "/" (last args)))  } )) )
+       { :typeid  id } )))
 
-
-(defmacro ac-spawnpoint "" [ ac cur & args ]
-  `(let [ f# (make-flowpoint ~@args) ]
-    (fw-configure! f# ~ac ~cur)
-    (fw-realize! f#)))
+(defn ac-spawnpoint "" [ ac cur id ]
+  (let [ f (make-flowpoint id) ]
+    (fw-configure! f ac cur)
+    (fw-realize! f)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-nihil "" [] (make-activity Nihil) )
+(defn make-nihil "" [] (make-activity :czc.wflow/Nihil) )
 
 (defn ac-reify-nihil "" [pipe]
-  (let [ f (make-flowpoint NihilPoint) ]
+  (let [ f (make-flowpoint :czc.wflow/NihilPoint) ]
     (.setf! f :pipeline pipe)
     (fw-configure! f (make-nihil) f)
     (fw-realize! f)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defprotocol PipelineDelegateAPI
+  (getStart [_ pipe] )
+  (getStop [_ pipe] )
+  (getError [_ pipe error cur] ) )
 
 (defprotocol PipelineAPI
   (container [_] )
@@ -281,7 +277,7 @@
                 (try
                   (let [ a (if (fn? h) (h this))
                          f2 (cond
-                                (or (nil? a) (satisfies? Nihil a))
+                                (or (nil? a) (= :czc.wflow/Nihil (.moniker a)))
                                 (ac-reify-nihil this)
                                 :else
                                 (ac-reify a f1)) ]
@@ -289,7 +285,6 @@
                     (-> this (.container) (.core) (.run @f9))
                     (.mm-s impl :active true))
                   (catch Throwable e#
-                    (.printStackTrace e#)
                       (onError this e# @f9))))) )
 
           (job [_] theJob)
@@ -301,20 +296,63 @@
                 (when (fn? h)
                   (h this)))) ) )
 
-      { :typeid (keyword (str *ns* "/Pipeline")) } )) )
+      { :typeid :czc.wflow/Pipeline } )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- no-flow [pipe job]
-  (let [ f (fn [_] (ac-reify-nihil pipe))
+(defn make-noFlow [pipe job]
+  (let [ f (fn [_] (make-nihil))
          g (reify PipelineDelegateAPI
-             (getStart [_] f)
-             (getStop [_] nil)
-             (getError [_] nil)) ]
+             (getStart [_ pipe] f)
+             (getStop [_ pipe] nil)
+             (getError [_ pipe error cur] nil)) ]
     (make-pipeline job g)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(derive :czc.wflow/Composite  :czc.wflow/Activity)
+(derive :czc.wflow/AsyncWait  :czc.wflow/Activity)
+(derive :czc.wflow/Nihil  :czc.wflow/Activity)
+(derive :czc.wflow/PTask  :czc.wflow/Activity)
+
+(derive :czc.wflow/Block  :czc.wflow/Composite)
+(derive :czc.wflow/Split  :czc.wflow/Composite)
+
+(derive :czc.wflow/Switch  :czc.wflow/Activity)
+(derive :czc.wflow/Delay  :czc.wflow/Activity)
+
+(derive :czc.wflow/Join  :czc.wflow/Activity)
+(derive :czc.wflow/And  :czc.wflow/Join)
+(derive :czc.wflow/Or  :czc.wflow/Join)
+
+(derive :czc.wflow/Conditional  :czc.wflow/Activity)
+(derive :czc.wflow/If  :czc.wflow/Conditional)
+(derive :czc.wflow/While  :czc.wflow/Conditional)
+(derive :czc.wflow/For  :czc.wflow/While)
+
+
+
+
+(derive :czc.wflow/CompositePoint  :czc.wflow/FlowPoint)
+(derive :czc.wflow/AsyncWaitPoint  :czc.wflow/FlowPoint)
+(derive :czc.wflow/NihilPoint  :czc.wflow/FlowPoint)
+(derive :czc.wflow/PTaskPoint  :czc.wflow/FlowPoint)
+
+(derive :czc.wflow/BlockPoint  :czc.wflow/CompositePoint)
+(derive :czc.wflow/SplitPoint  :czc.wflow/CompositePoint)
+
+(derive :czc.wflow/SwitchPoint  :czc.wflow/FlowPoint)
+(derive :czc.wflow/DelayPoint  :czc.wflow/FlowPoint)
+
+(derive :czc.wflow/JoinPoint  :czc.wflow/FlowPoint)
+(derive :czc.wflow/AndPoint  :czc.wflow/JoinPoint)
+(derive :czc.wflow/OrPoint  :czc.wflow/JoinPoint)
+
+(derive :czc.wflow/ConditionalPoint  :czc.wflow/FlowPoint)
+(derive :czc.wflow/IfPoint  :czc.wflow/ConditionalPoint)
+(derive :czc.wflow/WhilePoint  :czc.wflow/ConditionalPoint)
+(derive :czc.wflow/ForPoint  :czc.wflow/WhilePoint)
 
 
 

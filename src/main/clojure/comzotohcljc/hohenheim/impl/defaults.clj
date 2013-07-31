@@ -31,6 +31,7 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[ comzotohcljc.util.core :only (MutableObjectAPI) ] )
 (use '[comzotohcljc.hohenheim.core.constants])
+(use '[comzotohcljc.hohenheim.core.sys])
 
 (require '[ comzotohcljc.util.files :as FU ] )
 (require '[ comzotohcljc.util.core :as CU ] )
@@ -90,16 +91,6 @@
    (comp-initialize c)
    c) )
 
-
-(defprotocol Component ""
-  (setCtx! [_ ctx] )
-  (getCtx [_] )
-  (setAttr! [_ a v] )
-  (clrAttr! [_ a] )
-  (getAttr [_ a] )
-  (version [_] )
-  (parent [_] )
-  (id [_] ))
 
 (defprotocol Registry ""
   (lookup [_ cid] )

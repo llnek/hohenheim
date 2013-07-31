@@ -1,24 +1,43 @@
+;;
+;; COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
+;;
+;; THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
+;; MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE
+;; VERSION 2.0 (THE "LICENSE").
+;;
+;; THIS LIBRARY IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL
+;; BUT WITHOUT ANY WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF
+;; MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+;;
+;; SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING PERMISSIONS
+;; AND LIMITATIONS UNDER THE LICENSE.
+;;
+;; You should have received a copy of the Apache License
+;; along with this distribution; if not you may obtain a copy of the
+;; License at
+;; http://www.apache.org/licenses/LICENSE-2.0
+;;
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.hohenheim.io.netty)
 
-
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.strutils :as SU])
-(require '[comzotohcljc.netty.nettyio :as NE])
-
+(require '[comzotohcljc.netty.comms :as NE])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmethod ioes-reify-event :czc.hhh.io/NettyIO
+  [co & args]
+  (make-netty-event co
+                    (nth args 0)
+                    (nth args 1)))
 
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(defmethod comp-configure ::NettyIO [co cfg]
+(defmethod comp-configure :czc.hhh.io/NettyIO
+  [co cfg]
   (let [ c (SU/nsb (:context cfg)) ]
     (.setAttr! co :contextPath (SU/strim c))
     (http-basic-config co cfg) ))
@@ -28,7 +47,7 @@
     (before-send [_ ch msg] nil)
     (onerror [_ ch msginfo exp] )
     (onreq [_ ch msginfo xdata]
-      (let [ evt (HTTPEvent. msginfo xdata)
+      (let [ evt (ioes-reify-event co msginfo xdata)
              w (AsyncWaitEvent. evt (NettyTrigger. evt ch)) ]
         (.timeoutMillis w (.getAttr co :waitMillis))
         (.hold co w)
@@ -38,7 +57,8 @@
 (defn- make-handler [co]
     (NE/make-pipelineHandler (make-service-io co)))
 
-(defmethod comp-initialize ::NettyIO [co]
+(defmethod comp-initialize :czc.hhh.io/NettyIO
+  [co]
   (let [ [bs opts] (NE/make-server-bootstrap {} )
          file (.getAttr co :serverKey)
          ssl (CU/notnil? file)
@@ -66,7 +86,8 @@
     co))
 
 
-(defmethod ioes-start ::NettyIO [co]
+(defmethod ioes-start :czc.hhh.io/NettyIO
+  [co]
   (let [ host (SU/nsb (.getAttr co :host))
          port (.getAttr co :port)
          bs (.getAttr co :netty)
@@ -80,7 +101,8 @@
     (.setAttr! co :cg cg)
     (ioes-started co)))
 
-(defmethod ioes-stop ::NettyIO [co]
+(defmethod ioes-stop :czc.hhh.io/NettyIO
+  [co]
   (let [ bs (.getAttr co :netty)
          cg (.getAttr co :cg)
          cf (.close cg) ]
@@ -92,21 +114,9 @@
     (ioes-stopped co)))
 
 
-
-
-
-
-
-
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
-
-
+(derive :czc.hhh.io/NettyIO :czc.hhh.io/HTTP)
 
 (def ^:private netty-eof nil)
 

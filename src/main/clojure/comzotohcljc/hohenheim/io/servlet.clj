@@ -32,7 +32,7 @@
   ))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.coreutils :as CU])
+(require '[comzotohcljc.util.core :as CU])
 
 
 

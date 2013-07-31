@@ -1,24 +1,60 @@
+;;
+;; COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
+;;
+;; THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
+;; MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE
+;; VERSION 2.0 (THE "LICENSE").
+;;
+;; THIS LIBRARY IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL
+;; BUT WITHOUT ANY WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF
+;; MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+;;
+;; SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING PERMISSIONS
+;; AND LIMITATIONS UNDER THE LICENSE.
+;;
+;; You should have received a copy of the Apache License
+;; along with this distribution; if not you may obtain a copy of the
+;; License at
+;; http://www.apache.org/licenses/LICENSE-2.0
+;;
 
 (ns ^{ :doc ""
        :author "kenl" }
 
   comzotohcljc.hohenheim.io.triggers )
 
+(import '(org.jboss.netty.handler.codec.http HttpResponseStatus))
+(import '(org.eclipse.jetty.continuation ContinuationSupport))
+(import '(org.eclipse.jetty.continuation Continuation))
+(import '(org.jboss.netty.channel ChannelFutureListener))
+(import '(org.jboss.netty.handler.codec.http 
+  HttpHeaders HttpVersion CookieEncoder DefaultHttpResponse))
+(import '(java.nio.channels ClosedChannelException))
 
-(require '[comzotohcljc.util.coreutils :as CU])
+(import '(org.apache.commons.io IOUtils))
+(import '(com.zotoh.frwk.io XData))
+
+(require '[comzotohcljc.util.core :as CU])
+(use '[comzotohcljc.hohenheim.io.core])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol AsyncWaitTrigger
+(defprotocol WaitEventHolder ""
+  (resumeOnResult [_ res] )
+  (timeoutMillis [_ millis] )
+  (onExpiry [_])
+  (timeoutSecs [_ secs] ) )
+
+(defprotocol AsyncWaitTrigger ""
   (resumeWithResult [_ res] )
   (resumeWithError [_] )
   (emitter [_] ))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol IOEvent
-  )
 
-(defn make-servlet-trigger [req rsp src]
+(defn make-servlet-trigger "" [req rsp src]
   (reify AsyncWaitTrigger
 
     (resumeWithResult [this res]
@@ -32,7 +68,7 @@
           (if (.hasError res)
             (.sendError rsp code (.errorMsg res))
             (let [ data (.data res)
-                   clen (if (and (isa? XData data) (.hasContent data))
+                   clen (if (and (instance? XData data) (.hasContent data))
                           (.size data)
                           0) ]
               (.setStatus rsp code)
@@ -42,21 +78,22 @@
                                    (.getOutputStream rsp)
                                    clen))))
           (catch Throwable e#
-            (error e#))
+            (error e# ""))
           (finally
             (-> (ContinuationSupport/getContinuation req)
               (.complete))) )))
 
 
     (resumeWithError [_]
-      (let [ s HTTPStatus/INTERNAL_SERVER_ERROR ]
+      (let [ s HttpResponseStatus/INTERNAL_SERVER_ERROR ]
         (try
-            (.sendError rsp (.code s) (.reasonPhrase s))
+            (.sendError rsp (.getCode s) (.getReasonPhrase s))
           (catch Throwable e#
-            (error e#))
+            (error e# ""))
           (finally
             (-> (ContinuationSupport/getContinuation req)
               (.complete)))) )) ) )
+
 
 (defn- maybeClose [evt cf]
   (when-not (.isKeepAlive evt)
@@ -64,10 +101,10 @@
       (.addListener cf ChannelFutureListener/CLOSE ))))
 
 (defn- netty-reply [ch evt res]
-  (let [ rsp (DefaultHttpResponse. HTTP_1_1
+  (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1
           (HttpResponseStatus. (.statusCode res) (.statusText res)))
          data (.data res)
-         clen (if (and (isa? XData data) (.hasContent data))
+         clen (if (and (instance? XData data) (.hasContent data))
                 (.size data)
                 0)
          cke (CookieEncoder. true)
@@ -81,7 +118,7 @@
 
     (doseq [ c (seq (.getCookies res)) ]
       (.addCookie cke c))
-    (.addHeader rsp Names/SET_COOKIE (.encode cke))
+    (.addHeader rsp HttpHeaders$Names/SET_COOKIE (.encode cke))
 
     ;; this throw NPE some times !
     (let [ cf
@@ -90,7 +127,7 @@
                 (catch ClosedChannelException e#
                   (warn "ClosedChannelException thrown: NettyTrigger @line 86")
                   nil)
-                (catch Throwable t# (error t#) nil))
+                (catch Throwable t# (error t# "") nil))
            cf2
               (try
                   (if (> clen 0)
@@ -99,7 +136,7 @@
                 (catch ClosedChannelException e#
                   (warn "ClosedChannelException thrown: NettyTrigger @line 94")
                   nil)
-                (catch Throwable t# (error t#) nil)) ]
+                (catch Throwable t# (error t# "") nil)) ]
 
         (maybeClose evt (if (nil? cf2) cf cf2))))
 
@@ -116,8 +153,7 @@
       (resumeWithResult this
         (HTTPResult. HTTPStatus/INTERNAL_SERVER_ERROR) ) )
 
-
-    ))
+    (emitter [_] src) ))
 
 
 (defn make-async-wait-holder [event]

@@ -24,99 +24,98 @@
   comzotohcljc.hohenheim.io.events )
 
 (use '[comzotohcljc.util.core :only (MutableObjectAPI) ])
+(use '[comzotohcljc.hohenheim.io.core])
 
-(import '[javax.mail MimeMessage])
-(import '[javax.jms Message])
+(import '(org.apache.commons.io IOUtils))
+(import '(javax.mail.internet MimeMessage))
+(import '(javax.jms Message))
+(import '(java.io File))
+(import '(com.zotoh.frwk.io XData))
+
+
+(require '[comzotohcljc.util.core :as CU])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmulti evt-set-session "" (fn [a b] (:typeid (meta a))))
-(defmulti evt-set-result "" (fn [a b] (:typeid (meta a))))
+(defmulti eve-set-session "" (fn [a b] (:typeid (meta a))))
+(defmulti eve-set-result "" (fn [a b] (:typeid (meta a))))
+(defmulti eve-destroy "" (fn [a] (:typeid (meta a))))
 
 (defprotocol EventObj
   (emitter [_] ))
 
-(defprotocol FileEvent )
-(defprotocol EmailEvent)
-(defprotocol JMSEvent)
-(defprotocol TimerEvent)
-(defprotocol SocketEvent)
-(defprotocol HTTPEvent)
-
-
-(defmacro make-event [id src]
-  `(let [ impl# (CU/make-mmap) ]
+(defn make-event [src id]
+  (let [ impl (CU/make-mmap) ]
     (with-meta
       (reify
 
         MutableObjectAPI
 
-          (setf! [_ k# v#] (.mm-s impl# k# v#) )
-          (seq* [_] (seq (.mm-m impl#)))
-          (getf [_ k1#] (.mm-g impl# k1#) )
-          (clrf! [_ k2#] (.mm-r impl# k2#) )
-          (clear! [_] (.mm-c impl#))
+          (setf! [_ k v] (.mm-s impl k v) )
+          (seq* [_] (seq (.mm-m impl)))
+          (getf [_ k] (.mm-g impl k) )
+          (clrf! [_ k] (.mm-r impl k) )
+          (clear! [_] (.mm-c impl))
 
         EventObj
-          (emitter [_] ~src)
-        ~id ))))
+          (emitter [_] src) )
 
-
-(defn make-filepicker-event [src ^String origFile ^File f action]
-  (let [ e (make-event FileEvent src) ]
-    (.setf! e :originalFile (File. origFile))
-    (.setf! e :file f)
-    (.setf! e :action action)
-    (with-meta e { :typeid ::FileEvent } )))
-
-(defn make-email-event [src ^MimeMessage msg]
-  (let [ e (make-event EmailEvent src) ]
-    (.setf! e :msg msg)
-    (with-meta e { :typeid ::EmailEvent } )))
-
-(defn make-jms-event [src ^Message msg]
-  (let [ e (make-event JMSEvent src) ]
-    (.setf! e :msg msg)
-    (with-meta e { :typeid ::JMSEvent } )))
-
-(defn make-timer-event [src repeating]
-  (let [ e (make-event TimerEvent src) ]
-    (.setf! e :repeating repeating)
-    (with-meta e { :typeid ::TimerEvent } )))
-
-(defn make-socket-event [src sock]
-  (let [ e (make-event SocketEvent src) ]
-    (.setf! e :socket sock)
-    (with-meta e { :typeid ::SocketEvent } )))
-
-(defn make-servlet-event [src req]
-  (let [ e (make-event HTTPEvent src) ]
-    (with-meta e { :typeid ::HTTPEvent } )))
-
-(defn make-netty-event [src msginfo]
-  (let [ e (make-event HTTPEvent src) ]
-    (with-meta e { :typeid ::HTTPEvent } )))
+      { :typeid id } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod evt-destroy ::SocketEvent [obj]
-  (let [ s (.getf obj :socket) ]
-    (.setf! obj :socket nil)
-    (when-not (nil? s) (IOUtils/closeQuietly s))))
 
-(defmethod evt-destroy ::EventObj [obj] nil)
+(defn make-filepicker-event [src ^String origFile ^File f action]
+  (let [ e (make-event src :czc.hhh.io/FileEvent) ]
+    (.setf! e :originalFile (File. origFile))
+    (.setf! e :file f)
+    (.setf! e :action action)
+    e))
 
-(defmethod evt-set-session ::EventObj [obj s]
+(defn make-email-event [src ^MimeMessage msg]
+  (let [ e (make-event src :czc.hhh.io/EmailEvent) ]
+    (.setf! e :msg msg)
+    e))
+
+(defn make-jms-event [src ^Message msg]
+  (let [ e (make-event src :czc.hhh.io/JMSEvent) ]
+    (.setf! e :msg msg)
+    e))
+
+(defn make-timer-event [src repeating]
+  (let [ e (make-event src :czc.hhh.io/TimerEvent) ]
+    (.setf! e :repeating repeating)
+    e))
+
+(defn make-socket-event [src sock]
+  (let [ e (make-event src :czc.hhh.io/SocketEvent) ]
+    (.setf! e :socket sock)
+    e))
+
+(defn make-servlet-event [src req]
+  (let [ e (make-event src :czc.hhh.io/HTTPEvent) ]
+    e))
+
+(defn make-netty-event [src msginfo ^XData xdata]
+  (let [ e (make-event src :czc.hhh.io/HTTPEvent) ]
+    e))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod eve-set-session :czc.hhh.io/EmEvent [obj s]
   (do
     (.setf obj :session s)
     obj))
 
-(defmethod evt-set-result ::EventObj [obj res]
-  (let [ s (.getf obj :session)
-         src (.getf obj :emitter)
-         weh (.getf obj :waitEventHolder) ]
+(defmethod eve-destroy :czc.hhh.io/EmEvent [obj] nil)
+
+(defmethod eve-set-result :czc.hhh.io/EmEvent [obj res]
+  (let [ weh (.getf obj :waitEventHolder)
+         s (.getf obj :session)
+         src (.getf obj :emitter) ]
     (when-not (nil? s) (.handleResult s obj res))
     (.setf! obj :result res)
     (when-not (nil? weh)
@@ -127,12 +126,19 @@
           (.release src weh))))))
 
 
+(defmethod eve-destroy :czc.hhh.io/SocketEvent [obj]
+  (let [ s (.getf obj :socket) ]
+    (.setf! obj :socket nil)
+    (when-not (nil? s) (IOUtils/closeQuietly s))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
-
+(derive :czc.hhh.io/SocketEvent :czc.hhh.io/EmEvent)
+(derive :czc.hhh.io/TimerEvent :czc.hhh.io/EmEvent)
+(derive :czc.hhh.io/JMSEvent :czc.hhh.io/EmEvent)
+(derive :czc.hhh.io/EmailEvent :czc.hhh.io/EmEvent)
+(derive :czc.hhh.io/FileEvent :czc.hhh.io/EmEvent)
+(derive :czc.hhh.io/HTTPEvent :czc.hhh.io/EmEvent)
 
 (def ^:private events-eof nil)
 

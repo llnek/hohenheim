@@ -20,6 +20,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.hohenheim.io.http )
 
 (import '(org.eclipse.jetty.server Server Connector))
@@ -32,9 +33,9 @@
 
 (use '[comzotohcljc.crypto.ssl])
 
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.strutils :as SU])
-(require '[comzotohcljc.crypto.cryptors :as CR])
+(require '[comzotohcljc.crypto.codec :as CR])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -73,17 +74,19 @@
 
 
 
-(defmethod comp-configure ::HTTP [co cfg]
+(defmethod comp-configure :czc.hhh.io/HTTP
+  [co cfg]
   (http-basic-config co cfg))
 
-
-(defmethod comp-configure ::JettyIO [co cfg]
+(defmethod comp-configure :czc.hhh.io/JettyIO
+  [co cfg]
   (let [ c (SU/nsb (:context cfg)) ]
     (.setAttr! co :contextPath (SU/strim c))
     (http-basic-config co cfg) ))
 
 
-(defmethod comp-initialize ::JettyIO [co]
+(defmethod comp-initialize :czc.hhh.io/JettyIO
+  [co]
   (let [ keyfile (.getAttr co :serverKey)
          host (.getAttr co :host)
          svr (Server.)
@@ -112,7 +115,8 @@
     co))
 
 
-(defmethod ioes-start ::JettyIO [co]
+(defmethod ioes-start :czc.hhh.io/JettyIO
+  [co]
   (let [ container (.getParent co)
          app (.getAppDir container)
          jetty (.getAttr co :jetty)
@@ -131,32 +135,19 @@
     (ioes-started co)))
 
 
-(defmethod ioes-stop ::JettyIO [co]
+(defmethod ioes-stop :czc.hhh.io/JettyIO
+  [co]
   (let [ svr (.getAttr co :jetty) ]
     (when-not (nil? svr)
-      (try
-          (.stop svr)
-        (catch Throwable e# (warn e#))))
+      (CU/TryC
+          (.stop svr) ))
     (ioes-stopped co)))
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
+(derive :czc.hhh.io/JettyIO :czc.hhh.io/HTTP)
 
 
 
