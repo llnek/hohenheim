@@ -1,12 +1,31 @@
-
+;;
+;; COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
+;;
+;; THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
+;; MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE
+;; VERSION 2.0 (THE "LICENSE").
+;;
+;; THIS LIBRARY IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL
+;; BUT WITHOUT ANY WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF
+;; MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+;;
+;; SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING PERMISSIONS
+;; AND LIMITATIONS UNDER THE LICENSE.
+;;
+;; You should have received a copy of the Apache License
+;; along with this distribution; if not you may obtain a copy of the
+;; License at
+;; http://www.apache.org/licenses/LICENSE-2.0
+;;
 
 (ns ^{ :doc ""
        :author "kenl" }
-  comzotohcljc.hohenheim.io.filepicker )
+
+  comzotohcljc.hohenheim.io.files )
 
 
-(import '(org.apache.commons.lang3. StringUtils))
 (import '(java.io. FileFilter File FilenameFilter IOException))
+(import '(org.apache.commons.lang3. StringUtils))
 (import '(java.util Properties ResourceBundle))
 (import '(org.apache.commons.io.filefilter ))
 (import '(org.apache.commons.io. FileUtils))
@@ -16,36 +35,56 @@
  FileAlterationMonitor
  FileAlterationObserver))
 
+
+(use '[comzotohcljc.hohenheim.io.loops])
+(use '[comzotohcljc.hohenheim.io.core])
+
+(use '[comzotohcljc.util.core :as CU])
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (def FP_CREATED :FP-CREATED )
 (def FP_CHANGED :FP-CHANGED )
 (def FP_DELETED :FP-DELETED )
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; FilePicker
 
-    ;;tlog().debug("{} : {} was {}" , "FilePicker", f, action)
+(defprotocol FilePicker)
+
+(defn make-filepicker [container]
+  (make-event-emitter container ::FilePicker))
+
+(defmethod ioes-reify-event ::FilePicker
+  [co & args]
+  (make-filepicker-event co (nth args 0)
+                         (nth args 1)
+                         (nth args 2) ))
+
 (defn- postPoll [f action]
   (let [ des (.getAttr co :dest)
          fname (.getName f)
          cf  (if (and (not= action :FP-DELETED) (CU/notnil? des))
-                (try
+                (CU/TryC
                     (FileUtils/moveFileToDirectory f des false)
-                    (File. des fname)
-                  (catch Throwable e# (warn e#) nil))
+                    (File. des fname) )
                 f) ]
-    (.dispatch co nil);;FILEEvent(this, fn, cf, action))
-    ))
+    (.dispatch co (ioes-reify-event co fname cf action))))
 
 
-(defmethod comp-configure ::FilePicker [co cfg]
+(defmethod comp-configure ::FilePicker
+  [co cfg]
   (let [ root (CU/subs-var (SU/nsb (:target-folder cfg)))
          dest (CU/subs-var (SU/nsb (:recv-folder cfg)))
          mask (SU/nsb (:fmask cfg)) ]
     (cfg-loopable co cfg)
     (CU/test-nestr "file-root-folder" root)
     (.setAttr! co :target (doto (File. root) (.mkdirs)))
-    (.setAttr! co :mask 
+    (.setAttr! co :mask
       (cond
         (.startsWith mask "*.")
         (SuffixFileFilter. (.substring mask 1))
@@ -66,7 +105,8 @@
 
     co))
 
-(defmethod comp-initialize ::FilePicker [co]
+(defmethod comp-initialize ::FilePicker
+  [co]
   (let [ obs (FileAlterationObserver.
                (.getAttr co :target)
                (.getAttr co :mask))
@@ -85,7 +125,8 @@
     co))
 
 
-(defmethod loopable-wakeup ::FilePicker [co]
+(defmethod loopable-wakeup ::FilePicker
+  [co]
   (-> (.getAttr co :monitor) (.start)))
 
 
@@ -93,8 +134,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+(derive ::FilePicker ::ThreadedTimer)
 
 
 
-(def ^:private filepicker-eof nil)
+(def ^:private files-eof nil)
 

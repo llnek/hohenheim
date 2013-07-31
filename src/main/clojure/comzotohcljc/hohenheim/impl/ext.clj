@@ -20,29 +20,85 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
-  comzotohcljc.hohenheim.impl.container )
+
+  comzotohcljc.hohenheim.impl.ext )
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
 (import '(java.io File))
-(import '(com.zotoh.hohenheim.core ServiceError))
+(import '(com.zotoh.hohenheim.core ServiceError Job))
+
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
 (use '[comzotohcljc.hohenheim.core.constants])
 (use '[comzotohcljc.hohenheim.impl.defaults])
-(use '[comzotohcljc.hohenheim.impl.jobcreator])
-(use '[comzotohcljc.hohenheim.impl.scheduler])
+(use '[comzotohcljc.hohenheim.etc.misc])
 
-(require '[ comzotohcljc.util.coreutils :as CU ] )
-(require '[ comzotohcljc.util.strutils :as SU ] )
-(require '[ comzotohcljc.util.metautils :as MU ] )
-(require '[ comzotohcljc.util.procutils :as PU ] )
+(use '[comzotohcljc.util.core :only (MutableObjectAPI) ] )
+(use '[comzotohcljc.wflow.core])
+(use '[comzotohcljc.wflow.user])
+
+(require '[ comzotohcljc.util.scheduler :as SC])
+(require '[ comzotohcljc.util.process :as PU ] )
+(require '[ comzotohcljc.util.core :as CU ] )
+(require '[ comzotohcljc.util.str :as SU ] )
+(require '[ comzotohcljc.util.meta :as MU ] )
 
 (require '[clojure.data.json :as JS])
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Job-Creator
+
+(defn- make-job "" [container evt]
+  (let [ impl (CU/make-mmap)
+         jid (SN/next-long) ]
+    (with-meta
+      (reify
+
+        MutableObjectAPI
+
+          (setf! [_ k v] (.mm-s impl k v))
+          (clear! [_] (.mm-c impl))
+          (seq* [_] (seq (.mm-m impl)))
+          (getf [_ k] (.mm-g impl k))
+          (clrf! [_ k] (.mm-r impl k))
+
+        Job
+
+          (parent [_] container)
+          (event [_] evt)
+          (id [_] jid))
+
+      { :typeid (keyword (str *ns* "/Job")) } )))
+
+(defprotocol ^:private JobCreatorAPI
+  (update [_ event options] ))
+
+(defn- make-jobcreator "" [parObj]
+  (let [ impl (CU/make-mmap) ]
+    (with-meta
+      (reify
+
+        JobCreatorAPI
+
+          (update [_ evt options]
+            (let [ cz (if (.hasRouter evt)
+                        (.routerClass evt)
+                        (:router-class options))
+                   job (make-job parObj evt) ]
+              (try
+                (let [ p (WC/make-pipeline job cz)
+                       q (if (nil? p) (make-OrphanFlow job) p) ]
+                  (.start q))
+                (catch Throwable e#
+                  (-> (make-FatalErrorFlow job) (.start)))))))
+
+      { :typeid (keyword (str *ns* "/JobCreator")) } )))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Container
 
 (defprotocol ContainerAPI ""
   (reifyOneService [_ sid cfg] )
@@ -54,11 +110,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- make-service-block [bk container cfg]
-  (let [ cz (.id bk)
-         obj (MU/make-obj cz) ]
+  (let [ obj (MU/make-obj (.id bk)) ]
     (synthesize-component obj { :ctx container :props cfg } )
     obj))
-
 
 (defn- make-app-container [pod]
   (let [ impl (CU/make-mmap) ]
@@ -109,10 +163,9 @@
                    bk (.lookup bks (keyword svc)) ]
               (when (nil? bk)
                 (throw (ServiceError. (str "No such Service: " svc "."))))
-              (make-service-block bk this cfg)))
-        )
+              (make-service-block bk this cfg))) )
 
-    { :typeid :Container } )) )
+    { :typeid (keyword (str *ns* "/Container")) } )) )
 
 (defn make-container [pod]
   (let [ c (make-app-container pod)
@@ -133,7 +186,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod comp-configure :Container [co props]
+(defmethod comp-configure :comzotohcljc.hohenheim.impl.ext/Container
+  [co props]
   (let [ appDir (K_APPDIR props)
          cfgDir (File. appDir DN_CONF)
          srg (make-component-registry :EventSources K_SVCS "1.0" co)
@@ -158,14 +212,15 @@
     (info "container: configured app: " (.id co))))
 
 
-(defmethod comp-initialize :Container [co]
+(defmethod comp-initialize :comzotohcljc.hohenheim.impl.ext/Container
+  [co]
   (let [ env (.getAttr co K_ENVCONF)
          app (.getAttr co K_APPCONF)
          mf (.getAttr co K_MFPROPS)
          mCZ (SU/strim (.get mf "Main-Class"))
          reg (.getAttr co K_SVCS)
          jc (make-jobcreator co)
-         sc (make-scheduler co)
+         sc (SC/make-scheduler co)
          cfg (:container env) ]
 
     (.setAttr! co K_SCHEDULER sc)
@@ -203,5 +258,5 @@
 
 
 
-(def ^:private container-eof nil)
+(def ^:private ext-eof nil)
 

@@ -51,7 +51,7 @@
 
 (defmacro TryC
   [ & exprs ]
-  `(try (do ~@exprs) (catch Throwable e# (warn e# "") )) )
+  `(try (do ~@exprs) (catch Throwable e# (warn e# "") nil )) )
 
 (defmacro Try!
   [ & exprs ]

@@ -229,12 +229,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol PipelineDelegateAPI
-  "External User implementation interface."
-  (getStart [_] ) ;; (fn [pipe] return Activity )
-  (getStop [_] ) ;; (fn [pipe] return nil)
-  (getError [_] )) ;; (fn [pipe error current] return next-flow? )
-
 (defprotocol PipelineAPI
   (container [_] )
   (isActive [_] )

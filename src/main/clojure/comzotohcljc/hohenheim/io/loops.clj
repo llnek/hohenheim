@@ -21,22 +21,23 @@
 
 (ns { :doc ""
       :author "kenl" }
-  comzotohcljc.hohenheim.io.loopers )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.dateutils :as DU])
+  comzotohcljc.hohenheim.io.loops )
+
 (import '(java.util Date Timer TimerTask))
 
+
+(use '[clojure.tools.logging :only (info warn error debug)])
+(require '[comzotohcljc.util.dates :as DU])
 (use '[comzotohcljc.hohenheim.io.core])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+(defmulti loopable-oneloop "" (fn [a & args] (:typeid (meta a)) ))
+(defmulti loopable-wakeup "" (fn [a & args] (:typeid (meta a)) ))
+
 (defmulti loopable-schedule "" (fn [a] (:typeid (meta a)) ))
-
-(defmulti loopable-wakeup "" (fn [a] (:typeid (meta a)) ))
-
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45,20 +46,18 @@
 (defn- config-repeat-timer [tm dw ds intv func]
   (let [ tt (proxy [TimerTask][]
               (run [_]
-                (try
-                    (when (fn? func) (func))
-                  (catch Throwable e# (warn e#))))) ]
-    (when (isa? Date dw)
+                (CU/TryC
+                    (when (fn? func) (func))))) ]
+    (when (instance? Date dw)
       (.schedule tm tt (cast Date dw) intv) )
     (when (number? ds)
       (.schedule tm tt ds intv))) )
-
 
 (defn- config-timer [tm dw ds func]
   (let [ tt (proxy [TimerTask][]
               (run [_]
                 (when (fn? func) (func)))) ]
-    (when (isa? Date dw)
+    (when (instance? Date dw)
       (.schedule tm tt (cast Date dw)) )
     (when (number? ds)
       (.schedule tm tt ds))) )
@@ -96,25 +95,37 @@
 
 (defn- kill-timer [co]
   (let [ t (.getAttr co :timer) ]
-    (try
-        (when-not (nil? t) (.cancel t))
-      (catch Throwable e# (warn e#))) ))
+    (CU/TryC
+        (when-not (nil? t) (.cancel t)) )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Repeating Timer
 
-(defmethod comp-configure :RepeatingTimer [co cfg]
+(defprotocol RepeatingTimer)
+
+(defn make-repeating-timer [container]
+  (make-event-emitter container ::RepeatingTimer))
+
+(defmethod ioes-reify-event ::RepeatingTimer
+  [co & args]
+  (make-timer-event co true))
+
+(defmethod comp-configure ::RepeatingTimer
+  [co cfg]
   (cfg-loopable co cfg))
 
-(defmethod ioes-start :RepeatingTimer [co]
+(defmethod ioes-start ::RepeatingTimer
+  [co]
   (start-timer co))
 
-(defmethod ioes-stop :RepeatingTimer [co]
+(defmethod ioes-stop ::RepeatingTimer
+  [co]
   (kill-timer co)
   (ioes-stopped co))
 
-(defmethod loopable-wakeup :RepeatingTimer [co]
-  (.dispatch co (make-event :TimerEvent)))
+(defmethod loopable-wakeup ::RepeatingTimer
+  [co & args]
+  (.dispatch co (ioes-reify-event co)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -126,52 +137,70 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Once Timer
 
-(defmethod comp-configure :OnceTimer [co cfg]
+(defprotocol OnceTimer)
+
+(defn make-once-timer [container]
+  (make-event-emitter container ::OnceTimer))
+
+(defmethod ioes-reify-event ::OnceTimer
+  [co & args]
+  (make-timer-event co false))
+
+(defmethod comp-configure ::OnceTimer
+  [co cfg]
   ;; get rid of interval millis field, if any
   (cfg-loopable co (dissoc cfg :interval-secs)))
 
-(defmethod ioes-start :OnceTimer [co]
+(defmethod ioes-start ::OnceTimer
+  [co]
   (start-timer co)
   (ioes-started co))
 
-(defmethod ioes-stop :OnceTimer [co]
+(defmethod ioes-stop ::OnceTimer
+  [co]
   (kill-timer co)
   (ioes-stopped co))
 
-(defmethod loopable-wakeup :OnceTimer [co]
+(defmethod loopable-wakeup ::OnceTimer
+  [co & args]
   (do
-    (.dispatch co (make-event :TimerEvent))
+    (.dispatch co (ioes-reify-event co))
     (.stop co)) )
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Threaded Timer
 
-(defn- do-one-loop [intv]
-  (do
-    (try
-        (nil)
-      (catch Throwable e# (warn e#)))
-    (PU/safe-wait intv)) )
+(defprotocol ThreadedTimer)
 
-(defmethod ioes-start :ThreadedTimer [co]
+(defmethod loopable-oneloop :default [co] nil)
+
+(defmethod loopable-wakeup ::ThreadedTimer
+  [co & args]
+  (do
+    (CU/TryC
+        (loopable-oneloop co) )
+    (PU/safe-wait (first args) )) )
+
+
+(defmethod ioes-start ::ThreadedTimer
+  [co]
   (let [ ds (.getAttr co :delayMillis)
          dw (.getAttr co :delayWhen)
          intv (.getAttr co :intervalMillis)
          loopy (atom true)
          func (fn []
                 (PU/coroutine (fn []
-                                (while @loopy (do-one-loop intv))))) ]
-    (if (or (number? ds) (isa? Date dw))
+                                (while @loopy (loopable-wakeup co intv))))) ]
+    (.setAttr! co :loopy loopy)
+    (if (or (number? ds) (instance? Date dw))
       (let [ func (fn [] ) ]
         (config-timer (Timer.) dw ds func))
       (func))
-    (.setAttr! co :loopy loopy)
     (ioes-started co)))
 
 
-(defmethod ioes-stop :ThreadedTimer [co]
+(defmethod ioes-stop ::ThreadedTimer
+  [co]
   (let [ loopy (.getAttr co :loopy) ]
     (reset! loopy false)
     (ioes-stopped co)))
@@ -182,6 +211,6 @@
 
 
 
-(def ^:private loopers-eof nil)
+(def ^:private loops-eof nil)
 
 

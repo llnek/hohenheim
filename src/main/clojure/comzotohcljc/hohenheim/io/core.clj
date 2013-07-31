@@ -25,25 +25,32 @@
   comzotohcljc.hohenheim.io.core )
 
 
-(require '[comzotohcljc.util.coreutils :as CU])
+(require '[comzotohcljc.util.core :as CU])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+(defmulti ioes-dispatch "" (fn [a & args] (:typeid (meta a))))
 (defmulti ioes-start "" (fn [a] (:typeid (meta a))))
 (defmulti ioes-stop "" (fn [a] (:typeid (meta a))))
 
+(defmacro make-event-emitter [container id]
+  `(with-meta (make-emitter ~container)
+     { :typeid ~id } ))
+
+(defn ioes-started [co]
+  (info "Emitter " co " started - OK"))
+
+(defn ioes-stopped [co]
+  (info "Emitter " co " stopped - OK"))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (defn make-emitter "" [container]
-  (let [ ;;chg (AtomicBoolean.)
-         impl (CU/make-mmap) ]
-
-    (.mm-s impl :backlog {} )
+  (let [ impl (CU/make-mmap) ]
+    (.mm-s impl :backlog (atom {}) )
     (with-meta
       (reify
 
@@ -70,49 +77,29 @@
 
         EmitterAPI
 
-          (enabled? [_] (true? (.mm-g impl :enabled)) )
-          (active? [_] (true? (.mm-g impl :active)) )
-          ;;(setChanged! [_ b] (.set chg b) )
+          (enabled? [_] (if (false? (.mm-g impl :enabled)) false true ))
+          (active? [_] (if (false? (.mm-g impl :active)) false true))
 
           (suspend [_] )
           (resume [_] )
 
           (release [_ wevt]
             (when-not (nil? wevt)
-              (let [ b (.mm-g impl :backlog) ]
-                (.mm-s impl :backlog (dissoc b (.id wevt))))))
+              (let [ b (.mm-g impl :backlog)
+                     wid (.id wevt) ]
+                (swap! b dissoc wid))))
 
           (hold [_ wevt]
             (when-not (nil? wevt)
-              (let [ b (.mm-g impl :backlog) ]
-                (.mm-s impl :backlog (assoc b (.id wevt) wevt)))))
+              (let [ b (.mm-g impl :backlog)
+                     wid (.id wevt) ]
+                (swap! b assoc wid wevt))))
 
           (dispatch [this ev]
-            (try
-                ;;(setChanged! this true)
-                (.notifyObservers container ev)
-              (catch Throwable e#
-                (error e#))))
+            (CU/TryC
+                (.notifyObservers container ev) )) )
 
-
-        )
-
-      { :typeid xxx } )))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      { } )))
 
 
 

@@ -31,7 +31,7 @@
   ))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.coreutils :as CU])
+(require '[comzotohcljc.util.core :as CU])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -49,10 +49,8 @@
                   (.getContextPath x)
                   nil) ]
     (debug "WEBContextListener: contextInitialized()")
-    (try
-        (inizAsJ2EE x (SU/nsb ctx))
-      (catch Throwable e#
-        (error e#))) ))
+    (CU/TryC
+        (inizAsJ2EE x (SU/nsb ctx)) ) ))
 
 (defn -contextDestroyed [this e]
   (let [ state (.myState this)

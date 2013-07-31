@@ -1,12 +1,32 @@
+;;
+;; COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
+;;
+;; THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
+;; MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE
+;; VERSION 2.0 (THE "LICENSE").
+;;
+;; THIS LIBRARY IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL
+;; BUT WITHOUT ANY WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF
+;; MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+;;
+;; SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING PERMISSIONS
+;; AND LIMITATIONS UNDER THE LICENSE.
+;;
+;; You should have received a copy of the Apache License
+;; along with this distribution; if not you may obtain a copy of the
+;; License at
+;; http://www.apache.org/licenses/LICENSE-2.0
+;;
 
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.jmsclient )
+  comzotohcljc.hohenheim.io.jms)
 
 
 (import '(org.apache.commons.lang3 StringUtils))
-(import '(java.util Hashtable Properties ResourceBundle))
+(import '(java.util
+  Hashtable Properties ResourceBundle))
 (import '(javax.jms Connection
   ConnectionFactory
   Destination
@@ -27,22 +47,30 @@
 (import '(javax.naming Context InitialContext))
 (import '(java.io IOException))
 
-(require '[comzotohcljc.crypto.cryptors :as CR])
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.strutils :as SU])
+(require '[comzotohcljc.crypto.codec :as CR])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
 
+(use '[comzotohcljc.hohenheim.io.core])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- onMessage [co msg]
-  (try
-      (.dispatch co nil) ;; (JMSEvent this msg)
-      ;;if (msg!=null) block { () => msg.acknowledge() }
-    (catch Throwable e#
-      (error e#))))
+(defprotocol JMSClient)
 
-(defmethod comp-configure ::JMSClient [co cfg]
+(defn make-jmsclient "" [container]
+  (make-event-emitter container ::JMSClient))
+
+(defmethod ioes-reify-event ::JMSClient
+  [co & args]
+  (make-jms-event co (first args)))
+
+(defn- onMessage [co msg]
+      ;;if (msg!=null) block { () => msg.acknowledge() }
+  (.dispatch co (ioes-reify-event co msg)))
+
+(defmethod comp-configure ::JMSClient
+  [co cfg]
   (do
     (.setAttr! co :contextFactory (:contextfactory cfg))
     (.setAttr! co :connFactory (:connfactory cfg))
@@ -55,9 +83,6 @@
     (.setAttr! co :destination (:destination cfg))
     co))
 
-
-
-
 (defn- inizFac [co ctx ^ConnectionFactory cf]
   (let [ des (.getAttr co :destination)
          c (.lookup ctx des)
@@ -67,7 +92,7 @@
                 (.createConnection cf ju (if (SU/hgl? jp) jp nil))
                 (.createConnection cf)) ]
 
-    (if (isa? Destination c)
+    (if (instance? Destination c)
       ;;TODO ? ack always ?
       (->
         (.createSession conn false Session/CLIENT_ACKNOWLEDGE)
@@ -88,7 +113,7 @@
          s (.createTopicSession conn false Session/CLIENT_ACKNOWLEDGE)
          t (.lookup ctx des) ]
 
-    (when-not (isa? Topic t)
+    (when-not (instance? Topic t)
       (throw (IOException. "Object not of Topic type.")))
 
     (-> (if (.getAttr co :durable)
@@ -109,16 +134,17 @@
          s (.createQueueSession conn false Session/CLIENT_ACKNOWLEDGE)
          q (.lookup ctx des) ]
 
-    (when-not (isa? QueueConnectionFactory q)
+    (when-not (instance? QueueConnectionFactory q)
       (throw (IOException. "Object not of Queue type.")))
 
     (-> (.createReceivers s q)
         (.setMessageListener (reify MessageListener
               (onMessage [_ m] (onMessage co m)))))
-    co))
+    conn))
 
 
-(def ioes-start ::JMSClient [co]
+(def ioes-start ::JMSClient
+  [co]
   (let [ cf (.getAttr co :contextFactory)
          pl (.getAttr co :providerUrl)
          ju (.getAttr co :jndiUser)
@@ -139,13 +165,13 @@
     (let [ obj (-> (InitialContext. vars)
                    (.lookup (.getAttr co :connFactory)) )
            c (cond
-               (isa? QueueConnectionFactory obj)
+               (instance? QueueConnectionFactory obj)
                (inizQueue co ctx obj)
 
-               (isa? TopicConnectionFactory obj)
+               (instance? TopicConnectionFactory obj)
                (inizTopic co ctx obj)
 
-               (isa? ConnectionFactory obj)
+               (instance? ConnectionFactory obj)
                (inizFac co ctx obj)
 
                :else
@@ -158,7 +184,8 @@
       (ioes-started co))))
 
 
-(def ioes-stop ::JMSClient [co]
+(def ioes-stop ::JMSClient
+  [co]
   (let [ c (.getAttr co :conn) ]
     (when-not (nil? c)
       (CU/TryC (.close c)))
@@ -166,33 +193,9 @@
     (ioes-stopped co)))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(derive ::JMSClient :comzotohcljc.hohenheim.io.core/EventEmitter)
 
-
-
-
-(def ^:private jmsclient-eof nil)
+(def ^:private jms-eof nil)
 

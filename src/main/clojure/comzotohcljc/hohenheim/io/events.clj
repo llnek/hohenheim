@@ -1,17 +1,38 @@
+;;
+;; COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
+;;
+;; THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
+;; MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE
+;; VERSION 2.0 (THE "LICENSE").
+;;
+;; THIS LIBRARY IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL
+;; BUT WITHOUT ANY WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF
+;; MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+;;
+;; SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING PERMISSIONS
+;; AND LIMITATIONS UNDER THE LICENSE.
+;;
+;; You should have received a copy of the Apache License
+;; along with this distribution; if not you may obtain a copy of the
+;; License at
+;; http://www.apache.org/licenses/LICENSE-2.0
+;;
+
 (ns ^{ :doc ""
        :author "kenl" }
 
   comzotohcljc.hohenheim.io.events )
 
-(use '[comzotohcljc.util.coreutils :only (MutableObjectAPI) ])
+(use '[comzotohcljc.util.core :only (MutableObjectAPI) ])
+
 (import '[javax.mail MimeMessage])
 (import '[javax.jms Message])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmulti evt-set-session (fn [a b] (:typeid (meta a))))
-(defmulti evt-set-result (fn [a b] (:typeid (meta a))))
+(defmulti evt-set-session "" (fn [a b] (:typeid (meta a))))
+(defmulti evt-set-result "" (fn [a b] (:typeid (meta a))))
 
 (defprotocol EventObj
   (emitter [_] ))
@@ -42,7 +63,7 @@
         ~id ))))
 
 
-(defn make-file-event [src ^String origFile ^File f action]
+(defn make-filepicker-event [src ^String origFile ^File f action]
   (let [ e (make-event FileEvent src) ]
     (.setf! e :originalFile (File. origFile))
     (.setf! e :file f)
@@ -59,9 +80,9 @@
     (.setf! e :msg msg)
     (with-meta e { :typeid ::JMSEvent } )))
 
-(defn make-timer-event [src single]
+(defn make-timer-event [src repeating]
   (let [ e (make-event TimerEvent src) ]
-    (.setf! e :repeating (not single))
+    (.setf! e :repeating repeating)
     (with-meta e { :typeid ::TimerEvent } )))
 
 (defn make-socket-event [src sock]

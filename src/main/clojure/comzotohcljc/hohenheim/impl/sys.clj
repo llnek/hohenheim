@@ -21,12 +21,11 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.impl.kernel )
+  comzotohcljc.hohenheim.impl.sys )
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
 (import '(com.zotoh.hohenheim.core AppClassLoader))
 (import '(java.io File))
-
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hohenheim.core.constants])
@@ -42,6 +41,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defprotocol DeployerAPI ""
+  (undeploy [_ app]
+    "clean out the app from the work-dir." )
+  (deploy [_ src]
+    "deploy the pod to target work-dir." ))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defprotocol PODMetaAPI ""
   (typeof [_ ])
   (srcUrl [_ ]))
@@ -51,6 +58,69 @@
   (stop [_] ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Deployer
+
+(defn make-deployer "" []
+  (let [ impl (CU/make-mmap) ]
+    (with-meta
+      (reify
+
+        Component
+
+          (setAttr! [_ a v] (.mm-s impl a v) )
+          (clrAttr! [_ a] (.mm-r impl a) )
+          (getAttr [_ a] (.mm-g impl a) )
+          (setCtx! [_ x] (.mm-s impl :ctx x) )
+          (getCtx [_] (.mm-g impl :ctx) )
+          (version [_] "1.0" )
+          (parent [_] nil)
+          (id [_] K_DEPLOYER )
+
+        DeployerAPI
+
+          (deploy [this src]
+            (let [ app (FilenameUtils/getBaseName (CU/nice-fpath src))
+                   ctx (.getCtx this)
+                   des (File. (.getf ctx K_PLAYDIR) app)
+                   pod (File. (.toURI src)) ]
+              (if (not (.exists des))
+                (FU/unzip pod des)
+                (info "app: " app " has already been deployed."))))
+
+          (undeploy [this app]
+            (let [ ctx (.getCtx this)
+                   dir (File. (.getf ctx K_PLAYDIR) app) ]
+              (if (.exists dir)
+                (do
+                  (FileUtils/deleteDirectory dir)
+                  (info "app: " app " has been undeployed."))
+                (warn "cannot undeploy app: " app
+                      ", doesn't exist - no operation taken.")))) )
+
+      { :typeid (keyword (str *ns* "/Deployer")) } )))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod comp-contextualize :comzotohcljc.hohenheim.impl.sys/Deployer
+  [co ctx]
+  (do
+    (precondDir (maybeDir ctx K_BASEDIR))
+    (precondDir (maybeDir ctx K_PODSDIR))
+    (precondDir (maybeDir ctx K_PLAYDIR))
+    (comp-clone-context co ctx)))
+
+(defmethod comp-initialize :comzotohcljc.hohenheim.impl.sys/Deployer
+  [co]
+  (let [ ctx (.getCtx co)
+         py (.getf ctx K_PLAYDIR)
+         pd (.getf ctx K_PODSDIR)
+         fs (FileUtils/listFiles pd (into-array String ["pod"]) false) ]
+    (doseq [f (seq fs)]
+      (.deploy co (-> f (.toURI)(.toURL))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Kernel
 
 (defn- maybe-start-pod [knl pod]
   (CU/TryC
@@ -135,7 +205,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod comp-initialize :comzotohcljc.hohenheim.impl.kernel/PODMeta
+(defmethod comp-initialize :comzotohcljc.hohenheim.impl.sys/PODMeta
   [co]
   (let [ ctx (.getCtx co)
          rcl (.getf ctx K_ROOT_CZLR)
@@ -143,12 +213,12 @@
     (.configure cl (CU/nice-fpath (File. (.toURI (.srcUrl co)))) )
     (.setf! ctx K_APP_CZLR cl)))
 
-(defmethod comp-compose :comzotohcljc.hohenheim.impl.kernel/Kernel
+(defmethod comp-compose :comzotohcljc.hohenheim.impl.sys/Kernel
   [co rego]
   ;; get the jmx server from root
   co)
 
-(defmethod comp-contextualize :comzotohcljc.hohenheim.impl.kernel/Kernel
+(defmethod comp-contextualize :comzotohcljc.hohenheim.impl.sys/Kernel
   [co ctx]
   (let [ base (maybeDir ctx K_BASEDIR) ]
     (precondDir base)
@@ -181,5 +251,5 @@
 
 
 
-(def ^:private kernel-eof nil)
+(def ^:private sys-eof nil)
 
