@@ -23,12 +23,21 @@
 
   comzotohcljc.hohenheim.io.mails )
 
+(import '(java.util Properties))
+(import '(javax.mail 
+  Flags Flags$Flag Folder
+  Session Provider Provider$Type))
+(import '(java.io IOException))
+
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(require '[comzotohcljc.crypto.codec :CR])
-(require '[comzotohcljc.crypto.core :CU])
-(require '[comzotohcljc.crypto.str :SU])
+(require '[comzotohcljc.crypto.codec :as CR])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
 
+(use '[comzotohcljc.hohenheim.core.sys])
+
+(use '[comzotohcljc.hohenheim.io.events :only (make-email-event) ])
 (use '[comzotohcljc.hohenheim.io.loops ])
 (use '[comzotohcljc.hohenheim.io.core ])
 
@@ -56,7 +65,7 @@
 (defn- resolve-provider [co ssl2 std2 demo mock]
   (let [ [pkey sn] (if (.getAttr co :ssl) ssl2 std2)
          props (doto (Properties.)
-                     (.put props "mail.store.protocol" sn) )
+                     (.put  "mail.store.protocol" sn) )
          session (Session/getInstance props nil)
          ps (.getProviders session) ]
     (with-local-vars [proto sn sun nil]
@@ -84,9 +93,9 @@
 (def POP3C "pop3")
 
 (defn make-pop3client "" [container]
-  (make-event-emitter container :czc.hhh.io/POP3))
+  (make-emitter container :czc.hhh.io/POP3))
 
-(defn ioes-reify-event :czc.hhh.io/POP3
+(defmethod ioes-reify-event :czc.hhh.io/POP3
   [co args]
   (make-email-event co (first args)))
 
@@ -116,7 +125,7 @@
         (doto mm (.getAllHeaders)(.getContent))
         (.dispatch co (ioes-reify-event co mm))
       (finally
-        (when delmsg
+        (when (.getAttr co :deleteMsg)
           (.setFlag mm Flags$Flag/DELETED true))))))
 
 (defn- scan-pop3 [co]
@@ -174,7 +183,7 @@
 (def IMAP "imap" )
 
 (defn make-imapclient "" [container]
-  (make-event-emitter container :czc.hhh.io/IMAP))
+  (make-emitter container :czc.hhh.io/IMAP))
 
 (defmethod ioes-reify-event :czc.hhh.io/IMAP
   [co & args]
@@ -200,7 +209,7 @@
 (defmethod comp-configure :czc.hhh.io/IMAP
   [co cfg]
   (let [ demo (System/getProperty "hohenheim.demo.imap" "") ]
-    (std-confi co cfg)
+    (std-config co cfg)
     (resolve-provider co
                       (if (.getAttr co :ssl)
                           [ST_IMAPS IMAPS]

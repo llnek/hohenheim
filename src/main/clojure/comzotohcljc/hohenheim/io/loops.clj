@@ -19,8 +19,8 @@
 ;;
 
 
-(ns { :doc ""
-      :author "kenl" }
+(ns ^{ :doc ""
+       :author "kenl" }
 
   comzotohcljc.hohenheim.io.loops )
 
@@ -28,13 +28,22 @@
 
 
 (use '[clojure.tools.logging :only (info warn error debug)])
+
+(require '[comzotohcljc.util.process :as PU])
 (require '[comzotohcljc.util.dates :as DU])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
+
+(use '[comzotohcljc.hohenheim.io.events  :only (make-timer-event) ])
+
+(use '[comzotohcljc.hohenheim.core.sys])
 (use '[comzotohcljc.hohenheim.io.core])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmulti loopable-oneloop "" (fn [a & args] (:typeid (meta a)) ))
+(defmulti loopable-oneloop "" (fn [a] (:typeid (meta a)) ))
 (defmulti loopable-wakeup "" (fn [a & args] (:typeid (meta a)) ))
 (defmulti loopable-schedule "" (fn [a] (:typeid (meta a)) ))
 
@@ -70,8 +79,8 @@
          func (fn [] (loopable-wakeup co)) ]
     (if (number? intv)
       (config-repeat-timer t dw ds intv func)
-      (config-timer t dw ds func)
-    co)) )
+      (config-timer t dw ds func))
+    co))
 
 
 (defn cfg-loopable [co cfg]
@@ -101,7 +110,7 @@
 ;; Repeating Timer
 
 (defn make-repeating-timer [container]
-  (make-event-emitter container :czc.hhh.io/RepeatingTimer))
+  (make-emitter container :czc.hhh.io/RepeatingTimer))
 
 (defmethod ioes-reify-event :czc.hhh.io/RepeatingTimer
   [co & args]
@@ -113,7 +122,8 @@
 
 (defmethod ioes-start :czc.hhh.io/RepeatingTimer
   [co]
-  (start-timer co))
+  (start-timer co)
+  (ioes-started co))
 
 (defmethod ioes-stop :czc.hhh.io/RepeatingTimer
   [co]
@@ -135,7 +145,7 @@
 ;; Once Timer
 
 (defn make-once-timer [container]
-  (make-event-emitter container :czc.hhh.io/OnceTimer))
+  (make-emitter container :czc.hhh.io/OnceTimer))
 
 (defmethod ioes-reify-event :czc.hhh.io/OnceTimer
   [co & args]
@@ -165,7 +175,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Threaded Timer
 
-(defmethod loopable-oneloop :default [co] nil)
+;;(defmethod loopable-oneloop :default [co] nil)
 
 (defmethod loopable-wakeup :czc.hhh.io/ThreadedTimer
   [co & args]
@@ -186,8 +196,7 @@
                                 (while @loopy (loopable-wakeup co intv))))) ]
     (.setAttr! co :loopy loopy)
     (if (or (number? ds) (instance? Date dw))
-      (let [ func (fn [] ) ]
-        (config-timer (Timer.) dw ds func))
+      (config-timer (Timer.) dw ds func)
       (func))
     (ioes-started co)))
 

@@ -69,8 +69,27 @@
 (def ^:dynamic  *WP_FTP* "FTP")
 (def ^:dynamic  *WP_FILE* "FILE")
 
+(defprotocol NetResult
+  (hasError? [_] ) )
 
-(defrecord HTTPResult [^String content-type ^String encoding ^long content-length ^XData body])
+(defprotocol HTTPResultAPI
+  (getStatus [_] )
+  (getCookies [_] )
+  (getData [_] )
+  (getHeaders [_] ) )
+
+(defn http-response [status]
+  (let [ impl (CU/make-mmap) ]
+    (reify HTTPResultAPI
+      (getStatus [_] status)
+      (getCookies [_] )
+      (getData [_] (.mm-g impl :data))
+      (getHeaders [_] )
+
+      NetResult
+        (hasError? [_] ) )))
+
+
 
 (defrecord HTTPMsgInfo [^String protocol ^String method ^String uri
                         is-chunked keep-alive
@@ -100,7 +119,9 @@
       (debug "content-type: " cv))
     (let [ bits (get-bits ent)
            clen (if (nil? bits) 0 (alength bits)) ]
-      (HTTPResult. (SU/nsb cv) (MM/get-charset cv) clen (XData. bits) ))))
+      { :content-type (SU/nsb cv)
+        :encoding (MM/get-charset cv)
+        :data (if (= clen 0) nil (XData. bits)) } )))
     ;;(cond
       ;;(or (.startsWith cl "text/")
           ;;(.startsWith cl "application/xml")
@@ -246,25 +267,25 @@
   [agentLine]
   (let [ line (SU/strim agentLine) ]
     (cond
-      (and (SU/embeds? line "Windows") (SU/embeds? line "Trident/")) 
+      (and (SU/embeds? line "Windows") (SU/embeds? line "Trident/"))
       (parse-ie line)
 
       (and (SU/embeds? line "AppleWebKit/")(SU/embeds? line "Safari/")
-        (SU/embeds? line "Chrome/")) 
+        (SU/embeds? line "Chrome/"))
       (parse-chrome line)
 
       (and (SU/embeds? line "AppleWebKit/") (SU/embeds? line "Safari/")
-        (SU/embeds? line "Android")) 
+        (SU/embeds? line "Android"))
       (parse-android line)
 
       (and (SU/embeds? line "AppleWebKit/")(SU/embeds? line "Safari/")
-      (SU/embeds? line "Silk/")) 
+      (SU/embeds? line "Silk/"))
       (parse-kindle line)
 
-      (and (SU/embeds? line "Safari/")(SU/embeds? line "Mac OS X")) 
+      (and (SU/embeds? line "Safari/")(SU/embeds? line "Mac OS X"))
       (parse-safari)
 
-      (and (SU/embeds? line "Gecko/")(SU/embeds? line "Firefox/")) 
+      (and (SU/embeds? line "Gecko/")(SU/embeds? line "Firefox/"))
       (parse-ffox)
 
       :else

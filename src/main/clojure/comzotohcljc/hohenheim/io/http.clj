@@ -37,6 +37,9 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
+(use '[comzotohcljc.hohenheim.core.sys])
+(use '[comzotohcljc.hohenheim.io.core])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -119,8 +122,9 @@
   [co]
   (let [ container (.getParent co)
          app (.getAppDir container)
+         wid (.getAttr co :servlet-id)
          jetty (.getAttr co :jetty)
-         webapp (JettyUtils/newWebAppContext WEBSERVLET_DEVID obj)
+         webapp (JettyUtils/newWebAppContext wid obj)
          logDir (-> (File. app WEB_LOG)(.toURI)(.toURL)(.toString))
          resBase (-> app (.toURI)(.toURL)(.toString)) ]
     ;; static resources are based from resBase, regardless of context

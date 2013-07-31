@@ -73,31 +73,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmulti comp-contextualize "" (fn [a ctx] (class a)))
-
-(defmulti comp-compose "" (fn [a rego] (class a)))
-
-(defmulti comp-configure "" (fn [a options] (class a)))
-
-(defmulti comp-initialize "" class)
-
-(defn synthesize-component "" [c options]
-  (let [ rego (:rego options)
-         ctx (:ctx options)
-         props (:props options) ]
-   (when-not (nil? rego) (comp-compose c rego))
-   (when-not (nil? ctx) (comp-contextualize c ctx))
-   (when-not (nil? props) (comp-configure c props))
-   (comp-initialize c)
-   c) )
-
-
-(defprotocol Registry ""
-  (lookup [_ cid] )
-  (has? [_ cid] )
-  (seq* [_] )
-  (reg [_ c] )
-  (dereg [_ c] ))
 
 
 (defn make-context "" []

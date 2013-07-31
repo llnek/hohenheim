@@ -23,6 +23,8 @@
 
   comzotohcljc.hohenheim.io.events )
 
+(use '[clojure.tools.logging :only (info warn error debug)])
+
 (use '[comzotohcljc.util.core :only (MutableObjectAPI) ])
 (use '[comzotohcljc.hohenheim.io.core])
 
@@ -102,6 +104,12 @@
 (defn make-netty-event [src msginfo ^XData xdata]
   (let [ e (make-event src :czc.hhh.io/HTTPEvent) ]
     e))
+
+(defn eve-unbind [ev]
+  (.setf! ev :waitHolder nil))
+
+(defn eve-bind [ev obj]
+  (.setf! ev :waitHolder obj))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

@@ -24,11 +24,16 @@
   comzotohcljc.hohenheim.io.files )
 
 
-(import '(java.io. FileFilter File FilenameFilter IOException))
-(import '(org.apache.commons.lang3. StringUtils))
+(import '(java.io FileFilter File FilenameFilter IOException))
+(import '(org.apache.commons.lang3 StringUtils))
 (import '(java.util Properties ResourceBundle))
-(import '(org.apache.commons.io.filefilter ))
-(import '(org.apache.commons.io. FileUtils))
+(import '(org.apache.commons.io.filefilter
+  SuffixFileFilter
+  PrefixFileFilter
+  RegexFileFilter
+  FileFileFilter))
+
+(import '(org.apache.commons.io FileUtils))
 (import '(org.apache.commons.io.monitor
  FileAlterationListener
  FileAlterationListenerAdaptor
@@ -36,10 +41,15 @@
  FileAlterationObserver))
 
 
-(use '[comzotohcljc.hohenheim.io.loops])
+(use '[comzotohcljc.hohenheim.core.sys :rename { seq* rego-seq* has? rego-has? } ])
+(use '[clojure.tools.logging :only (info warn error debug)])
+
+(use '[comzotohcljc.hohenheim.io.loops :only (loopable-oneloop cfg-loopable) ])
+(use '[comzotohcljc.hohenheim.io.events :only (make-filepicker-event) ])
 (use '[comzotohcljc.hohenheim.io.core])
 
 (use '[comzotohcljc.util.core :as CU])
+(use '[comzotohcljc.util.str :as SU])
 
 
 
@@ -55,7 +65,7 @@
 ;; FilePicker
 
 (defn make-filepicker [container]
-  (make-event-emitter container :czc.hhh.io/FilePicker))
+  (make-emitter container :czc.hhh.io/FilePicker))
 
 (defmethod ioes-reify-event :czc.hhh.io/FilePicker
   [co & args]
@@ -63,7 +73,7 @@
                          (nth args 1)
                          (nth args 2) ))
 
-(defn- postPoll [f action]
+(defn- postPoll [co f action]
   (let [ des (.getAttr co :dest)
          fname (.getName f)
          cf  (if (and (not= action :FP-DELETED) (CU/notnil? des))

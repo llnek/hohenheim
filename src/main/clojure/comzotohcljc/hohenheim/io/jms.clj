@@ -51,13 +51,15 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
+(use '[comzotohcljc.hohenheim.io.events :only (make-jms-event) ])
+(use '[comzotohcljc.hohenheim.core.sys])
 (use '[comzotohcljc.hohenheim.io.core])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn make-jmsclient "" [container]
-  (make-event-emitter container :czc.hhh.io/JMS))
+  (make-emitter container :czc.hhh.io/JMS))
 
 (defmethod ioes-reify-event :czc.hhh.io/JMS
   [co & args]
@@ -118,7 +120,7 @@
           (.createDurableSubscriber s t (CU/uid))
           (.createSubscriber s t))
       (.setMessageListener (reify MessageListener
-                              (onMessage [_ m] (.onMessage x m))) ))
+                              (onMessage [_ m] (.onMessage co m))) ))
     conn))
 
 
@@ -141,7 +143,7 @@
     conn))
 
 
-(def ioes-start :czc.hhh.io/JMS
+(defmethod ioes-start :czc.hhh.io/JMS
   [co]
   (let [ cf (.getAttr co :contextFactory)
          pl (.getAttr co :providerUrl)
@@ -160,8 +162,8 @@
       (when (SU/hgl? jp)
         (.put vars "jndi.password" jp)))
 
-    (let [ obj (-> (InitialContext. vars)
-                   (.lookup (.getAttr co :connFactory)) )
+    (let [ ctx (InitialContext. vars)
+           obj (.lookup ctx (.getAttr co :connFactory))
            c (cond
                (instance? QueueConnectionFactory obj)
                (inizQueue co ctx obj)
@@ -182,7 +184,7 @@
       (ioes-started co))))
 
 
-(def ioes-stop :czc.hhh.io/JMS
+(defmethod ioes-stop :czc.hhh.io/JMS
   [co]
   (let [ c (.getAttr co :conn) ]
     (when-not (nil? c)

@@ -47,6 +47,8 @@
 
 (defmulti ioes-dispatch "" (fn [a & args] (:typeid (meta a))))
 (defmulti ioes-dispose "" (fn [a] (:typeid (meta a))))
+(defmulti ioes-reify-event "" (fn [a & args] (:typeid (meta a))))
+
 (defmulti ioes-start "" (fn [a] (:typeid (meta a))))
 (defmulti ioes-stop "" (fn [a] (:typeid (meta a))))
 (defmulti ioes-suspend "" (fn [a] (:typeid (meta a))))
@@ -54,6 +56,7 @@
 
 (defmulti ioes-stopped "" (fn [a] (:typeid (meta a))))
 (defmulti ioes-started "" (fn [a] (:typeid (meta a))))
+
 
 (defmethod ioes-started :default [co]
   (info "Emitter " co " started - OK"))

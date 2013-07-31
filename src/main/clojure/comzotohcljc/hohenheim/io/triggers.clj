@@ -23,18 +23,25 @@
 
   comzotohcljc.hohenheim.io.triggers )
 
+(use '[clojure.tools.logging :only (info warn error debug)])
+
 (import '(org.jboss.netty.handler.codec.http HttpResponseStatus))
 (import '(org.eclipse.jetty.continuation ContinuationSupport))
 (import '(org.eclipse.jetty.continuation Continuation))
 (import '(org.jboss.netty.channel ChannelFutureListener))
 (import '(org.jboss.netty.handler.codec.http 
-  HttpHeaders HttpVersion CookieEncoder DefaultHttpResponse))
+  HttpHeaders HttpHeaders$Names HttpVersion CookieEncoder DefaultHttpResponse))
 (import '(java.nio.channels ClosedChannelException))
+(import '(org.jboss.netty.handler.stream ChunkedStream))
+(import '(java.util Timer TimerTask))
 
 (import '(org.apache.commons.io IOUtils))
 (import '(com.zotoh.frwk.io XData))
 
+(require '[comzotohcljc.net.comms :as NU])
 (require '[comzotohcljc.util.core :as CU])
+
+(use '[comzotohcljc.hohenheim.io.events :rename { emitter evt-emitter } ])
 (use '[comzotohcljc.hohenheim.io.core])
 
 
@@ -101,14 +108,13 @@
       (.addListener cf ChannelFutureListener/CLOSE ))))
 
 (defn- netty-reply [ch evt res]
-  (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1
-          (HttpResponseStatus. (.statusCode res) (.statusText res)))
-         data (.data res)
+  (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1 (.getStatus res))
+         data (.getData res)
          clen (if (and (instance? XData data) (.hasContent data))
                 (.size data)
                 0)
          cke (CookieEncoder. true)
-         hdrs (.headers res) ]
+         hdrs (.getHeaders res) ]
 
     (doseq [[n v] (seq hdrs)]
       (when-not (= "content-length" (.toLowerCase n))
@@ -138,25 +144,24 @@
                   nil)
                 (catch Throwable t# (error t# "") nil)) ]
 
-        (maybeClose evt (if (nil? cf2) cf cf2))))
+        (maybeClose evt (if (nil? cf2) cf cf2)))) )
 
 
 (defn make-netty-trigger [ch evt src]
   (reify AsyncWaitTrigger
 
     (resumeWithResult [_ res]
-      (try
-        (netty-reply ch evt res)
-        (catch Throwable e# (error e#))))
+      (CU/TryC
+        (netty-reply ch evt res) ))
 
     (resumeWithError [this]
       (resumeWithResult this
-        (HTTPResult. HTTPStatus/INTERNAL_SERVER_ERROR) ) )
+        (NU/http-response HttpResponseStatus/INTERNAL_SERVER_ERROR) ) )
 
     (emitter [_] src) ))
 
 
-(defn make-async-wait-holder [event]
+(defn make-async-wait-holder [event trigger]
   (let [ impl (CU/make-mmap) ]
     (reify WaitEventHolder
 
@@ -165,14 +170,14 @@
           (when-not (nil? tm) (.cancel tm))
           (-> (.emitter event) (.release this))
           (.mm-s impl :result res)
+          (eve-unbind event)
           (.resumeWithResult trigger res)
-          ;;event=nil
           ))
 
       (timeoutMillis [this millis]
         (let [ tm (Timer. true) ]
           (.mm-s impl :timer tm)
-          (.bind event this)
+          (eve-bind event this)
           (.schedule tm (proxy [TimerTask][]
             (run [_] (onExpiry this))) millis)))
 
@@ -181,9 +186,9 @@
       (onExpiry [this]
         (do
           (-> (.emitter event) (.release this))
-          (.resumeWithError trigger)
           (.mm-s impl :timer nil)
-          ;; event=nil
+          (eve-unbind event)
+          (.resumeWithError trigger)
           ))
 
       )))
