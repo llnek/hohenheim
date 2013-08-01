@@ -1,12 +1,6 @@
 #!/bin/bash
 
-splash2() {
-  echo "hohenheim!"
-}
-
-#font= crawford
-splash() {
-  echo ""
+splash_crawford() {
   echo " __ __   ___   __ __    ___  ____   __ __    ___  ____  ___ ___ "
   echo "|  T  T /   \ |  T  T  /  _]|    \ |  T  T  /  _]l    j|   T   T"
   echo "|  l  |Y     Y|  l  | /  [_ |  _  Y|  l  | /  [_  |  T | _   _ |"
@@ -14,6 +8,28 @@ splash() {
   echo "|  |  ||     ||  |  ||   [_ |  |  ||  |  ||   [_  |  | |   |   |"
   echo "|  |  |l     !|  |  ||     T|  |  ||  |  ||     T j  l |   |   |"
   echo "l__j__j \___/ l__j__jl_____jl__j__jl__j__jl_____j|____jl___j___j"
+}
+
+splash_crawford2() {
+  echo " __ __   ___   __ __    ___  ____   __ __    ___  ____  ___ ___ "
+  echo "|  |  | /   \ |  |  |  /  _]|    \ |  |  |  /  _]|    ||   |   |"
+  echo "|  |  ||     ||  |  | /  [_ |  _  ||  |  | /  [_  |  | | _   _ |"
+  echo "|  _  ||  O  ||  _  ||    _]|  |  ||  _  ||    _] |  | |  \_/  |"
+  echo "|  |  ||     ||  |  ||   [_ |  |  ||  |  ||   [_  |  | |   |   |"
+  echo "|  |  ||     ||  |  ||     ||  |  ||  |  ||     | |  | |   |   |"
+  echo "|__|__| \___/ |__|__||_____||__|__||__|__||_____||____||___|___|"
+}
+
+splash_bubble() {
+  echo "   _   _   _   _   _   _   _   _   _"
+  echo "  / \ / \ / \ / \ / \ / \ / \ / \ / \ "
+  echo " ( H | o | h | e | n | h | e | i | m )"
+  echo "  \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/"
+}
+
+splash() {
+  echo ""
+  splash_crawford2
   echo ""
   echo -n "Version: "
   cat $HOHENHEIM_HOME/VERSION
@@ -62,7 +78,7 @@ DBGOPTS=
 BG=false
 
 VMXRGS=" -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m"
-CLDR=" -Djava.system.class.loader=com.zotoh.hohenheim.core.ExecClassLoader"
+CLDR=" -Djava.system.class.loader=com.zotoh.hohenheim.loaders.ExecClassLoader"
 MAINCZ=comzotohcljc.hohenheim.etc.core
 
 LIBP="-Djava.library.path=$HOHENHEIM_HOME/bin"
@@ -138,6 +154,7 @@ else
 fi
 cd $CWD
 exit 0
+
 
 
 

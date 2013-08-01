@@ -19,6 +19,12 @@
     </sequential>
   </macrodef>
 
+  <path id="scala.path.id">
+    <fileset dir="${scala.lib.dir}"/>
+  </path>
+
+  <taskdef name="scalac" classname="scala.tools.ant.Scalac" classpathref="scala.path.id"/>
+
   <path id="clojure.path.id">
     <fileset dir="${clojure.dir}"/>
   </path>

@@ -28,7 +28,7 @@ set LIBP=-Djava.library.path=$HOHENHEIM_HOME/bin
 
 set JPROF=-agentpath:/Applications/jprofiler7/bin/macos/libjprofilerti.jnilib=port=8849
 set VMXRGS=-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m
-set CLDR=-Djava.system.class.loader=com.zotoh.hohenheim.core.ExecClassLoader
+set CLDR=-Djava.system.class.loader=com.zotoh.hohenheim.loaders.ExecClassLoader
 set MAINCZ=comzotohcljc.hohenheim.etc.core
 
 if NOT EXIST %L4JFILE% SET LOGREF=
@@ -116,14 +116,13 @@ echo Please set JAVA_HOME
 
 
 :splash
-  echo
   echo  __ __   ___   __ __    ___  ____   __ __    ___  ____  ___ ___ 
-  echo |  T  T /   \ |  T  T  /  _]|    \ |  T  T  /  _]l    j|   T   T
-  echo |  l  |Y     Y|  l  | /  [_ |  _  Y|  l  | /  [_  |  T | _   _ |
-  echo |  _  ||  O  ||  _  |Y    _]|  |  ||  _  |Y    _] |  | |  \_/  |
+  echo |  |  | /   \ |  |  |  /  _]|    \ |  |  |  /  _]|    ||   |   |
+  echo |  |  ||     ||  |  | /  [_ |  _  ||  |  | /  [_  |  | | _   _ |
+  echo |  _  ||  O  ||  _  ||    _]|  |  ||  _  ||    _] |  | |  \_/  |
   echo |  |  ||     ||  |  ||   [_ |  |  ||  |  ||   [_  |  | |   |   |
-  echo |  |  |l     !|  |  ||     T|  |  ||  |  ||     T j  l |   |   |
-  echo l__j__j \___/ l__j__jl_____jl__j__jl__j__jl_____j|____jl___j___j
+  echo |  |  ||     ||  |  ||     ||  |  ||  |  ||     | |  | |   |   |
+  echo |__|__| \___/ |__|__||_____||__|__||__|__||_____||____||___|___|
   echo
 goto runcmd
 

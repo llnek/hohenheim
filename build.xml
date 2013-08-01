@@ -11,6 +11,8 @@
 
   <path id="compile.path.id">
     <fileset dir="${lib.dir}/libjar" />
+    <fileset dir="${distrib.dir}" />
+    <fileset dir="${scala.lib.dir}"/>
     <fileset dir="${clojure.dir}"/>
     <path location="${build.dir}" />
     <path location="${src.dir}/clojure" />
@@ -18,10 +20,13 @@
 
   <path id="test.path.id">
     <fileset dir="${lib.dir}/test" />
+    <fileset dir="${scala.lib.dir}"/>
     <fileset dir="${clojure.dir}" />
+    <fileset dir="${distrib.dir}" />
     <path location="${build.dir}" />
     <path location="${build.test.dir}" />
   </path>
+
 
   <!--
        compile source code
@@ -61,7 +66,7 @@
       <arg value="comzotohcljc.crypto.stores" />
       <arg value="comzotohcljc.net.comms" />
       <arg value="comzotohcljc.netty.comms" />
-      <!--
+
       <arg value="comzotohcljc.dbio.core" />
       <arg value="comzotohcljc.dbio.sqlserver" />
       <arg value="comzotohcljc.dbio.h2" />
@@ -106,17 +111,46 @@
       <arg value="comzotohcljc.wflow.delays" />
       <arg value="comzotohcljc.wflow.user" />
 
-      -->
     </java>
   </target>
 
   <target name="compile_and_jar">
+
+    <!-- build the classloaders -->
+
+    <scalac srcdir="${src.dir}/scala" destdir="${build.dir}" classpathref="compile.path.id"
+      fork="true" jvmargs="-Xmx5120M -Xms1024M">
+      <include name="com/zotoh/hohenheim/loaders/**/*.scala"/>
+    </scalac>
+    <jar destfile="${distrib.dir}/${PID}-spec-${build.version}.jar" >
+      <fileset dir="${build.dir}">
+      </fileset>
+    </jar>
+
+    <delete dir="${build.dir}"/>
+    <mkdir dir="${build.dir}"/>
+
+    <!-- build java + scala stuff -->
+
     <antcall target="compile_java" />
+
+    <scalac srcdir="${src.dir}/scala" destdir="${build.dir}" classpathref="compile.path.id"
+      fork="true" jvmargs="-Xmx5120M -Xms1024M">
+      <exclude name="**/loaders/*.scala"/>
+      <include name="**/*.scala"/>
+    </scalac>
+
     <antcall target="compile_clj" />
+
     <!-- copy over other resources -->
+
     <copy todir="${build.dir}">
       <fileset dir="${src.dir}/java">
         <exclude name="**/*.java"/>
+        <exclude name="**/.svn"/>
+      </fileset>
+      <fileset dir="${src.dir}/scala">
+        <exclude name="**/*.scala"/>
         <exclude name="**/.svn"/>
       </fileset>
       <fileset dir="${src.dir}/clojure">
@@ -124,6 +158,7 @@
         <exclude name="**/.svn"/>
       </fileset>
     </copy>
+
     <jar destfile="${distrib.dir}/${PID}-${build.version}.jar" >
       <fileset dir="${build.dir}">
         <exclude name="**/log4j.properties"/>
@@ -139,7 +174,7 @@
   <target name="compile_test_code" >
     <mkdir dir="${report.test.dir}"/>
     <mkdir dir="${build.test.dir}"/>
-
+    <!-- TODO: do the test stuff here -->
     <copy todir="${build.test.dir}">
       <fileset dir="${test.dir}/clojure">
         <exclude name="**/log4j.properties"/>
@@ -159,7 +194,7 @@
        -->
 
   <target name="run_test_code" >
-
+    <echo message="No test to run."/>
   </target>
 
 
@@ -196,6 +231,12 @@
   <target name="pack_all_dist">
     <copy todir="${pack.dir}/dist">
       <fileset dir="${distrib.dir}">
+        <exclude name="*-spec-*.jar"/>
+      </fileset>
+    </copy>
+    <copy todir="${pack.dir}/boot">
+      <fileset dir="${distrib.dir}">
+        <include name="*-spec-*.jar"/>
       </fileset>
     </copy>
   </target>
@@ -248,6 +289,9 @@
   <target name="pack_source_code" >
     <copy todir="${pack.dir}/docs/src/main/clojure">
       <fileset dir="${src.dir}/clojure" />
+    </copy>
+    <copy todir="${pack.dir}/docs/src/main/scala">
+      <fileset dir="${src.dir}/scala" />
     </copy>
     <copy todir="${pack.dir}/docs/src/main/java">
       <fileset dir="${src.dir}/java" />

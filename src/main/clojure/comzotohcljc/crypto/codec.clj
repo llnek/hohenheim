@@ -18,7 +18,8 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns ^{ :doc "" 
+
+(ns ^{ :doc ""
        :author "kenl" }
 
   comzotohcljc.crypto.codec)
