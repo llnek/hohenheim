@@ -37,6 +37,8 @@
 (require '[comzotohcljc.util.meta :as MU])
 (require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.cmdline :as CQ])
+(require '[comzotohcljc.crypto.codec :as CE])
+(require '[comzotohcljc.crypto.core :as CC])
 
 (use '[comzotohcljc.hohenheim.core.constants])
 
@@ -88,7 +90,7 @@
          ps (CQ/cli-converse {"domain" q1 "app" q2} "domain") ]
     [ (CU/notnil? ps) ps ] ))
 
-(defn- onCreateApp [args options]
+(defn- onCreateApp [options & args]
   (let [ cb (fn [t ps] (runTargetExtra t ps)) ]
     (if (> (count args) 1)
       (case (nth args 1)
@@ -97,33 +99,33 @@
         (throw (CmdHelpError.)))
       (apply cb "create-app" options))))
 
-(defn- onCreate [args]
+(defn- onCreate [ & args]
   (if (< (count args) 1)
     (throw (CmdHelpError.))
     (let [ [ok x] (onCreatePrompt) ]
       (when ok
         (when (or (SU/nichts? (:app-domain x)) (SU/nichts? (:app-id x)))
           (throw (CmdHelpError.)))
-        (onCreateApp args x)))))
+        (apply onCreateApp x args)))))
 
-(defn- onBuild [args]
+(defn- onBuild [ & args]
   (if (>= (count args) 2)
     (runTargetExtra "build-app"
         { :app-id (nth args 1)
           :app-task (if (> (count args) 2) (nth args 2) "devmode") } )
     (throw (CmdHelpError.))))
 
-(defn- onPodify [args]
+(defn- onPodify [ & args]
   (if (> (count args) 1)
     (runTargetExtra "bundle-app" { :app-id (nth args 1) :app-task "release" })
     (throw (CmdHelpError.))))
 
-(defn- onTest [args]
+(defn- onTest [ & args]
   (if (> (count args) 1)
     (runTargetExtra "test-code" { :app-id (nth args 1) })
     (throw (CmdHelpError.))))
 
-(defn- onStart [args]
+(defn- onStart [ & args]
   (let [ s2 (if (> (count args) 1) (nth args 1) "") ]
     (cond
       (and (= s2 "bg") (CU/is-windows?))
@@ -132,11 +134,11 @@
       :else
       (CLI/start-main (CU/nice-fpath (getHomeDir))))))
 
-(defn- onDebug [args]
+(defn- onDebug [ & args]
   ;;runTarget( if (isWindows() ) "run-dbg-app-w32" else "run-dbg-app-nix")
   (onStart args))
 
-(defn- onDemo [args]
+(defn- onDemo [ & args]
   (if (> (count args) 1)
     (let [ s (nth args 1) ]
       (if (= "samples" s)
@@ -148,7 +150,7 @@
 (defn- keyfile [] nil)
 (defn- csrfile [] nil)
 
-(defn- onGenerate [args]
+(defn- onGenerate [ & args]
   (if (> (count args) 1)
     (case (nth args 1)
       "password" (generatePassword)
@@ -157,30 +159,39 @@
       (throw (CmdHelpError.)))
     (throw (CmdHelpError.))))
 
-(defn- encrypt [a b] nil)
+(defn- encrypt [a b]
+  (let [ c (CE/jasypt-cryptor)
+         s (.encrypt c (CE/pwdify a) b) ]
+    (println (str "CRYPT:" s))))
 
-(defn- onEncrypt [args]
+(defn- onEncrypt [ & args]
   (if (> (count args) 2)
     (encrypt  (nth args 1) (nth args 2))
     (throw (CmdHelpError.))))
 
-(defn- decrypt [a b] nil)
+(defn- decrypt [a b]
+  (let [ c (CE/jasypt-cryptor)
+         s (.decrypt c (CE/pwdify a) b) ]
+    (println (str "CRYPT:" s))))
 
-(defn- onDecrypt [args]
+
+(defn- onDecrypt [ & args]
   (if (> (count args) 2)
     (decrypt (nth args 1) (nth args 2))
     (throw (CmdHelpError.))))
 
-(defn- onTestJCE [args]
-  )
+(defn- onTestJCE [ & args]
+  (do
+    (CC/assert-jce)
+    (println "JCE is OK.")))
 
-(defn- onVersion [args]
+(defn- onVersion [ & args]
   (let [ s (FileUtils/readFileToString (File. (getHomeDir) "VERSION") "utf-8") ]
     (if (SU/hgl? s)
       (println s)
       (println "Unknown version."))))
 
-(defn- onHelp [args]
+(defn- onHelp [ & args]
   (throw (CmdHelpError.)))
 
 (defn- scanJars [dir out]
@@ -251,7 +262,7 @@
                *HOHENHEIM-RSBUNDLE* rcb]
       (apply v args))))
 
-(defn get-commands "" [] (keys _ARGS))
+(defn get-commands "" [] (set (keys _ARGS)))
 
 
 

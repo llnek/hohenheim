@@ -83,7 +83,7 @@
     (CU/test-cond (str "Cannot access Hohenheim home " h) (FU/dir-read? h))
       (if (not (contains? (CL/get-commands) (keyword (nth args 1))))
         false
-        (fn [] (CL/eval-command h rcb (drop 1 args))))))
+        (fn [] (apply CL/eval-command h rcb (drop 1 args))))))
 
 
 (defn -main "Main Entry" [& args]
@@ -93,7 +93,7 @@
          rcb (LU/get-resource rcpath (Locale/getDefault)) ]
     (if (< (count args) 2)
       (usage)
-      (let [ rc (parseArgs rcb args) ]
+      (let [ rc (apply parseArgs rcb args) ]
         (if (fn? rc)
           (rc)
           (usage))))))
