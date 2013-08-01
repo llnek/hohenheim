@@ -24,7 +24,12 @@
 
   comzotohcljc.hohenheim.etc.misc )
 
+(import '(org.jboss.netty.handler.codec.http HttpResponseStatus))
+(import '(com.zotoh.wflow.core FlowError))
+
+(require '[comzotohcljc.net.comms :as NC])
 (use '[comzotohcljc.wflow.core])
+(use '[comzotohcljc.wflow.user])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Internal flows
@@ -35,26 +40,26 @@
       (fn [fw job arg]
         (let [ ev (.event job) ]
           (cond
-            (satisfies? HttpEventAPI ev)
-            (.setResult ev (doto (make-http-result) (.setStatus s)))
+            (= :czc.hhh.io/HTTPEvent (:typeid (meta ev)))
+            (.setResult ev (NC/http-response s))
             :else
             (throw (FlowError.  (str "Unhandled event-type \"" (type ev) "\".")))))))))
 
 (deftype FatalErrorFlow [] PipelineDelegateAPI
-  (getStart [_] (make-internal-flow HTTPStatus/INTERNAL_SERVER_ERROR))
-  (getStop [_] nil)
-  (getError [_] nil))
+  (getStart [_ pipe] (make-internal-flow HttpResponseStatus/INTERNAL_SERVER_ERROR))
+  (getStop [_ pipe ] nil)
+  (getError [_ pipe error cur] nil))
 
 (deftype OrphanFlow [] PipelineDelegateAPI
-  (getStart [_] (make-internal-flow HTTPStatus/NOT_IMPLEMENTED))
-  (getStop [_] nil)
-  (getError [_] nil))
+  (getStart [_ pipe] (make-internal-flow HttpResponseStatus/NOT_IMPLEMENTED))
+  (getStop [_ pipe] nil)
+  (getError [_ pipe error cur] nil))
 
 
-(defn- make-FatalErrorFlow [job]
+(defn make-FatalErrorFlow [job]
   (make-pipeline job "comzotohcljc.hohenheim.etc.misc.FatalErrorFlow"))
 
-(defn- make-OrphahFlow [job]
+(defn make-OrphanFlow [job]
   (make-pipeline job "comzotohcljc.hohenheim.etc.misc.OrphanFlow"))
 
 

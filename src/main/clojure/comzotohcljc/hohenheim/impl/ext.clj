@@ -33,6 +33,7 @@
 (use '[comzotohcljc.hohenheim.core.constants])
 (use '[comzotohcljc.hohenheim.impl.defaults])
 (use '[comzotohcljc.hohenheim.etc.misc])
+(use '[comzotohcljc.hohenheim.core.sys])
 
 (use '[comzotohcljc.util.core :only (MutableObjectAPI) ] )
 (use '[comzotohcljc.wflow.core])
@@ -41,6 +42,7 @@
 (require '[ comzotohcljc.util.scheduler :as SC])
 (require '[ comzotohcljc.util.process :as PU ] )
 (require '[ comzotohcljc.util.core :as CU ] )
+(require '[ comzotohcljc.util.seqnum :as SN ] )
 (require '[ comzotohcljc.util.str :as SU ] )
 (require '[ comzotohcljc.util.meta :as MU ] )
 
@@ -49,6 +51,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Job-Creator
+
+(defprotocol AppMainAPI
+  (contextualize [_ container] )
+  (configure [_ options] )
+  (initialize [_] )
+  (dispose [_] ))
+
 
 (defn- make-job "" [container evt]
   (let [ impl (CU/make-mmap)
@@ -88,7 +97,7 @@
                         (:router-class options))
                    job (make-job parObj evt) ]
               (try
-                (let [ p (WC/make-pipeline job cz)
+                (let [ p (make-pipeline job cz)
                        q (if (nil? p) (make-OrphanFlow job) p) ]
                   (.start q))
                 (catch Throwable e#

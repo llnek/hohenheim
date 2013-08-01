@@ -4,12 +4,12 @@ set CWD=%CD%
 set ARGC=0
 for %%x in (%*) do set /A ARGC+=1
 
-set BLASON_HOME=%~dp0..
+set HOHENHEIM_HOME=%~dp0..
 set BINDIR=%~dp0
-set PATCHDIR=%BLASON_HOME%\patch\*
-set DISTRO=%BLASON_HOME%\dist\*
-set BOOT=%BLASON_HOME%\boot\*
-set LIBDIR=%BLASON_HOME%\lib\*
+set PATCHDIR=%HOHENHEIM_HOME%\patch\*
+set DISTRO=%HOHENHEIM_HOME%\dist\*
+set BOOT=%HOHENHEIM_HOME%\boot\*
+set LIBDIR=%HOHENHEIM_HOME%\lib\*
 
 set BCP=%BOOT%;%LIBDIR%;%CLASSPATH%
 set LOG4J=etc\log\logback.xml
@@ -17,20 +17,19 @@ set L4JFILE=%CD%\%LOG4J%
 set L4J=file:/%L4JFILE%
 set LOGCFG=%L4J:\=/%
 set LOGREF=-Dlogback.configurationFile=%LOGCFG%
-set BASEDIR=-Dblason.home=%BLASON_HOME%
+set BASEDIR=-Dhohenheim.home=%HOHENHEIM_HOME%
 set BG=false
 set DBGOPTS=
 set ECODE=0
 set KPORT=4444
-set KILLPORT=-Dblason.kill.port=%KPORT%
-set LIBP=-Djava.library.path=$BLASON_HOME/bin
-
+set KILLPORT=-Dhohenheim.kill.port=%KPORT%
+set LIBP=-Djava.library.path=$HOHENHEIM_HOME/bin
 
 
 set JPROF=-agentpath:/Applications/jprofiler7/bin/macos/libjprofilerti.jnilib=port=8849
 set VMXRGS=-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m
-set CLDR=-Djava.system.class.loader=com.zotoh.blason.loaders.ExecClassLoader
-set MAINCZ=com.zotoh.blason.etc.AppRunner
+set CLDR=-Djava.system.class.loader=com.zotoh.hohenheim.core.ExecClassLoader
+set MAINCZ=comzotohcljc.hohenheim.etc.core
 
 if NOT EXIST %L4JFILE% SET LOGREF=
 
@@ -57,11 +56,11 @@ REM run in foreground
 REM ********************************************************
 cd %BINDIR%
 :appfg
-REM CMDLINE="%JAVA_CMD%" -cp "%BCP%" "%LIBP%" %DBGOPTS% "%LOGREF%" "%KILLPORT%" "%BASEDIR%" %CLDR% %MAINCZ% "%BLASON_HOME%" %*
+REM CMDLINE="%JAVA_CMD%" -cp "%BCP%" "%LIBP%" %DBGOPTS% "%LOGREF%" "%KILLPORT%" "%BASEDIR%" %CLDR% %MAINCZ% "%HOHENHEIM_HOME%" %*
 if %BG% == "true" goto runcmd
 call :splash
 :runcmd
-"%JAVA_CMD%" -cp "%BCP%" "%LIBP%" %DBGOPTS% "%LOGREF%" "%KILLPORT%" "%BASEDIR%" %CLDR% %MAINCZ% "%BLASON_HOME%" %*
+"%JAVA_CMD%" -cp "%BCP%" "%LIBP%" %DBGOPTS% "%LOGREF%" "%KILLPORT%" "%BASEDIR%" %CLDR% %MAINCZ% "%HOHENHEIM_HOME%" %*
 set ECODE=%ERRORLEVEL%
 goto end
 
@@ -118,13 +117,13 @@ echo Please set JAVA_HOME
 
 :splash
   echo
-  echo  ____   _       ____  _____  ___   ____  
-  echo |    \ | T     /    T/ ___/ /   \ |    \ 
-  echo |  o  )| |    Y  o  (   \_ Y     Y|  _  Y
-  echo |     T| l___ |     |\__  T|  O  ||  |  |
-  echo |  O  ||     T|  _  |/  \ ||     ||  |  |
-  echo |     ||     ||  |  |\    |l     !|  |  |
-  echo l_____jl_____jl__j__j \___j \___/ l__j__j
+  echo  __ __   ___   __ __    ___  ____   __ __    ___  ____  ___ ___ 
+  echo |  T  T /   \ |  T  T  /  _]|    \ |  T  T  /  _]l    j|   T   T
+  echo |  l  |Y     Y|  l  | /  [_ |  _  Y|  l  | /  [_  |  T | _   _ |
+  echo |  _  ||  O  ||  _  |Y    _]|  |  ||  _  |Y    _] |  | |  \_/  |
+  echo |  |  ||     ||  |  ||   [_ |  |  ||  |  ||   [_  |  | |   |   |
+  echo |  |  |l     !|  |  ||     T|  |  ||  |  ||     T j  l |   |   |
+  echo l__j__j \___/ l__j__jl_____jl__j__jl__j__jl_____j|____jl___j___j
   echo
 goto runcmd
 

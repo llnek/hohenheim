@@ -20,6 +20,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
+
   comzotohcljc.hohenheim.io.servlet
 
   (:gen-class
@@ -31,33 +32,37 @@
     :state myState
   ))
 
+(import '(org.eclipse.jetty.continuation ContinuationSupport))
+(import '(org.eclipse.jetty.continuation Continuation))
+
+(import '(org.apache.commons.io IOUtils))
+(import '(java.io IOException))
+(import '(com.zotoh.frwk.io XData))
+
 (use '[clojure.tools.logging :only (info warn error debug)])
 (require '[comzotohcljc.util.core :as CU])
-
-
-
-(def WEBSERVLET_DEVID "_#jetty.emitter#_")
-
+(require '[comzotohcljc.util.str :as SU])
+(use '[comzotohcljc.hohenheim.io.triggers])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- replyService [ this res rsp]
-  (let [ sc (.statusCode res)
-         hdrs (.headers res)
-         data  (.data res) ]
+  (let [ s (.getStatus res)
+         sc (.getCode s)
+         hdrs (.getHeaders res)
+         data  (.getData res) ]
     (with-local-vars [clen 0]
-      (try
+      (CU/TryC
         (doseq [[n v] (seq hdrs)]
           (when-not (= "content-length" (.toLowerCase n))
             (.setHeader rsp n v)))
         (if (.hasError res)
-          (.sendError rsp sc (.errorMsg res))
+          (.sendError rsp sc (.getReasonPhrase s))
           (.setStatus rsp sc))
-        (when-not (and (isa? XData data) (.hasContent data))
+        (when-not (and (instance? XData data) (.hasContent data))
           (var-set clen (.size data))
           (IOUtils/copyLarge (.stream data) (.getOutputStream rsp) 0 clen))
-        (.setContentLength rsp @clen)
-        (catch Throwable e# (warn e#))))) )
+        (.setContentLength rsp @clen) ))))
 
 
 (defn- dispREQ [this ct evt req rsp]
@@ -66,36 +71,20 @@
     (doto ct
       (.setTimeout wm)
       (.suspend rsp))
-    (let [ w (AsyncWaitEvent. evt (AsyncServletTrigger. req rsp dev) )
-           ev (.inner w) ]
+    (let [ w  (make-async-wait-holder evt
+                  (make-servlet-trigger req rsp dev)) ]
       (.timeoutMillis w wm)
       (.hold dev w)
-      (.dispatch dev ev))))
+      (.dispatch dev evt))))
 
 (defn- doASyncSvc [this evt req rsp]
   (let [ c (ContinuationSupport/getContinuation req) ]
     (when (.isInitial c) 
-      (try
-          (dispREQ this c evt req rsp)
-        (catch Throwable e#
-          (error e#))))))
+      (CU/TryC
+          (dispREQ this c evt req rsp) ))))
 
 (defn- doSyncSvc [this evt req rsp]
-  (let [ w (SyncWaitEvent. evt)
-         ev (.inner w)
-         dev @(.myState this) ]
-    (.hold dev w)
-    (.dispatch dev ev)
-    (try
-        (.timeoutMillis w (.getAttr dev :waitMillis))
-      (finally
-        (.release dev w)))
-
-    (let [ res (.result ev) ]
-      (if (nil? res)
-        (replyService this (HTTPResult. HTTPStatus/REQUEST_TIMEOUT) rsp)
-        (replyService this res rsp) ))))
-
+  (throw (IOException. "No Sync Service!!!!!!")))
 
 (defn -myInit []
   ([] (atom nil)))
@@ -117,22 +106,15 @@
     (.super-init this cfg)
     (let [ ctx (.getServletContext cfg)
            state (.myState this)
-           src (.getAttribute ctx WEBSERVLET_DEVID) ]
+           src (.getAttribute ctx "czchhhiojetty") ]
       (reset! state src)
       (CU/TryC
         (debug
-          "********************************************************************"
-          "Servlet Container: "
-          (.getServerInfo ctx)
-          "********************************************************************"
-          "Servlet:iniz() - servlet:"
-          (.myName this))) )))
-
-
-
-
-
-
+          "********************************************************************\n"
+          (str "Servlet Container: " (.getServerInfo ctx) "\n")
+          (str "Servlet IO: " src "\n")
+          "********************************************************************\n"
+          (str "Servlet:iniz() - servlet:" (.myName this) "\n" ) )) )))
 
 
 

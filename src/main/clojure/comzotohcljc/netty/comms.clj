@@ -352,7 +352,7 @@
 
     ))
 
-(defn- make-pipeServer [^SSLContext sslctx usercb]
+(defn make-pipeServer [^SSLContext sslctx usercb]
   (reify ChannelPipelineFactory
     (getPipeline [_]
       (let [ pl (org.jboss.netty.channel.Channels/pipeline)
@@ -367,7 +367,7 @@
           (.addLast "chunker" (ChunkedWriteHandler.))
           (.addLast "handler" (netty-pipe-handler usercb))) ))))
 
-(defn- make-pipeClient [^SSLContext sslctx usercb]
+(defn make-pipeClient [^SSLContext sslctx usercb]
   (reify ChannelPipelineFactory
     (getPipeline [_]
       (let [ pl (org.jboss.netty.channel.Channels/pipeline)
@@ -382,7 +382,7 @@
           (.addLast "chunker" (ChunkedWriteHandler.))
           (.addLast "handler" (netty-pipe-handler usercb))) ))))
 
-(defn- netty-xxx-server 
+(defn netty-xxx-server 
   ([host port keyUrl pwdObj usercb ] (netty-xxx-server host port keyUrl pwdObj usercb {}))
   ([host port keyUrl pwdObj usercb options]
    (let [ ssl (if (nil? keyUrl) nil (CS/make-sslContext keyUrl pwdObj))

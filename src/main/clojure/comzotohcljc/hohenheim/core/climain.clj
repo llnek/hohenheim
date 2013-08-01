@@ -33,8 +33,9 @@
 (require '[comzotohcljc.util.files :as FU])
 (require '[comzotohcljc.util.ini :as WI])
 
-(use '[comzotohcljc.hohenheim.impl.execvisor :only (make-execvisor) ])
+(use '[comzotohcljc.hohenheim.impl.exec :only (make-execvisor) ])
 (use '[comzotohcljc.hohenheim.core.constants])
+(use '[comzotohcljc.hohenheim.core.sys])
 (use '[comzotohcljc.hohenheim.impl.defaults])
 
 (import '(com.zotoh.hohenheim.core

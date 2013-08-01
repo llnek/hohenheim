@@ -23,6 +23,16 @@
 
   comzotohcljc.hohenheim.io.netty)
 
+(import '(java.net URI URL InetSocketAddress))
+(import '(java.net InetAddress))
+
+(use '[comzotohcljc.hohenheim.io.events :only (make-netty-event) ])
+(use '[comzotohcljc.hohenheim.core.sys])
+(use '[comzotohcljc.hohenheim.io.core])
+(use '[comzotohcljc.hohenheim.io.http])
+(use '[comzotohcljc.hohenheim.io.triggers])
+
+(require '[comzotohcljc.crypto.ssl :as SS])
 (require '[comzotohcljc.netty.comms :as NE])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
@@ -43,74 +53,57 @@
     (http-basic-config co cfg) ))
 
 (defn- make-service-io [co]
-  (reify comzotohcljc.netty.nettyio.NettyServiceIO
+  (reify comzotohcljc.netty.comms.NettyServiceIO
     (before-send [_ ch msg] nil)
     (onerror [_ ch msginfo exp] )
     (onreq [_ ch msginfo xdata]
       (let [ evt (ioes-reify-event co msginfo xdata)
-             w (AsyncWaitEvent. evt (NettyTrigger. evt ch)) ]
+             w (make-async-wait-holder evt
+                 (make-netty-trigger ch evt co)) ]
         (.timeoutMillis w (.getAttr co :waitMillis))
         (.hold co w)
         (.dispatch co evt)))
     (onres [_ ch msginfo xdata] nil)) )
 
 (defn- make-handler [co]
-    (NE/make-pipelineHandler (make-service-io co)))
+    (NE/netty-pipe-handler (make-service-io co)))
 
 (defmethod comp-initialize :czc.hhh.io/NettyIO
   [co]
-  (let [ [bs opts] (NE/make-server-bootstrap {} )
+  (let [ [bs opts] (NE/server-bootstrap)
          file (.getAttr co :serverKey)
          ssl (CU/notnil? file)
          pwd (.getAttr co :pwd)
-         ctx (if ssl (make-sslContext file pwd)) ]
-
+         ctx (if ssl (SS/make-sslContext file pwd)) ]
     (doto bs
       (.setPipelineFactory
-        (reify ChannelPipelineFactory
-          (getPipeline [_]
-            (let [ pl (org.jboss.netty.channel.Channels/pipeline) ]
-              (when-not (nil? ctx)
-                (let [ eng (.createSSLEngine ctx) ]
-                  (.setUseClientMode eng false)
-                  (.addLast pl "ssl" (SslHandler. eng))))
-              ;;(.addLast pl "decoder" (HttpRequestDecoder.))
-              ;;(.addLast pl "aggregator" (HttpChunkAggregator. 65536))
-              ;;(.addLast pl "encoder" (HttpResponseEncoder.))
-              (.addLast pl "codec" (HttpServerCodec.))
-              ;;(.addLast pl "deflater" (HttpContentCompressor.))
-              (.addLast pl "chunker" (ChunkedWriteHandler.))
-              (.addLast pl "handler" (make-handler co))
-              pl)))))
-    (.setAttr! co :netty bs)
+        (NE/make-pipeServer ctx  (make-handler co))))
+    (.setAttr! co :netty 
+      (comzotohcljc.netty.comms.NettyServer. bs nil opts))
     co))
-
 
 (defmethod ioes-start :czc.hhh.io/NettyIO
   [co]
   (let [ host (SU/nsb (.getAttr co :host))
          port (.getAttr co :port)
-         bs (.getAttr co :netty)
+         nes (.getAttr co :netty)
          ip (if (SU/nichts? host)
               (InetAddress/getLocalHost)
               (InetAddress/getByName host))
-         c (.bind bs (InetSocketAddress. ip port))
-         cg (DefaultChannelGroup. (CU/uid)) ]
+         c (.bind (.server nes) (InetSocketAddress. ip port))
+         cg (NE/channel-group) ]
 ;;    c.getConfig().setConnectTimeoutMillis(millis)
     (.add cg c)
-    (.setAttr! co :cg cg)
+    (.setAttr! co :netty
+      (comzotohcljc.netty.comms.NettyServer. (.server nes)
+                                           cg
+                                           (.options nes)) )
     (ioes-started co)))
 
 (defmethod ioes-stop :czc.hhh.io/NettyIO
   [co]
-  (let [ bs (.getAttr co :netty)
-         cg (.getAttr co :cg)
-         cf (.close cg) ]
-    (.addListener cf
-      (reify ChannelGroupFutureListener
-        (operationComplete [_ cff]
-          (-> (.getFactory bs)
-            (.releaseExternalResources)))))
+  (let [ nes (.getAttr co :netty) ]
+    (NE/finz-server nes)
     (ioes-stopped co)))
 
 

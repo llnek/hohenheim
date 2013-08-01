@@ -30,10 +30,10 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hohenheim.core.constants])
+(use '[comzotohcljc.hohenheim.core.sys])
 (use '[comzotohcljc.hohenheim.impl.defaults])
 
-(use '[comzotohcljc.hohenheim.impl.kernel :only (make-kernel make-podmeta) ])
-(use '[comzotohcljc.hohenheim.impl.deployer :only (make-deployer) ])
+(use '[comzotohcljc.hohenheim.impl.sys :only (make-kernel make-podmeta make-deployer) ])
 
 (require '[ comzotohcljc.util.core :as CU ] )
 (require '[ comzotohcljc.util.meta :as MU ] )

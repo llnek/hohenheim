@@ -61,6 +61,7 @@
       <arg value="comzotohcljc.crypto.stores" />
       <arg value="comzotohcljc.net.comms" />
       <arg value="comzotohcljc.netty.comms" />
+
       <arg value="comzotohcljc.dbio.core" />
       <arg value="comzotohcljc.dbio.sqlserver" />
       <arg value="comzotohcljc.dbio.h2" />
@@ -72,18 +73,33 @@
       <arg value="comzotohcljc.dbio.simple" />
       <arg value="comzotohcljc.dbio.composite" />
       <arg value="comzotohcljc.dbio.connect" />
-      <!--
+
       <arg value="comzotohcljc.hohenheim.core.constants" />
       <arg value="comzotohcljc.hohenheim.core.climain" />
+      <arg value="comzotohcljc.hohenheim.core.sys" />
       <arg value="comzotohcljc.hohenheim.etc.cmdline" />
       <arg value="comzotohcljc.hohenheim.etc.core" />
+      <arg value="comzotohcljc.hohenheim.etc.misc" />
+
       <arg value="comzotohcljc.hohenheim.impl.defaults" />
-      <arg value="comzotohcljc.hohenheim.impl.deployer" />
-      <arg value="comzotohcljc.hohenheim.impl.jobcreator" />
-      <arg value="comzotohcljc.hohenheim.impl.container" />
-      <arg value="comzotohcljc.hohenheim.impl.kernel" />
-      <arg value="comzotohcljc.hohenheim.impl.execvisor" />
--->
+      <arg value="comzotohcljc.hohenheim.impl.ext" />
+      <arg value="comzotohcljc.hohenheim.impl.sys" />
+      <arg value="comzotohcljc.hohenheim.impl.exec" />
+
+      <arg value="comzotohcljc.hohenheim.io.context"/>
+      <arg value="comzotohcljc.hohenheim.io.core"/>
+      <arg value="comzotohcljc.hohenheim.io.events"/>
+      <arg value="comzotohcljc.hohenheim.io.files"/>
+      <arg value="comzotohcljc.hohenheim.io.http"/>
+      <arg value="comzotohcljc.hohenheim.io.jms"/>
+      <arg value="comzotohcljc.hohenheim.io.loops"/>
+      <arg value="comzotohcljc.hohenheim.io.mails"/>
+      <arg value="comzotohcljc.hohenheim.io.netty"/>
+      <arg value="comzotohcljc.hohenheim.io.servlet"/>
+      <arg value="comzotohcljc.hohenheim.io.triggers"/>
+
+      <arg value="comzotohcljc.wflow.activity" />
+      <arg value="comzotohcljc.wflow.point" />
       <arg value="comzotohcljc.wflow.core" />
       <arg value="comzotohcljc.wflow.composites" />
       <arg value="comzotohcljc.wflow.conditionals" />

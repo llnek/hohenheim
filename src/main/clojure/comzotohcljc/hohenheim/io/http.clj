@@ -25,10 +25,19 @@
 
 (import '(org.eclipse.jetty.server Server Connector))
 (import '(java.net URL))
+(import '(java.io File))
 
-(import '(org.eclipse.jetty.server.ssl SslSelectChannelConnector))
-(import '(org.eclipse.jetty.server.nio SelectChannelConnector))
+(import '(org.eclipse.jetty.server
+  Connector
+  HttpConfiguration
+  HttpConnectionFactory
+  SecureRequestCustomizer
+  Server
+  ServerConnector
+  SslConnectionFactory))
+(import '(org.eclipse.jetty.util.ssl SslContextFactory))
 (import '(org.eclipse.jetty.util.thread QueuedThreadPool))
+
 (import '(com.zotoh.hohenheim.io JettyUtils))
 
 (use '[comzotohcljc.crypto.ssl])
@@ -37,13 +46,14 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
+(use '[comzotohcljc.hohenheim.core.constants])
 (use '[comzotohcljc.hohenheim.core.sys])
 (use '[comzotohcljc.hohenheim.io.core])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn- http-basic-config [co cfg]
+(defn http-basic-config [co cfg]
   (let [ file (:server-key cfg)
          port (:port cfg)
          fv (:flavor cfg)
@@ -87,30 +97,44 @@
     (.setAttr! co :contextPath (SU/strim c))
     (http-basic-config co cfg) ))
 
+(defn- cfgHTTPS [server port keyfile pwd conf]
+  ;; SSL Context Factory for HTTPS and SPDY
+  (let[ sslxf (doto (SslContextFactory.)
+                (.setKeyStorePath (-> keyfile (.toURI)(.toURL)(.toString)))
+                (.setKeyStorePassword pwd)
+                (.setKeyManagerPassword pwd))
+        config (doto (HttpConfiguration. conf)
+                 (.addCustomizer (SecureRequestCustomizer.)))
+        https (ServerConnector. server
+            (SslConnectionFactory. sslxf "HTTP/1.1")
+            (HttpConnectionFactory. config)) ]
+    (doto https
+      (.setPort port)
+      (.setIdleTimeout (int 500000)))))
 
 (defmethod comp-initialize :czc.hhh.io/JettyIO
   [co]
-  (let [ keyfile (.getAttr co :serverKey)
+  (let [ conf (doto (HttpConfiguration.)
+                (.setRequestHeaderSize 8192)  ;; from jetty examples
+                (.setOutputBufferSize (int 32768)))
+         keyfile (.getAttr co :serverKey)
          host (.getAttr co :host)
-         svr (Server.)
+         port (.getAttr co :port)
+         pwdObj (.getAttr co :pwd)
+         ws (.getAttr co :workers)
+         q (QueuedThreadPool. (if (pos? ws) ws 8))
+         svr (Server. q)
          cc  (if (nil? keyfile)
-               (SelectChannelConnector.)
-               (let [ c (SslSelectChannelConnector.)
-                      v (.getAttr co :flavor)
-                      p (.getAttr co :pwd)
-                      x (make-sslContext keyfile p v) ]
-                 (doto (.getSslContextFactory c)
-                   (.setSslContext x)
-                   (.setWantClientAuth false)
-                   (.setNeedClientAuth false))
-                 c)) ]
+               (doto (ServerConnector. svr (HttpConnectionFactory. conf))
+                 (.setPort port)
+                 (.setIdleTimeout (int 30000)))
+               (cfgHTTPS svr port keyfile (SU/nsb pwdObj)
+                         (doto conf
+                           (.setSecureScheme "https")
+                           (.setSecurePort port)))) ]
+
     (when (SU/hgl? host) (.setHost cc host))
-    (doto cc
-      (.setName (CU/uid))
-      (.setPort (.getAttr co :port))
-      (.setThreadPool (QueuedThreadPool. (.getAttr co :workers)))
-      (.setMaxIdleTime 30000)     ;; from jetty examples
-      (.setRequestHeaderSize 8192))  ;; from jetty examples
+    (.setName cc (CU/uid))
     (doto svr
       (.setConnectors (into-array Connector [cc])))
     (.setAttr! co :jetty svr)
@@ -122,9 +146,8 @@
   [co]
   (let [ container (.getParent co)
          app (.getAppDir container)
-         wid (.getAttr co :servlet-id)
          jetty (.getAttr co :jetty)
-         webapp (JettyUtils/newWebAppContext wid obj)
+         webapp (JettyUtils/newWebAppContext "czchhhiojetty" co)
          logDir (-> (File. app WEB_LOG)(.toURI)(.toURL)(.toString))
          resBase (-> app (.toURI)(.toURL)(.toString)) ]
     ;; static resources are based from resBase, regardless of context

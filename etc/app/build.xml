@@ -13,16 +13,16 @@
   <property file="build.properties" />
   <ivy:settings file="${basedir}/ivysettings.xml"/>
 
-  <path id="blasonlibs.id">
-    <fileset dir="${blason.home}/lib"/>
+  <path id="hohenheimlibs.id">
+    <fileset dir="${hohenheim.home}/lib"/>
   </path>
 
   <!-- paths used for compilation and run  -->
   <path id="compile.path.id">
     <path location="${out.jar.dir}" />
     <fileset dir="${lib.dir}" />
-    <fileset dir="${blason.home}/dist"/>
-    <fileset dir="${blason.home}/lib"/>
+    <fileset dir="${hohenheim.home}/dist"/>
+    <fileset dir="${hohenheim.home}/lib"/>
   </path>
 
   <path id="test.path.id">
@@ -31,7 +31,7 @@
   </path>
 
 
-  <taskdef name="scalac" classname="scala.tools.ant.Scalac" classpathref="blasonlibs.id"/>
+  <taskdef name="scalac" classname="scala.tools.ant.Scalac" classpathref="hohenheimlibs.id"/>
   <taskdef resource="net/sf/antcontrib/antlib.xml"/>
 
   <!-- resolve ivy stuff ================================= -->
