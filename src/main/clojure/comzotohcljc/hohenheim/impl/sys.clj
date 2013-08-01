@@ -24,7 +24,7 @@
   comzotohcljc.hohenheim.impl.sys )
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
-(import '(com.zotoh.hohenheim.core AppClassLoader))
+(import '(com.zotoh.hohenheim.loaders AppClassLoader))
 (import '(java.io File))
 
 (use '[clojure.tools.logging :only (info warn error debug)])

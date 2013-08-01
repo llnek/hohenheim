@@ -39,7 +39,8 @@
 (use '[comzotohcljc.hohenheim.impl.defaults])
 
 (import '(com.zotoh.hohenheim.core
-  Startable ConfigError
+  Startable ConfigError))
+(import '(com.zotoh.hohenheim.loaders
   AppClassLoader RootClassLoader ExecClassLoader))
 (import '(com.zotoh.hohenheim.etc CmdHelpError))
 (import '(java.util Locale))

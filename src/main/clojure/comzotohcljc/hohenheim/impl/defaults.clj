@@ -24,8 +24,9 @@
   comzotohcljc.hohenheim.impl.defaults )
 
 (import '(com.zotoh.frwk.util CoreUtils))
+(import '(com.zotoh.hohenheim.loaders AppClassLoader))
 (import '(com.zotoh.hohenheim.core
-  RegistryError ServiceError ConfigError AppClassLoader))
+  RegistryError ServiceError ConfigError))
 (import '(java.io File))
 
 (use '[clojure.tools.logging :only (info warn error debug)])

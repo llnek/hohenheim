@@ -61,7 +61,7 @@
       <arg value="comzotohcljc.crypto.stores" />
       <arg value="comzotohcljc.net.comms" />
       <arg value="comzotohcljc.netty.comms" />
-
+      <!--
       <arg value="comzotohcljc.dbio.core" />
       <arg value="comzotohcljc.dbio.sqlserver" />
       <arg value="comzotohcljc.dbio.h2" />
@@ -105,6 +105,8 @@
       <arg value="comzotohcljc.wflow.conditionals" />
       <arg value="comzotohcljc.wflow.delays" />
       <arg value="comzotohcljc.wflow.user" />
+
+      -->
     </java>
   </target>
 
