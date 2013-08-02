@@ -21,6 +21,7 @@
     <dependency org="bouncycastle" name="bcmail-jdk15on" rev="149" conf="libjar->default"/>
     <dependency org="bouncycastle" name="bcpkix-jdk15on" rev="149" conf="libjar->default"/>
     <dependency org="org.jasypt" name="jasypt" rev="1.9.0" conf="libjar->default"/>
+    <dependency org="org.mindrot" name="jbcrypt" rev="0.3m" conf="libjar->default"/>
 
     <!-- logging -->
     <dependency org="org.slf4j" name="slf4j-api" rev="1.7.5" conf="libjar->default"/>

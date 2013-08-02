@@ -109,6 +109,9 @@
       (.setTime (.getTime cal))
       (.add calendarField amount))))
 
+(defn make-cal "" [date]
+  (doto (GregorianCalendar.) (.setTime date)))
+
 (defn add-years "Add n more years to the calendar."
   [^Calendar cal yrs]
   (add cal Calendar/YEAR yrs))

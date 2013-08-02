@@ -28,12 +28,13 @@
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(com.zotoh.hohenheim.etc CmdHelpError))
 (import '(org.apache.commons.io FileUtils))
+(import '(java.util Date))
 (import '(java.io File))
-;;(import '(com.zotoh.hohenheim.core ))
-;;(import '(org.apache.tools.ant Main))
 
 (require '[comzotohcljc.hohenheim.core.climain :as CLI])
+(require '[comzotohcljc.i18n.resources :as RC])
 (require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.dates :as DU])
 (require '[comzotohcljc.util.meta :as MU])
 (require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.cmdline :as CQ])
@@ -83,28 +84,27 @@
   (let [ domain (-> (str "com." (SU/nsb (CU/getuser))) (.toLowerCase))
          q1 (CQ/make-CmdSeqQ "domain" "What is the application domain"
                        domain domain true
-                       (fn [ans jps] (do (.put jps "app-domain" ans) "app" )))
+                       (fn [ans jps] (do (.put jps "app.domain" ans) "app" )))
          q2 (CQ/make-CmdSeqQ "app" "What is the application name"
                        "" "" true
-                       (fn [ans jps] (do (.put jps "app-id" ans) "" )))
+                       (fn [ans jps] (do (.put jps "app.id" ans) "" )))
          ps (CQ/cli-converse {"domain" q1 "app" q2} "domain") ]
     [ (CU/notnil? ps) ps ] ))
 
 (defn- onCreateApp [options & args]
-  (let [ cb (fn [t ps] (runTargetExtra t ps)) ]
-    (if (> (count args) 1)
-      (case (nth args 1)
-        "web/jetty" (apply cb "create-jetty" options)
-        "web" (apply cb "create-web" options)
-        (throw (CmdHelpError.)))
-      (apply cb "create-app" options))))
+  (if (> (count args) 1)
+    (case (nth args 1)
+      "web/jetty" (apply runTargetExtra "create-jetty" options)
+      "web" (apply runTargetExtra "create-web" options)
+      (throw (CmdHelpError.)))
+    (apply runTargetExtra "create-app" options)))
 
 (defn- onCreate [ & args]
   (if (< (count args) 1)
     (throw (CmdHelpError.))
     (let [ [ok x] (onCreatePrompt) ]
       (when ok
-        (when (or (SU/nichts? (:app-domain x)) (SU/nichts? (:app-id x)))
+        (when (or (SU/nichts? (:app.domain x)) (SU/nichts? (:app.id x)))
           (throw (CmdHelpError.)))
         (apply onCreateApp x args)))))
 
@@ -146,34 +146,154 @@
         (runTargetExtra "create-demo" { :demo-id s})) )
     (throw (CmdHelpError.))))
 
-(defn- generatePassword [] nil)
-(defn- keyfile [] nil)
-(defn- csrfile [] nil)
+(defn- generatePassword [len]
+  (println (.text (CE/create-strong-pwd len))))
+
+(defn- make-csr-qs [rcb]
+  { "fname"
+    (CQ/make-CmdSeqQ "fname" (RC/get-string rcb "cmd.save.file")
+                   "" "csr-req" true
+                   (fn [a ps] (do (.put ps "fn" a) "")))
+
+    "size"
+    (CQ/make-CmdSeqQ "size" (RC/get-string rcb "cmd.key.size")
+                   "" "1024" true
+                   (fn [a ps] (do (.put ps "size" a) "fname")))
+    "c"
+    (CQ/make-CmdSeqQ "c" (RC/get-string rcb "cmd.dn.c")
+                   "" "US" true
+                   (fn [a ps] (do (.put ps "c" a) "size")))
+
+    "st"
+    (CQ/make-CmdSeqQ "st" (RC/get-string rcb "cmd.dn.st")
+                   "" "" true
+                   (fn [a ps] (do (.put ps "st" a) "c")))
+
+    "loc"
+    (CQ/make-CmdSeqQ "loc" (RC/get-string rcb "cmd.dn.loc")
+                   "" "" true
+                   (fn [a ps] (do (.put ps "l" a) "st")))
+
+    "o"
+    (CQ/make-CmdSeqQ "o" (RC/get-string rcb "cmd.dn.org")
+                   "" "" true
+                   (fn [a ps] (do (.put ps "o" a) "loc")))
+
+    "ou"
+    (CQ/make-CmdSeqQ "ou" (RC/get-string rcb "cmd.dn.ou")
+                   "" "" true
+                   (fn [a ps] (do (.put ps "ou" a) "o")))
+
+    "cn"
+    (CQ/make-CmdSeqQ "cn" (RC/get-string rcb "cmd.dn.cn")
+                   "" "" true
+                   (fn [a ps] (do (.put ps "cn" a) "ou")))
+  } )
+
+(defn- make-key-qs [rcb]
+
+  {
+    "fname"
+    (CQ/make-CmdSeqQ "fname" (RC/get-string rcb "cmd.save.file")
+                     "" "test.p12" true
+                     (fn [a ps] (do (.put ps "fn" a) "")))
+
+    "pwd"
+    (CQ/make-CmdSeqQ "pwd" (RC/get-string rcb "cmd.key.pwd")
+                     "" "" true
+                     (fn [a ps] (do (.put ps "pwd" a) "fname")))
+
+    "duration"
+    (CQ/make-CmdSeqQ "duration" (RC/get-string rcb "cmd.key.duration")
+                     "" "12" true
+                     (fn [a ps] (do (.put ps "months" a) "pwd")))
+
+    "size"
+    (CQ/make-CmdSeqQ "size" (RC/get-string rcb "cmd.key.size")
+                   "" "1024" true
+                   (fn [a ps] (do (.put ps "size" a) "duration")))
+
+   } )
+
+
+(defn- keyfile []
+  (let [ csr (make-csr-qs *HOHENHEIM-RSBUNDLE*)
+         k (merge csr (make-key-qs *HOHENHEIM-RSBUNDLE*))
+         rc (CQ/cli-converse k "cn") ]
+    (when-not (nil? rc)
+      (let [ dn (clojure.string/join "," (CU/flatten-nil (map (fn [k]
+                                   (let [ v (get rc k) ]
+                                     (if (SU/hgl? v)
+                                      (str (.toUpperCase (name k)) "=" v)
+                                     nil)))
+                                   [ :c :st :l :o :ou :cn ])) )
+             ff (File. (:fn rc))
+             now (Date.) ]
+        (println (str "DN entered: " dn))
+        (CC/make-ssv1PKCS12
+          now
+          (.getTime (DU/add-months (DU/make-cal now) (CU/conv-long (:months rc) 12)))
+          dn
+          (CE/pwdify (:pwd rc))
+          (CU/conv-long (:size rc) 1024)
+          ff)
+        (println (str "Wrote file: " ff))))))
+
+
+        (defn- csrfile []
+  (let [ csr (make-csr-qs *HOHENHEIM-RSBUNDLE*)
+         rc (CQ/cli-converse csr "cn") ]
+    (when-not (nil? rc)
+      (let [ dn (clojure.string/join "," (CU/flatten-nil (map (fn [k]
+                                   (let [ v (get rc k) ]
+                                     (if (SU/hgl? v)
+                                      (str (.toUpperCase (name k)) "=" v)
+                                     nil)))
+                                   [ :c :st :l :o :ou :cn ])) )
+             [req pkey] (CC/make-csrreq
+                          (CU/conv-long (:size rc) 1024)
+                          dn
+                          CC/*PEM_CERT* ) ]
+        (println (str "DN entered: " dn))
+        (let [ ff (File. (str (:fn rc) ".key")) ]
+          (FileUtils/writeByteArrayToFile ff pkey)
+          (println (str "Wrote file: " ff)))
+        (let [ ff (File. (str (:fn rc) ".csr")) ]
+          (FileUtils/writeByteArrayToFile ff req)
+          (println (str "Wrote file: " ff))) ))))
 
 (defn- onGenerate [ & args]
+  (let [ ok (if (> (count args) 1)
+              (case (nth args 1)
+                "password" (do (generatePassword 12) true)
+                "serverkey" (do (keyfile) true)
+                "csr" (do (csrfile) true)
+                false)
+              false) ]
+    (when-not ok
+      (throw (CmdHelpError.)))))
+
+(defn- genHash [text]
+  (let [ p (CE/pwdify text) ]
+    (println (.hashed p))))
+
+(defn- onHash [ & args]
   (if (> (count args) 1)
-    (case (nth args 1)
-      "password" (generatePassword)
-      "serverkey" (keyfile)
-      "csr" (csrfile)
-      (throw (CmdHelpError.)))
+    (genHash (nth args 1))
     (throw (CmdHelpError.))))
 
-(defn- encrypt [a b]
-  (let [ c (CE/jasypt-cryptor)
-         s (.encrypt c (CE/pwdify a) b) ]
-    (println (str "CRYPT:" s))))
+(defn- encrypt [pkey text]
+  (let [ p (CE/pwdify text pkey) ]
+    (println (.encoded p))))
 
 (defn- onEncrypt [ & args]
   (if (> (count args) 2)
     (encrypt  (nth args 1) (nth args 2))
     (throw (CmdHelpError.))))
 
-(defn- decrypt [a b]
-  (let [ c (CE/jasypt-cryptor)
-         s (.decrypt c (CE/pwdify a) b) ]
-    (println (str "CRYPT:" s))))
-
+(defn- decrypt [pkey secret]
+  (let [ p (CE/pwdify secret pkey) ]
+    (println (.text p))))
 
 (defn- onDecrypt [ & args]
   (if (> (count args) 2)
@@ -248,6 +368,7 @@
   :generate #'onGenerate
   :encrypt #'onEncrypt
   :decrypt #'onDecrypt
+  :hash #'onHash
   :testjce #'onTestJCE
   :version #'onVersion
   :help #'onHelp

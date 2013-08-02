@@ -55,6 +55,7 @@
   ["generate csr" "Create a Certificate Signing Request."]
   ["encrypt <password> <clear-text>" "e.g. encrypt SomeSecretData"]
   ["decrypt <password> <cipher-text>" "e.g. decrypt Data"]
+  ["hash <password>" "e.g. hash SomePassword"]
   ["testjce" "Check JCE  Policy Files."]
 
   ["demo samples" "Generate a set of samples."]
