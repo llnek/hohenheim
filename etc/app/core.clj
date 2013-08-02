@@ -7,7 +7,7 @@
 
 (deftype AppMain [] AppMainAPI
 
-  (contextualize [_ ctx]
+  (contextualize [_ container]
     (info "My AppMain contextualized by container " container))
 
   (configure [_ options]

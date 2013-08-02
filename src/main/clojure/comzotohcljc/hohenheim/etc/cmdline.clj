@@ -59,7 +59,7 @@
 
 (defn- runTarget [target]
   (org.apache.tools.ant.Main/main  (into-array String
-      [ (str "-Dhohenheim_home=" (CU/nice-fpath (getHomeDir)))
+      [ (str "-DHOHENHEIM_HOME=" (CU/nice-fpath (getHomeDir)))
         "-buildfile"
         (getBuildFilePath)
         ;; "-quiet"
@@ -67,12 +67,12 @@
 
 (defn- runTargetExtra [target options]
   (let [ rc (persistent! (reduce (fn [sum en]
-                      (conj! sum (str "-D" (first en) "=" (SU/nsb (last en) ))))
+                      (conj! sum (str "-D" (name (first en)) "=" (SU/nsb (last en) ))))
                  (transient []) (seq options))) ]
     (org.apache.tools.ant.Main/start
       (into-array String
         (-> rc
-          (conj (str "-Dhohenheim_home=" (CU/nice-fpath (getHomeDir))) )
+          (conj (str "-DHOHENHEIM_HOME=" (CU/nice-fpath (getHomeDir))) )
           (conj "-buildfile")
           (conj (getBuildFilePath))
           ;;(conj "-quiet")
@@ -84,27 +84,27 @@
   (let [ domain (-> (str "com." (SU/nsb (CU/getuser))) (.toLowerCase))
          q1 (CQ/make-CmdSeqQ "domain" "What is the application domain"
                        domain domain true
-                       (fn [ans jps] (do (.put jps "app.domain" ans) "app" )))
+                       (fn [ans jps] (do (.put jps "hohenheim.app.domain" ans) "app" )))
          q2 (CQ/make-CmdSeqQ "app" "What is the application name"
                        "" "" true
-                       (fn [ans jps] (do (.put jps "app.id" ans) "" )))
+                       (fn [ans jps] (do (.put jps "hohenheim.appid" ans) "" )))
          ps (CQ/cli-converse {"domain" q1 "app" q2} "domain") ]
     [ (CU/notnil? ps) ps ] ))
 
 (defn- onCreateApp [options & args]
   (if (> (count args) 1)
     (case (nth args 1)
-      "web/jetty" (apply runTargetExtra "create-jetty" options)
-      "web" (apply runTargetExtra "create-web" options)
+      "web/jetty" (runTargetExtra "create-jetty" options)
+      "web" (runTargetExtra "create-web" options)
       (throw (CmdHelpError.)))
-    (apply runTargetExtra "create-app" options)))
+    (runTargetExtra "create-app" options)))
 
 (defn- onCreate [ & args]
   (if (< (count args) 1)
     (throw (CmdHelpError.))
     (let [ [ok x] (onCreatePrompt) ]
       (when ok
-        (when (or (SU/nichts? (:app.domain x)) (SU/nichts? (:app.id x)))
+        (when (or (SU/nichts? (:hohenheim.app.domain x)) (SU/nichts? (:hohenheim.appid x)))
           (throw (CmdHelpError.)))
         (apply onCreateApp x args)))))
 

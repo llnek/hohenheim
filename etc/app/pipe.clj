@@ -4,6 +4,7 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.wflow.core])
+(use '[comzotohcljc.wflow.user])
 
 (deftype Handler [] PipelineDelegateAPI
 
