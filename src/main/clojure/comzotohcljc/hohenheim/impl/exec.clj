@@ -131,7 +131,7 @@
         Component
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-s impl :ctx))
+          (getCtx [_] (.mm-g impl :ctx))
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
@@ -164,12 +164,12 @@
                    k (.lookup root K_KERNEL) ]
               (.stop k)))  )
 
-       { :typeid (keyword (str *ns* "/Execvisor")) } )))
+       { :typeid (keyword "czc.hhh.impl/Execvisor") } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod comp-initialize :comzotohcljc.hohenheim.impl.exec/Execvisor
+(defmethod comp-initialize :czc.hhh.impl/Execvisor
   [co]
   (let [ cf (.getf (.getCtx co) K_PROPS)
          comps (.getSection cf K_COMPS)
@@ -201,7 +201,7 @@
       (precondDir tmp)
       (precondDir db)
       (precondDir bks)
-      (-> (.getCtx co)
+      (doto (.getCtx co)
           (.setf! K_PODSDIR pods)
           (.setf! K_PLAYDIR sb)
           (.setf! K_LOGDIR log)
@@ -254,10 +254,10 @@
           (enabled? [_] (true? (.mm-g impl :active)))
           (metaUrl [_] (.mm-g impl K_META)) )
 
-      { :typeid (keyword (str *ns* "/BlockMeta")) } )))
+      { :typeid (keyword "czc.hhh.impl/BlockMeta") } )))
 
 
-(defmethod comp-initialize :comzotohcljc.hohenheim.impl.exec/BlockMeta
+(defmethod comp-initialize :czc.hhh.impl/BlockMeta
   [co]
   (let [ url (.metaUrl co) cfg (WI/parse-inifile url)
          inf (.getSection cfg "info") ]
@@ -273,7 +273,7 @@
       (.setAttr! co :name (SU/strim (.optString "info" "name" "")))
       co)))
 
-(defmethod comp-initialize :comzotohcljc.hohenheim.impl.defaults/BlocksRegistry
+(defmethod comp-initialize :czc.hhh.impl/BlocksRegistry
   [co]
   (let [ ctx (.getCtx co)
          bDir (.getf ctx K_BKSDIR)

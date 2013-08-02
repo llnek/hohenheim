@@ -101,11 +101,11 @@
 (defn- pre-parse [cli args]
   (let [ bh (File. (first args))
          ctx (inizContext bh) ]
-    (info "Inside pre-parse()")
+    (info "inside pre-parse()")
     (precondDir (File. bh DN_PATCH))
     (precondDir (File. bh DN_CORE))
     (precondDir (File. bh DN_LIB))
-    (.setf ctx K_CLISH cli)
+    (.setf! ctx K_CLISH cli)
     (.setCtx! cli ctx)
     ctx))
 
@@ -123,6 +123,7 @@
          cz (.optString wc K_COMPS K_EXECV "") ]
     (CU/test-cond "conf file:exec-visor"
                   (= cz "comzotohcljc.hohenheim.impl.Execvisor"))
+    (info "inside primodial()")
     (let [ execv (make-execvisor cli) ]
       (.setf! ctx K_EXECV execv)
       (synthesize-component execv { :ctx ctx } )
@@ -209,7 +210,7 @@
     (when (< (count args) 1)
       (throw (CmdHelpError. "Hohenheim Home not defined.")))
     (info "set hohenheim-home= " (first args))
-    (-> (make-climain args) (.start)) ))
+    (-> (apply make-climain args) (.start)) ))
 
 
 

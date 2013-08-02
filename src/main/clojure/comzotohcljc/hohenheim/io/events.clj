@@ -56,7 +56,7 @@
         MutableObjectAPI
 
           (setf! [_ k v] (.mm-s impl k v) )
-          (seq* [_] (seq (.mm-m impl)))
+          (seq* [_] (seq (.mm-m* impl)))
           (getf [_ k] (.mm-g impl k) )
           (clrf! [_ k] (.mm-r impl k) )
           (clear! [_] (.mm-c impl))
@@ -115,7 +115,7 @@
 
 (defmethod eve-set-session :czc.hhh.io/EmEvent [obj s]
   (do
-    (.setf obj :session s)
+    (.setf! obj :session s)
     obj))
 
 (defmethod eve-destroy :czc.hhh.io/EmEvent [obj] nil)

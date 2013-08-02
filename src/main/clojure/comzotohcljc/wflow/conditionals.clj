@@ -61,9 +61,9 @@
 (defn make-if "Create a If Activity."
   [expr then else]
   (let [ b (make-activity Conditional If) ]
-    (.setf b :test expr)
-    (.setf b :then then)
-    (.setf b :else else)
+    (.setf! b :test expr)
+    (.setf! b :then then)
+    (.setf! b :else else)
     b))
 
 (defmethod ac-reify :comzotohcljc.wflow.conditionals/If
@@ -76,9 +76,9 @@
          t (.getf ac :then)
          c (.getf ac :test)
          e (.getf ac :else) ]
-    (.setf fw :else (if (nil? e) np (ac-reify e np)))
-    (.setf fw :then (ac-reify t np))
-    (.setf fw :test c)
+    (.setf! fw :else (if (nil? e) np (ac-reify e np)))
+    (.setf! fw :then (ac-reify t np))
+    (.setf! fw :test c)
     fw))
 
 (defmethod fw-evaluate! :comzotohcljc.wflow.conditionals/IfPoint
@@ -99,8 +99,8 @@
 (defn make-while "Create a While Activity."
   [expr body]
   (let [ b (make-activity Conditional While) ]
-    (.setf b :test expr)
-    (.setf b :then body)
+    (.setf! b :test expr)
+    (.setf! b :then body)
     b))
 
 (defmethod ac-reify :comzotohcljc.wflow.conditionals/While
@@ -112,8 +112,8 @@
   (let [ b (.getf ac :body)
          t (.getf ac :test) ]
     (when-not (nil? b)
-      (.setf fw :body (ac-reify b fw)))
-    (.setf fw :test t)
+      (.setf! fw :body (ac-reify b fw)))
+    (.setf! fw :test t)
     fw))
 
 (defn- evalWhilePoint [fw job]
@@ -136,11 +136,11 @@
             (cond
               (or (= id :comzotohcljc.wflow.delays/AsyncWaitPoint)
                   (= id :comzotohcljc.wflow.delays/DelayPoint))
-              (do (.setf f :next @rc) (var-set rc f))
+              (do (.setf! f :next @rc) (var-set rc f))
 
               :else
               (when-not (identical? f fw)
-                (.setf fw :body f))))) )
+                (.setf! fw :body f))))) )
       @rc) ))
 
 (defmethod fw-evaluate! :comzotohcljc.wflow.conditionals/WhilePoint
@@ -154,8 +154,8 @@
 (defn make-for "Create a For Activity."
   [expr body]
   (let [ b (make-activity Conditional While For) ]
-    (.setf b :test expr)
-    (.setf b :body body)
+    (.setf! b :test expr)
+    (.setf! b :body body)
     b))
 
 (defmethod ac-reify :comzotohcljc.wflow.conditionals/For
@@ -181,8 +181,8 @@
   (let [ b (.getf ac :body)
          t (.getf ac :test) ]
     (when-not (nil? b)
-      (.setf fw :body (ac-reify b fw)))
-    (.setf fw :test (ForLoopExpr. false 0 t))
+      (.setf! fw :body (ac-reify b fw)))
+    (.setf! fw :test (ForLoopExpr. false 0 t))
     fw))
 
 (defmethod fw-evaluate! :comzotohcljc.wflow.conditionals/ForPoint
@@ -196,9 +196,9 @@
 (defn make-switch "Create a Switch Activity."
   [choiceExpr]
   (let [ a (make-activity Switch) ]
-    (.setf a :test choiceExpr)
-    (.setf a :default nil)
-    (.setf a :choices {} )
+    (.setf! a :test choiceExpr)
+    (.setf! a :default nil)
+    (.setf! a :choices {} )
     a))
 
 (defmethod ac-reify :comzotohcljc.wflow.conditionals/Switch
@@ -215,10 +215,10 @@
                                             (ac-reify (last en) np)) )
                                  (transient {})
                                  (seq cs))) ]
-    (.setf cur :choices t)
+    (.setf! cur :choices t)
     (when-not (nil? df)
-      (.setf cur :default (ac-reify df np)))
-    (.setf cur :test (.getf ac :test))
+      (.setf! cur :default (ac-reify df np)))
+    (.setf! cur :test (.getf ac :test))
     cur))
 
 (defmethod fw-evaluate! :comzotohcljc.wflow.conditionals/SwitchPoint

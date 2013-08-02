@@ -80,7 +80,7 @@
   (let [ impl (CU/make-mmap) ]
     (reify MutableObjectAPI
       (setf! [_ k v] (.mm-s impl k v) )
-      (seq* [_] (seq (.mm-m impl)))
+      (seq* [_] (seq (.mm-m* impl)))
       (getf [_ k] (.mm-g impl k) )
       (clrf! [_ k] (.mm-r impl k) )
       (clear! [_] (.mm-c impl)))) )
@@ -140,7 +140,7 @@
                          (str "Component \"" cid "\" already exists" ))))
               (.mm-s impl :cache (assoc cache cid c)))) )
 
-      { :typeid (keyword (str *ns* "/" (name regoType))) } )) )
+      { :typeid (keyword (str "czc.hhh.impl/" (name regoType))) } )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

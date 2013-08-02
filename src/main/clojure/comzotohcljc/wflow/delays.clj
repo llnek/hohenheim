@@ -59,7 +59,7 @@
 (defn make-delay "Create a Delay Activity."
   [delayMillis]
   (let [ b (make-activity Delay) ]
-    (.setf b :delayMillis delayMillis)
+    (.setf! b :delayMillis delayMillis)
     b))
 
 (defmethod ac-reify :comzotohcljc.wflow.delays/Delay
@@ -69,7 +69,7 @@
 (defmethod ac-realize! :comzotohcljc.wflow.delays/Delay
   [ac fw]
   (let [ d (.getf ac :delayMillis) ]
-    (.setf fw :delayMillis d)
+    (.setf! fw :delayMillis d)
     fw))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

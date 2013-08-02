@@ -99,11 +99,11 @@
                 (warn "cannot undeploy app: " app
                       ", doesn't exist - no operation taken.")))) )
 
-      { :typeid (keyword (str *ns* "/Deployer")) } )))
+      { :typeid (keyword "czc.hhh.impl/Deployer") } )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod comp-contextualize :comzotohcljc.hohenheim.impl.sys/Deployer
+(defmethod comp-contextualize :czc.hhh.impl/Deployer
   [co ctx]
   (do
     (precondDir (maybeDir ctx K_BASEDIR))
@@ -111,7 +111,7 @@
     (precondDir (maybeDir ctx K_PLAYDIR))
     (comp-clone-context co ctx)))
 
-(defmethod comp-initialize :comzotohcljc.hohenheim.impl.sys/Deployer
+(defmethod comp-initialize :czc.hhh.impl/Deployer
   [co]
   (let [ ctx (.getCtx co)
          py (.getf ctx K_PLAYDIR)
@@ -175,7 +175,7 @@
                 (.stop v))
               (.mm-s impl K_CONTAINERS {}))) )
 
-      { :typeid (keyword (str *ns* "/Kernel")) } )))
+      { :typeid (keyword "czc.hhh.impl/Kernel") } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -202,12 +202,12 @@
           (typeof [_] podType)
           (srcUrl [_] pathToPOD))
 
-      { :typeid (keyword (str *ns* "/PODMeta")) } )))
+      { :typeid (keyword "czc.hhh.impl/PODMeta") } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod comp-initialize :comzotohcljc.hohenheim.impl.sys/PODMeta
+(defmethod comp-initialize :czc.hhh.impl/PODMeta
   [co]
   (let [ ctx (.getCtx co)
          rcl (.getf ctx K_ROOT_CZLR)
@@ -215,12 +215,12 @@
     (.configure cl (CU/nice-fpath (File. (.toURI (.srcUrl co)))) )
     (.setf! ctx K_APP_CZLR cl)))
 
-(defmethod comp-compose :comzotohcljc.hohenheim.impl.sys/Kernel
+(defmethod comp-compose :czc.hhh.impl/Kernel
   [co rego]
   ;; get the jmx server from root
   co)
 
-(defmethod comp-contextualize :comzotohcljc.hohenheim.impl.sys/Kernel
+(defmethod comp-contextualize :czc.hhh.impl/Kernel
   [co ctx]
   (let [ base (maybeDir ctx K_BASEDIR) ]
     (precondDir base)

@@ -151,7 +151,7 @@
             (let [c (.mm-g impl :core) ]
               (when-not (nil? c) (.dispose c)))) )
 
-      { :typeid (keyword (str *ns* "/Scheduler")) } )))
+      { :typeid (keyword "czc.frwk.util/Scheduler") } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

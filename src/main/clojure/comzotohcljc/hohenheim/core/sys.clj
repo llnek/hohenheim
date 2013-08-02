@@ -47,13 +47,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmulti comp-contextualize "" (fn [a ctx] (class a)))
+(defmulti comp-contextualize "" (fn [a ctx] (:typeid (meta a))))
 
-(defmulti comp-compose "" (fn [a rego] (class a)))
+(defmulti comp-compose "" (fn [a rego] (:typeid (meta a))))
 
-(defmulti comp-configure "" (fn [a options] (class a)))
+(defmulti comp-configure "" (fn [a options] (:typeid (meta a))))
 
-(defmulti comp-initialize "" class)
+(defmulti comp-initialize "" (fn [a] (:typeid (meta a))))
 
 (defn synthesize-component "" [c options]
   (let [ rego (:rego options)

@@ -80,7 +80,7 @@
 (defn- composite-add! [b a]
   (when-not (nil? a)
     (let [ c (.getf b :children) ]
-      (.setf b :children (conj c a))))
+      (.setf! b :children (conj c a))))
   b)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -95,7 +95,7 @@
          v (if (empty? args)
              []
              (vec (flatten (conj [] args)))) ]
-    (.setf b :children v)
+    (.setf! b :children v)
     b))
 
 (defmethod ac-reify :comzotohcljc.wflow.composites/Block
@@ -105,7 +105,7 @@
 (defmethod ac-realize! :comzotohcljc.wflow.composites/Block
   [ac fw]
   (let [ w (make-innerPoints fw (.getf ac :children)) ]
-    (.setf fw :inner-points w)
+    (.setf! fw :inner-points w)
     fw))
 
 (defmethod fw-evaluate! :comzotohcljc.wflow.composites/BlockPoint
@@ -144,8 +144,8 @@
 (defn- make-nulljoin "Create a NULL Join Activity."
   []
   (let [ a (make-activity Join NullJoin) ]
-    (.setf a :branches 0)
-    (.setf a :body nil)
+    (.setf! a :branches 0)
+    (.setf! a :body nil)
     a))
 
 (defmethod ac-reify :comzotohcljc.wflow.composites/NullJoin
@@ -162,8 +162,8 @@
 (defn make-andjoin "Create an And Join Activity."
   [body]
   (let [ a (make-activity Join AndJoin) ]
-    (.setf a :body body)
-    (.setf a :branches 0)
+    (.setf! a :body body)
+    (.setf! a :branches 0)
     a))
 
 (defmethod ac-reify :comzotohcljc.wflow.composites/AndJoin
@@ -176,9 +176,9 @@
          b (.getf ac :body)
          np (fw-next* fw) ]
     (when-not (nil? b)
-      (.setf fw :body (ac-reify b np)) )
-    (.setf fw :branches n)
-    (.setf fw :counter (AtomicLong. 0))
+      (.setf! fw :body (ac-reify b np)) )
+    (.setf! fw :branches n)
+    (.setf! fw :counter (AtomicLong. 0))
     fw))
 
 (defmethod fw-evaluate! :comzotohcljc.wflow.composites/AndJoinPoint
@@ -202,8 +202,8 @@
 (defn make-orjoin "Create a Or Join Activity."
   [body]
   (let [ a (make-activity Join OrJoin) ]
-    (.setf a :body body)
-    (.setf a :branches 0)
+    (.setf! a :body body)
+    (.setf! a :branches 0)
     a))
 
 (defmethod ac-reify :comzotohcljc.wflow.composites/OrJoin
@@ -217,9 +217,9 @@
          np (fw-next* fw) ]
 
     (when-not (nil? b)
-      (.setf fw :body (ac-reify b np)) )
-    (.setf fw :branches n)
-    (.setf fw :counter (AtomicLong. 0))
+      (.setf! fw :body (ac-reify b np)) )
+    (.setf! fw :branches n)
+    (.setf! fw :counter (AtomicLong. 0))
     fw))
 
 (defmethod fw-evaluate! :comzotohcljc.wflow.composites/OrJoinPoint
@@ -248,8 +248,8 @@
 
 (defn make-split [joiner]
   (let [ s (make-activity Composite Split) ]
-    (.setf s :children [])
-    (.setf s :join joiner)
+    (.setf! s :children [])
+    (.setf! s :join joiner)
     s))
 
 (defmethod ac-reify :comzotohcljc.wflow.composites/Split
@@ -265,11 +265,11 @@
          s (if (nil? j)
              (ac-reify (make-nulljoin) np)
              (do
-               (.setf j :branches n)
+               (.setf! j :branches n)
                (ac-reify j np))) ]
     (when (nil? j)
-      (.setf fw :fall-thru true) )
-    (.setf fw :inner-points (make-innerPoints s cs))
+      (.setf! fw :fall-thru true) )
+    (.setf! fw :inner-points (make-innerPoints s cs))
     fw))
 
 (defmethod fw-evaluate! :comzotohcljc.wflow.composites/SplitPoint

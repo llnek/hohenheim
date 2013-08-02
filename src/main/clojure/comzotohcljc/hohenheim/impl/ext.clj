@@ -69,7 +69,7 @@
 
           (setf! [_ k v] (.mm-s impl k v))
           (clear! [_] (.mm-c impl))
-          (seq* [_] (seq (.mm-m impl)))
+          (seq* [_] (seq (.mm-m* impl)))
           (getf [_ k] (.mm-g impl k))
           (clrf! [_ k] (.mm-r impl k))
 
@@ -79,7 +79,7 @@
           (event [_] evt)
           (id [_] jid))
 
-      { :typeid (keyword (str *ns* "/Job")) } )))
+      { :typeid (keyword "czc.hhh.impl/Job") } )))
 
 (defprotocol ^:private JobCreatorAPI
   (update [_ event options] ))
@@ -103,7 +103,7 @@
                 (catch Throwable e#
                   (-> (make-FatalErrorFlow job) (.start)))))))
 
-      { :typeid (keyword (str *ns* "/JobCreator")) } )))
+      { :typeid (keyword "czc.hhh.impl/JobCreator") } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -174,7 +174,7 @@
                 (throw (ServiceError. (str "No such Service: " svc "."))))
               (make-service-block bk this cfg))) )
 
-    { :typeid (keyword (str *ns* "/Container")) } )) )
+    { :typeid (keyword "czc.hhh.ext/Container") } )) )
 
 (defn make-container [pod]
   (let [ c (make-app-container pod)
@@ -195,7 +195,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod comp-configure :comzotohcljc.hohenheim.impl.ext/Container
+(defmethod comp-configure :czc.hhh.ext/Container
   [co props]
   (let [ appDir (K_APPDIR props)
          cfgDir (File. appDir DN_CONF)
@@ -221,7 +221,7 @@
     (info "container: configured app: " (.id co))))
 
 
-(defmethod comp-initialize :comzotohcljc.hohenheim.impl.ext/Container
+(defmethod comp-initialize :czc.hhh.ext/Container
   [co]
   (let [ env (.getAttr co K_ENVCONF)
          app (.getAttr co K_APPCONF)
