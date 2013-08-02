@@ -214,6 +214,7 @@
            apps (make-component-registry :AppsRegistry K_APPS "1.0" nil)
            deployer (make-deployer)
            knl (make-kernel) ]
+
       (.setf! (.getCtx co) K_COMPS root)
       (.reg root deployer)
       (.reg root knl)
@@ -241,7 +242,7 @@
         Component
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-s impl :ctx))
+          (getCtx [_] (.mm-g impl :ctx))
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )

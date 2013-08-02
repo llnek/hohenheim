@@ -157,7 +157,8 @@
 (defn- writePID [ctx]
   (let [ fp (File. (.getf ctx K_BASEDIR) "hohenheim.pid") ]
     (FileUtils/writeStringToFile fp (PU/pid) "utf-8")
-    (.setf! ctx K_PIDFILE fp)))
+    (.setf! ctx K_PIDFILE fp)
+    ctx))
 
 (defn- pause-cli [[ctx trigger]]
   (do

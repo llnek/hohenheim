@@ -151,8 +151,7 @@
           (reifyServices [this]
             (let [ env (.mm-g impl K_ENVCONF)
                    s (:services env) ]
-              (if (empty? s)
-                  (warn "No system service \"depend\" found in env.conf.")
+              (if-not (empty? s)
                   (doseq [ [k v] (seq s) ]
                     (reifyOneService this k v)))))
 
@@ -160,11 +159,9 @@
             (let [ svc (SU/nsb (:service cfg))
                    srg (.mm-g impl K_SVCS)
                    b (:enabled cfg) ]
-              (if (or (false? b) (SU/nichts? svc))
-                (info "service \"" svc "\" is disabled.")
+              (if-not (or (false? b) (SU/nichts? svc))
                 (let [ s (reifyService this svc cfg) ]
-                  (.reg srg s)
-                  (info "service \"" svc "\" synthesis - OK.")))))
+                  (.reg srg s)))))
 
           (reifyService [this svc cfg]
             (let [ root (.getf (.getCtx this) K_COMPS)
@@ -213,7 +210,7 @@
     ;;_ftlCfg.setDirectoryForTemplateLoading( new File(_appDir, DN_PAGES+"/"+DN_TEMPLATES))
     ;;_ftlCfg.setObjectWrapper(new DefaultObjectWrapper())
     (synthesize-component srg {} )
-    (-> co
+    (doto co
       (.setAttr! K_SVCS srg)
       (.setAttr! K_ENVCONF envConf)
       (.setAttr! K_APPCONF appConf)

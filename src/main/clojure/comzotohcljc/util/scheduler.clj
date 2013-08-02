@@ -112,10 +112,7 @@
               (do
                 (addTimer this
                   (proxy [TimerTask] []
-                    (run [_] (.wakeup this w))) delayMillis)
-                (debug "Delaying eval on process: "
-                       w ", wait: "
-                       delayMillis "millisecs"))))
+                    (run [_] (.wakeup this w))) delayMillis)) ))
 
           (hold [this w]
             (let [ pid (xrefPID w) ]
@@ -126,8 +123,7 @@
               (let [ holdQ (.mm-g impl :holdQ)
                      runQ (.mm-g impl :runQ) ]
                 (.remove runQ pid)
-                (.put holdQ pid w)
-                (debug "Moved to pending wait, process: " w))))
+                (.put holdQ pid w) )))
 
           (wakeup [this w]
             (let [ pid (xrefPID w) ]
@@ -139,12 +135,10 @@
                      runQ (.mm-g impl :runQ) ]
                 (.remove holdQ pid)
                 (.put runQ pid w)
-                (.run this w)
-                (debug "Waking up process: " w))) )
+                (.run this w) )))
 
           (reschedule [this w]
             (when-not (nil? w)
-              (debug "Restarting runnable: {}" w)
               (.run this w)))
 
           (dispose [_]

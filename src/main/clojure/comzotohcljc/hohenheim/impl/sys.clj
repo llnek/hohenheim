@@ -44,10 +44,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol DeployerAPI ""
-  (undeploy [_ app]
-    "clean out the app from the work-dir." )
-  (deploy [_ src]
-    "deploy the pod to target work-dir." ))
+  (undeploy [_ app] )
+  (deploy [_ src] ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -80,24 +78,19 @@
 
         DeployerAPI
 
+          (undeploy [this app]
+            (let [ ctx (getCtx this)
+                   dir (File. (.getf ctx K_PLAYDIR) app) ]
+              (when (.exists dir)
+                  (FileUtils/deleteDirectory dir))))
+
           (deploy [this src]
             (let [ app (FilenameUtils/getBaseName (CU/nice-fpath src))
-                   ctx (.getCtx this)
+                   ctx (getCtx this)
                    des (File. (.getf ctx K_PLAYDIR) app)
                    pod (File. (.toURI src)) ]
-              (if (not (.exists des))
-                (FU/unzip pod des)
-                (info "app: " app " has already been deployed."))))
-
-          (undeploy [this app]
-            (let [ ctx (.getCtx this)
-                   dir (File. (.getf ctx K_PLAYDIR) app) ]
-              (if (.exists dir)
-                (do
-                  (FileUtils/deleteDirectory dir)
-                  (info "app: " app " has been undeployed."))
-                (warn "cannot undeploy app: " app
-                      ", doesn't exist - no operation taken.")))) )
+              (when-not (.exists des)
+                (FU/unzip pod des)))) )
 
       { :typeid (keyword "czc.hhh.impl/Deployer") } )))
 
@@ -138,7 +131,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-kernel "" [parObj]
+(defn make-kernel "" []
   (let [ impl (CU/make-mmap) ]
     (.mm-s impl K_CONTAINERS {} )
     (with-meta
@@ -147,12 +140,12 @@
         Component
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-s impl :ctx))
+          (getCtx [_] (.mm-g impl :ctx))
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
           (version [_] "1.0")
-          (parent [_] parObj)
+          (parent [_] nil)
           (id [_] K_KERNEL )
  
         KernelAPI
@@ -165,7 +158,7 @@
               ;; when there are dependencies
               ;; TODO: need to handle this better
               (doseq [ [k v] (seq* apps) ]
-                (let [ r (-> (CU/new-random) (.nextLong 6)) ]
+                (let [ r (-> (CU/new-random) (.nextInt 6)) ]
                   (maybe-start-pod this v)
                   (PU/safe-wait (* 1000 (Math/max 1 r)))))))
 
@@ -180,7 +173,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-podmeta "" [parObj podType pathToPOD]
+(defn make-podmeta "" [app ver parObj podType pathToPOD]
   (let [ pid (str podType "#" (SN/next-long))
          impl (CU/make-mmap) ]
     (with-meta
@@ -189,18 +182,18 @@
         Component
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-s impl :ctx))
+          (getCtx [_] (.mm-g impl :ctx))
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
-          (version [_] "1.0")
+          (version [_] ver)
           (parent [_] parObj)
           (id [_] pid )
 
         PODMetaAPI
 
-          (typeof [_] podType)
-          (srcUrl [_] pathToPOD))
+          (srcUrl [_] pathToPOD)
+          (typeof [_] podType))
 
       { :typeid (keyword "czc.hhh.impl/PODMeta") } )))
 
