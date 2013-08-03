@@ -41,13 +41,22 @@
     </javac>
   </target>
 
+  <target name="clj-one">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="comzotohcljc.crypto.core" />
+    </java>
+  </target>
+
   <target name="compile_clj">
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="comzotohcljc.util.core" />
       <arg value="comzotohcljc.util.bytes" />
       <arg value="comzotohcljc.util.cmdline" />
       <arg value="comzotohcljc.util.constants" />
-      <arg value="comzotohcljc.util.core" />
       <arg value="comzotohcljc.util.countrycode" />
       <arg value="comzotohcljc.util.dates" />
       <arg value="comzotohcljc.util.files" />

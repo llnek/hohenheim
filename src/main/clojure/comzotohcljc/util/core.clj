@@ -38,10 +38,8 @@
 (import '(org.apache.commons.io IOUtils FilenameUtils))
 (import '(org.apache.commons.lang3 SerializationUtils))
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;(set! *warn-on-reflection* true)
 
 (defmulti nice-fpath "Convert the path into nice format (no) backslashes." class)
 (defmulti load-javaprops "Load java properties from input-stream." class)
@@ -65,14 +63,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn- nsb [s] (if (nil? s) "" (.toString s)))
+(defn- nsb ^String [^Object s] (if (nil? s) "" (.toString s)))
 
 (defn- get-czldr
-  ([] (get-czldr nil) )
-  ([^ClassLoader cl]
+  (^ClassLoader [] (get-czldr nil) )
+  (^ClassLoader [^ClassLoader cl]
     (if (nil? cl) (.getContextClassLoader (Thread/currentThread)) cl)))
 
-(defn nil-nichts [obj] (if (nil? obj) *NICHTS* obj))
+(defn nil-nichts ^Object [obj] (if (nil? obj) *NICHTS* obj))
 
 (defn is-nichts? [obj] (identical? obj *NICHTS*))
 
@@ -85,8 +83,8 @@
     (empty? vs) []
     :else (into [] (remove nil? vs))))
 
-(defn ndz [d] (if (nil? d) 0.0 d))
-(defn nnz [n] (if (nil? n) 0 n))
+(defn ndz ^double [d] (if (nil? d) 0.0 d))
+(defn nnz ^long [n] (if (nil? n) 0 n))
 (defn nbf [b] (if (nil? b) false b))
 
 (defn match-char? "Returns true if this char exists inside this set of chars."
@@ -94,20 +92,20 @@
   (if (nil? setOfChars) false (contains? setOfChars ch)))
 
 (defn sysvar "Get value for this system property."
-  [^String v]
+  ^String [^String v]
   (if (StringUtils/isEmpty v) nil (System/getProperty v)))
 
 (defn envvar "Get value for this env var."
-  [^String v]
+  ^String [^String v]
   (if (StringUtils/isEmpty v) nil (System/getenv v)))
 
 (defn uid "Generate a unique id using std java."
-  []
+  ^String []
   (.replaceAll (.toString (UID.)) "[:\\-]+" ""))
 
 (defn new-random "Return a new random object."
-  ([] (new-random 4))
-  ([numBytes] (SecureRandom. (SecureRandom/getSeed numBytes)) ))
+  (^SecureRandom [] (new-random 4))
+  (^SecureRandom [numBytes] (SecureRandom. (SecureRandom/getSeed numBytes)) ))
 
 (defn now-jtstamp "Return a java sql Timestamp."
   []
@@ -126,37 +124,37 @@
   ([] (to-charset "utf-8")) )
 
 (defmethod nice-fpath String
-  [^String fpath]
+  ^String [^String fpath]
   (FilenameUtils/normalizeNoEndSeparator (nsb fpath) true))
 
 (defmethod nice-fpath File
-  [^File aFile]
+  ^String [^File aFile]
   (if (nil? aFile) "" (nice-fpath (.getCanonicalPath aFile)) ))
 
 (defn subs-var "Replaces all system & env variables in the value."
-  [^String value]
+  ^String [^String value]
   (if (nil? value)
     ""
-    (.replace (StrSubstitutor. (System/getenv)) 
+    (.replace (StrSubstitutor. (System/getenv))
               (StrSubstitutor/replaceSystemProperties value))))
 
 (defn subs-svar "Expand any sys-var found inside the string value."
-  [^String value]
+  ^String [^String value]
   (if (nil? value) "" (StrSubstitutor/replaceSystemProperties value)) )
 
 (defn subs-evar "Expand any env-var found inside the string value."
-  [^String value]
+  ^String [^String value]
   (if (nil? value) "" (.replace (StrSubstitutor. (System/getenv)) value)) )
 
 (defn subs-props "Expand any env & sys vars found inside the property values."
-  [^Properties props]
+  ^Properties [^Properties props]
   (reduce
-    (fn [bc k]
+    (fn [^Properties bc k]
       (.put bc k (subs-var (.get props k))) bc )
     (Properties.) (.keySet props) ))
 
 (defn sysprop "Get the value of a system property."
-  [prop]
+  ^String [^String prop]
   (System/getProperty (nsb prop) ""))
 
 (defn homedir "Get the user's home directory."
@@ -172,7 +170,7 @@
   (sysprop "user.dir"))
 
 (defn trim-lastPathSep "Get rid of trailing dir paths."
-  [path]
+  ^String [path]
   (.replaceFirst (nsb path) "[/\\\\]+$"  ""))
 
 (defn serialize "Object serialization."
@@ -184,11 +182,11 @@
   (if (nil? bits) nil (SerializationUtils/deserialize bits)))
 
 (defn get-classname "Get the object's class name."
-  [obj]
+  ^String [^Object obj]
   (if (nil? obj) "null" (.getName (.getClass obj))))
 
 (defn file-path "Get the file path."
-  [^File aFile]
+  ^String [^File aFile]
   (if (nil? aFile) "" (nice-fpath aFile)))
 
 (defn is-windows? "Returns true if platform is windows."
@@ -233,8 +231,8 @@
   ([^String s ^String encoding] (if (nil? s) nil (.getBytes s encoding))))
 
 (defn rc-stream "Load the resource as stream."
-  ([^String rcPath] (rc-stream rcPath nil))
-  ([^String rcPath ^ClassLoader czLoader]
+  (^InputStream [^String rcPath] (rc-stream rcPath nil))
+  (^InputStream [^String rcPath ^ClassLoader czLoader]
     (if (nil? rcPath) nil (.getResourceAsStream (get-czldr czLoader) rcPath))) )
 
 (defn rc-url "Load the resource as URL."
@@ -288,32 +286,34 @@
 
 (defn normalize "Normalize a filepath, hex-code all non-alpha characters."
   [^String fname]
-  (.toString (reduce
-    (fn [buf ch]
-      (if (or (java.lang.Character/isLetterOrDigit ch) (contains? _PUNCS ch))
-        (.append buf ch)
-        (.append buf (str "0x" (Integer/toString (int ch) 16)) ))
-      buf)
-    (StringBuilder.)
-    (seq fname))))
+  (let [ rc (reduce
+              (fn [^StringBuilder buf ^Character ch]
+                (if (or (java.lang.Character/isLetterOrDigit ch)
+                        (contains? _PUNCS ch))
+                  (.append buf ch)
+                  (.append buf (str "0x" (Integer/toString (int ch) 16)) ))
+                buf)
+              (StringBuilder.)
+              (seq fname)) ]
+    (str "" rc)))
 
 (defn now-millis "Return the current time in milliseconds."
   []
   (java.lang.System/currentTimeMillis))
 
 (defn get-fpath "Return the file path only."
-  [^String fileUrlPath]
+  ^String [^String fileUrlPath]
   (if (nil? fileUrlPath)
     ""
-    (.getPath (java.net.URL. fileUrlPath))) )
+    (.getPath (URL. fileUrlPath))) )
 
 (defn fmt-fileurl "Return the file path as URL."
-  [^String path]
+  ^URL [^String path]
   (if (nil? path)
     nil
     (.toURL (.toURI (File. path)))))
 
-(defn- fetch-tmpdir [extra]
+(defn- fetch-tmpdir ^File [extra]
   (let [ fp (File. (str (sysprop "java.io.tmpdir") "/" extra) ) ]
     (.mkdirs fp)
     fp))
@@ -339,7 +339,7 @@
         (str "" param " not-isa " (.getName parz)) ))
 
 (defmethod test-isa :object
-  [^String param obj ^Class parz]
+  [^String param ^Object obj ^Class parz]
   (assert (and (not (nil? obj)) (.isAssignableFrom parz (.getClass obj)))
         (str "" param " not-isa " (.getName parz)) ))
 
@@ -398,7 +398,7 @@
   (throw (IllegalArgumentException. msg)))
 
 (defn root-cause "Dig into error and find the root exception."
-  [^Throwable root]
+  ^Throwable [^Throwable root]
   (loop [r root t (if (nil? root) nil (.getCause root)) ]
     (if (nil? t)
       r
@@ -410,7 +410,8 @@
     (if (nil? e) "" (str (.getName (.getClass e)) ": " (.getMessage e)))))
 
 (defn gen-numbers "Return a list of random int numbers between a range."
-  [start end howMany]
+  ^clojure.lang.IPersistentCollection
+  [^long start ^long end ^long howMany]
   (if (or (>= start end) (< (- end start) howMany) )
     []
     (let [ _end (if (< end Integer/MAX_VALUE) (+ end 1) end )

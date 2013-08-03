@@ -35,16 +35,16 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;(set! *warn-on-reflection* true)
 
 (defmulti load-resource "Load properties file with localized strings." class)
 
 (defmethod load-resource File
-  [^File aFile]
+  ^ResourceBundle [^File aFile]
   (load-resource (-> aFile (.toURI) (.toURL))))
 
 (defmethod load-resource URL
-  [^URL url]
+  ^ResourceBundle [^URL url]
   (with-open [ inp (.openStream url) ]
     (PropertyResourceBundle. inp)))
 
@@ -56,13 +56,13 @@
       (ResourceBundle/getBundle baseName locale (MU/get-cldr cl))) ))
 
 (defn get-string "Return the string value for this key, pms may contain values for positional substitutions."
-  ([^ResourceBundle bundle ^String pkey] (get-string bundle pkey []))
-  ([^ResourceBundle bundle ^String pkey ^clojure.lang.ISeq pms]
+  (^String [^ResourceBundle bundle ^String pkey] (get-string bundle pkey []))
+  (^String [^ResourceBundle bundle ^String pkey pms]
     (let [ kv (SU/nsb (.getString bundle pkey)) ]
       (if (empty? pms)
         kv
         (loop [ src kv pos 0 ]
-          (if (>= pos (.size pms))
+          (if (>= pos (count pms))
             src
             (recur (StringUtils/replace src "{}" (SU/nsb (nth pms pos)) 1)
                    (inc pos))))))) )

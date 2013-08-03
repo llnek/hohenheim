@@ -26,7 +26,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;(set! *warn-on-reflection* true)
 
 (def ^:private _CCODES {
     "AF"  "Afghanistan"
@@ -267,7 +267,7 @@
 
 
 (defn find-country "Return the full country name."
-  [^String code]
+  ^String [^String code]
   (_CCODES (.toUpperCase code)))
 
 (defn list-codes "List all the country codes."
@@ -279,7 +279,7 @@
   (= "US" (.toUpperCase code)))
 
 (defn find-code "Return the country code."
-  [^String country]
+  ^String [^String country]
   (let [ rs (filter #(= (nth % 1) country) _CCODESEQ) ]
     (if (nil? rs) nil (nth (first rs) 0))))
 

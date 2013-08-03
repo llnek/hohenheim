@@ -25,7 +25,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;(set! *warn-on-reflection* true)
 
 (def ^:private _CCODES {
     "AL"  "Alabama"
@@ -87,11 +87,11 @@
   (keys _CCODES))
 
 (defn find-state "Return the full state name."
-  [^String code]
+  ^String [^String code]
   (_CCODES (.toUpperCase code)))
 
 (defn find-code "Return the abbreviated state code."
-  [^String state]
+  ^String [^String state]
   (let [ rs (filter #(= (nth % 1) state) _CCODESEQ) ]
       (if (nil? rs) nil (nth (first rs) 0))))
 

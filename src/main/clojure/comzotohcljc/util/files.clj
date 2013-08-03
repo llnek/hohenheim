@@ -40,7 +40,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;(set! *warn-on-reflection* true)
 
 (defn file-readwrite? "Returns true if file is readable & writable."
   [^File fp]
@@ -89,17 +89,17 @@
     false) )
 
 (defn parent-path "Get the path to the parent directory."
-  [^String path]
+  ^String [^String path]
   (if (StringUtils/isEmpty path)
     path
     (.getParent (File. path))) )
 
 (defn- jiggleZipEntryName
-  [en]
+  ^String [^ZipEntry en]
   (do
     (.replaceAll (.getName en) "^[\\/]+","")) )
 
-(defn- doOneEntry [src des en]
+(defn- doOneEntry [^ZipFile src ^File des ^ZipEntry en]
   (let [ f (File. des (jiggleZipEntryName en) ) ]
     (if (.isDirectory en)
       (.mkdirs f)
@@ -111,7 +111,9 @@
 
 (defn unzip "Unzip contents of zip file to a target folder."
   [^File src ^File des]
-  (let [ fpz (ZipFile. src)  ents (.entries fpz) dummy (.mkdirs des) ]
+  (let [ fpz (ZipFile. src)
+         ents (.entries fpz) ]
+    (.mkdirs des)
     (loop [ hasMore (.hasMoreElements ents) ]
       (if (false? hasMore)
         nil
@@ -134,7 +136,6 @@
       (doto rc (.setDeleteFile false)
               (.resetContent fp) )
       nil)) )
-
 
 
 

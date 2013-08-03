@@ -32,6 +32,8 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
 
 ;;(defrecord CmdSeqQ [qid qline choices dft must onok] )
 
@@ -45,7 +47,8 @@
     :must must
     :onok onok } )
 
-(defn- readData [cout cin]
+(defn- readData
+  ^String [^Writer cout ^Reader cin]
   (let [ buf (StringBuilder.)
          ms (loop [ c (.read cin) ]
                   ;; windows has '\r\n' linux has '\n'
@@ -56,11 +59,11 @@
                               (= c (int \newline))
                               #{ :break }
 
-                              (or (= c (int \return)) 
-                                  (= c (int \backspace)) (= c 27)) 
+                              (or (= c (int \return))
+                                  (= c (int \backspace)) (= c 27))
                               #{}
 
-                              :else 
+                              :else
                               (do (.append buf (char c)) #{})) ]
                     (if (contains? m :break)
                       m
@@ -68,12 +71,12 @@
     (if (contains? ms :quit) nil (.trim (.toString buf)))) )
 
 
-(defn- popQQ [cout cin cmdQ props]
+(defn- popQQ [^Writer cout ^Reader cin cmdQ ^Properties props]
   (let [ must (:must cmdQ)
-         dft (:dft cmdQ)
+         dft (SU/nsb (:dft cmdQ))
          onResp (:onok cmdQ)
          q (:qline cmdQ)
-         chs (:choices cmdQ) ]
+         chs (SU/nsb (:choices cmdQ)) ]
     (.write cout (str q (if must "*" "" ) " ? "))
     (when-not (StringUtils/isEmpty chs)
       (if (SU/has? chs \n)
@@ -92,12 +95,12 @@
         (do (.write cout "\n") nil )
         (do (onResp (if (StringUtils/isEmpty rc) dft rc) props))))) )
 
-(defn- popQ [cout cin cmdQ props]
+(defn- popQ [^Writer cout ^Reader cin cmdQ ^Properties props]
   (if (nil? cmdQ)
     ""
     (popQQ cout cin cmdQ props)) )
 
-(defn- cycleQ [cout cin cmdQNs start props]
+(defn- cycleQ [^Writer cout ^Reader cin cmdQNs ^String start ^Properties props]
   (do
     (loop [ rc (popQ cout cin (get cmdQNs start) props) ]
       (cond
@@ -110,7 +113,7 @@
         :else
         (recur (popQ cout cin (get cmdQNs rc) props))))))
 
-(defn cli-converse [cmdQs q1]
+(defn cli-converse [cmdQs ^String q1]
   (let [ cout (OutputStreamWriter. (BufferedOutputStream. (System/out)))
          kp (if (CU/is-windows?) "<Ctrl-C>" "<Ctrl-D>")
          cin (InputStreamReader. (System/in))
@@ -119,13 +122,13 @@
     (cycleQ cout cin cmdQs q1 props)))
 
 (comment
-(def q1 (make-CmdSeqQ "q1" "hello ken" "q|b|c" "c" true 
+(def q1 (make-CmdSeqQ "q1" "hello ken" "q|b|c" "c" true
            (fn [a ps]
              (do (.put ps "a1" a) "q2")) ) )
-(def q2 (make-CmdSeqQ "q2" "hello paul" "" "" false 
+(def q2 (make-CmdSeqQ "q2" "hello paul" "" "" false
            (fn [a ps]
              (do (.put ps "a2" a) "q3"))) )
-(def q3 (make-CmdSeqQ "q3" "hello joe" "z" "" false 
+(def q3 (make-CmdSeqQ "q3" "hello joe" "z" "" false
            (fn [a ps]
              (do (.put ps "a3" a) "" ))) )
 (def QM { "q1" q1 "q2" q2 "q3" q3 })

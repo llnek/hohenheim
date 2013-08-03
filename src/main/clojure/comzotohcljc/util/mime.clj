@@ -29,7 +29,7 @@
 (import '(java.net URLDecoder URLEncoder))
 (import '(java.io InputStream File))
 (import '(java.net URL))
-(import '(java.util.regex Pattern))
+(import '(java.util.regex Pattern Matcher))
 (import '(java.util Properties))
 (import '(javax.mail Message))
 
@@ -40,6 +40,8 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
 
 
 (def ^:dynamic *CTE_QUOTED* "quoted-printable")
@@ -123,14 +125,16 @@
 (def ^:private _mime_cache (atom {}))
 
 
-(defn- is-pkcs7mime? "" [s] (>= (.indexOf s "application/x-pkcs7-mime") 0))
+(defn- is-pkcs7mime? ""
+  [^String s]
+  (>= (.indexOf s "application/x-pkcs7-mime") 0))
 
 (defn mime-cache "Cache of most MIME types."
   []
   @_mime_cache)
 
 (defn get-charset "Get charset from this content-type string."
-  [^String cType]
+  ^String [^String cType]
   (let [ pos (-> (SU/nsb cType) (.toLowerCase) (.indexOf "charset="))
          rc "utf-8" ]
          ;;rc "ISO-8859-1" ]
@@ -161,15 +165,15 @@
     (and (>= (.indexOf ct "multipart/report") 0) (>= (.indexOf ct "disposition-notification") 0))) )
 
 (defn maybe-stream "Turn this object into some form of stream, if possible."
-  [obj]
+  ^InputStream [^Object obj]
   (cond
     (instance? String obj)
-    (IO/streamify (CU/bytesify (cast String obj)))
+    (IO/streamify (CU/bytesify obj))
 
     (instance? InputStream obj)
-    (cast InputStream obj)
+    obj
 
-    (instance? (MU/bytes-class) obj) 
+    (instance? (MU/bytes-class) obj)
     (IO/streamify obj)
 
     :else
@@ -190,16 +194,17 @@
       (URLEncoder/encode u "utf-8") )))
 
 (defn guess-mimetype "Guess the MIME type of file."
-  ([^File file] (guess-mimetype file ""))
-  ([^File file ^String dft]
-    (let [ mc (.matcher _extRegex (.toLowerCase (.getName file)))
+  (^String [^File file] (guess-mimetype file ""))
+  (^String [^File file ^String dft]
+    (let [ ^Pattern rgx _extRegex
+           ^Matcher mc (.matcher rgx (.toLowerCase (.getName file)))
            ex (if (.matches mc) (.group mc 1) "")
            p (SU/nsb (get (mime-cache) ex)) ]
       (if (SU/hgl? p) p dft))) )
 
 (defn guess-contenttype "Guess the content-type of file."
-  ([^File file] (guess-contenttype file "utf-8" "application/octet-stream" ))
-  ([^File file ^String enc ^String dft]
+  (^String [^File file] (guess-contenttype file "utf-8" "application/octet-stream" ))
+  (^String [^File file ^String enc ^String dft]
     (let [ mt (guess-mimetype file)
            ct (if (SU/hgl? mt) mt dft) ]
       (if (not (.startsWith ct "text/")) ct (str ct "; charset=" enc)))) )

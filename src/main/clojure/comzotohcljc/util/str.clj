@@ -34,10 +34,10 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
-
-(defn- lcs [s] (.toLowerCase s))
-(defn- ucs [s] (.toUpperCase s))
+(defn- ^String lcs [^String s] (.toLowerCase s))
+(defn- ^String ucs [^String s] (.toUpperCase s))
 
 (defn has-nocase? "Returns true if this sub-string is inside this string."
   [^String aStr s]
@@ -45,17 +45,17 @@
     (>= (.indexOf (lcs aStr) (lcs s)) 0)))
 
 (defn embeds? "Returns true if this sub-string is inside this string."
-  [^String aStr s]
+  [^String aStr ^String s]
   (do
     (>= (.indexOf aStr s) 0)))
 
 (defn has? "Returns true if this character is inside this string."
-  [^String aStr ch]
+  [^String aStr ^Character ch]
   (do
     (>= (.indexOf aStr (int ch)) 0)))
 
 (defn nsb "Returns empty string if obj is null, or obj.toString."
-  [obj]
+  ^String [^Object obj]
   (cond
 
     (nil? obj)
@@ -68,7 +68,7 @@
     (.toString obj)))
 
 (defn nsn "Returns \"(null)\" if obj is null, or obj.toString."
-  [obj]
+  ^String [^Object obj]
   (if (nil? obj) "(null)" (.toString obj)))
 
 (defn same? "Returns true if these 2 strings are the same."
@@ -99,7 +99,7 @@
   (if (nil? s) "" (.trim s)))
 
 (defn add-delim! "Append to a string-builder, optionally inserting a delimiter if the buffer is not empty."
-  [^StringBuilder buf ^String delim ^String item]
+  ^StringBuilder [^StringBuilder buf ^String delim ^String item]
   (do
     (when-not (nil? item)
       (when (and (> (.length buf) 0) (not (nil? delim)))
@@ -129,7 +129,7 @@
   [^String src substrs]
   (if (nil? src)
     false
-    (if (some #(>= (.indexOf src %) 0) substrs) true false)))
+    (if (some (fn [^String s] (>= (.indexOf src s) 0)) substrs) true false)))
 
 (defn swic-any? "Tests startsWith (ignore-case)."
   [^String src pfxs]
@@ -156,20 +156,20 @@
     (if (some #(.equals src %) strs) true false)))
 
 (defn make-string "Make a string of contain length."
-  [ch times]
+  ^String [^Character ch ^long times]
   (let [ buf (StringBuilder.) ]
     (dotimes [ n times ]
       (.append buf ch))
     (.toString buf)) )
 
 (defn right "Gets the rightmost len characters of a String."
-  [^String src len]
+  ^String [^String src ^long len]
   (if (nil? src)
     ""
     (StringUtils/right src len)) )
 
 (defn left "Gets the leftmost len characters of a String."
-  [^String src len]
+  ^String [^String src ^long len]
   (if (nil? src)
     ""
     (StringUtils/left src len)) )

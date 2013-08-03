@@ -25,6 +25,7 @@
 
 (import '(java.lang.management ManagementFactory))
 (import '(com.zotoh.frwk.util CoreUtils))
+(import '(java.lang Thread Runnable))
 
 (require '[ comzotohcljc.util.core :as CU])
 (require '[ comzotohcljc.util.meta :as MU])
@@ -33,11 +34,11 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;(set! *warn-on-reflection* true)
 
 (defn async-exec "Run the code (runnable) in a separate daemon thread."
-  ([runable] (async-exec runable (MU/get-cldr)))
-  ([runable cl]
+  ([^Runnable runable] (async-exec runable (MU/get-cldr)))
+  ([^Runnable runable ^ClassLoader cl]
     (if (nil? runable)
       nil
       (doto (Thread. runable)
@@ -53,7 +54,7 @@
       (async-exec r cl))))
 
 (defn safe-wait "Block current thread for some millisecs."
-  [millisecs]
+  [^long millisecs]
   (CU/Try!
     (when (> millisecs 0) (Thread/sleep millisecs))
     ))

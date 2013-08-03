@@ -36,9 +36,8 @@
 (require '[ comzotohcljc.util.str :as SU ])
 
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
 (defn leap-year? "Return true if this is a leap year."
   [^long year]
@@ -62,18 +61,18 @@
 
 (defn parse-timestamp "Convert string into a valid Timestamp object.
   *tstr* conforming to the format \"yyyy-mm-dd hh:mm:ss.[fff...]\""
-  [^String tstr]
+  ^Timestamp [^String tstr]
   (CU/Try!
     (Timestamp/valueOf tstr) ))
 
 (defn parse-date "Convert string into a Date object."
-  [^String tstr ^String fmt]
+  ^Date [^String tstr ^String fmt]
   (if (or (StringUtils/isEmpty tstr) (StringUtils/isEmpty fmt))
     nil
     (.parse (SimpleDateFormat. fmt) tstr)))
 
 (defn parse-iso8601 "Parses datetime in ISO8601 format."
-  [^String tstr]
+  ^Date [^String tstr]
   (if (StringUtils/isEmpty tstr)
     nil
     (let [ fmt (if (SU/has? tstr \:)
@@ -83,13 +82,13 @@
       (parse-date tstr fmt))))
 
 (defn fmt-timestamp "Convert Timestamp into a string value."
-  [^Timestamp ts]
+  ^String [^Timestamp ts]
   (if (nil? ts) "" (.toString ts)))
 
 (defn fmt-date "Convert Date into string value."
-  ( [^Date dt] (fmt-date dt CS/DT_FMT_MICRO nil))
-  ( [^Date dt fmt] (fmt-date dt fmt nil))
-  ( [^Date dt fmt ^TimeZone tz]
+  ( ^String [^Date dt] (fmt-date dt CS/DT_FMT_MICRO nil))
+  ( ^String [^Date dt fmt] (fmt-date dt fmt nil))
+  ( ^String [^Date dt fmt ^TimeZone tz]
     (if (or (nil? dt) (StringUtils/isEmpty fmt))
       ""
       (let [ df (SimpleDateFormat. fmt) ]
@@ -97,35 +96,37 @@
         (.format df dt)))) )
 
 (defn fmt-gmt "Convert Date object into a string - GMT timezone."
-  [^Date dt]
+  ^String [^Date dt]
   (do
     (fmt-date dt CS/DT_FMT_MICRO (SimpleTimeZone. 0 "GMT")) ))
 
 
-(defn- add [^Calendar cal calendarField amount]
+(defn- add
+  ^Calendar [^Calendar cal calendarField amount]
   (if (nil? cal)
     nil
     (doto (GregorianCalendar. (.getTimeZone cal))
       (.setTime (.getTime cal))
       (.add calendarField amount))))
 
-(defn make-cal "" [date]
+(defn make-cal "" 
+  ^Calendar [date]
   (doto (GregorianCalendar.) (.setTime date)))
 
 (defn add-years "Add n more years to the calendar."
-  [^Calendar cal yrs]
+  ^Calendar [^Calendar cal yrs]
   (add cal Calendar/YEAR yrs))
 
 (defn add-months "Add n more months to the calendar."
-  [^Calendar cal mts]
+  ^Calendar [^Calendar cal mts]
   (add cal Calendar/MONTH mts))
 
 (defn add-days "Add n more days to the calendar."
-  [^Calendar cal days]
+  ^Calendar [^Calendar cal days]
   (add cal Calendar/DAY_OF_YEAR days))
 
 (defn fmt-cal "Formats time to yyyyMMdd-hhmmss."
-  [^Calendar cal]
+  ^String [^Calendar cal]
   (do
     (java.lang.String/format (Locale/getDefault) "%1$04d%2$02d%3$02d-%4$02d%5$02d%6$02d"
        (into-array Object [
@@ -137,7 +138,7 @@
             (.get cal Calendar/SECOND) ] ))))
 
 (defn debug-cal "Debug show a calendar's internal data."
-  [^Calendar cal]
+  ^String [^Calendar cal]
   (do
     (clojure.string/join ""
         [ "{" (.. cal (getTimeZone) (getDisplayName) )  "} "

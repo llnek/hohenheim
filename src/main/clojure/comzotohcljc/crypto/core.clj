@@ -179,7 +179,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;(set! *warn-on-reflection* true)
 
 (defn assert-jce "This function should fail if the non-restricted (unlimited-strength) jce files are not placed in jre-home"
   []
@@ -189,10 +189,13 @@
                              (SecretKeySpec. (.. kgen generateKey getEncoded) *BFISH*))) ]
     (.doFinal cipher (CU/bytesify "This is just an example"))))
 
-(def ^:dynamic *BCProvider* (let[ bcp (BouncyCastleProvider.) ] (Security/addProvider bcp) bcp))
+(def ^Provider _BCProvider (let [ bcp (BouncyCastleProvider.) ] (Security/addProvider bcp) bcp))
+
 (assert-jce)
-(doto (cast MailcapCommandMap (CommandMap/getDefaultCommandMap))
-  (.addMailcap (str "application/pkcs7-signature;; "
+
+(let [ ^MailcapCommandMap mcm (CommandMap/getDefaultCommandMap) ]
+  (doto mcm
+    (.addMailcap (str "application/pkcs7-signature;; "
             "x-java-content-handler=org.bouncycastle.mail.smime.handlers.pkcs7_signature"))
   (.addMailcap (str "application/pkcs7-mime;; " "x-java-content-handler=org.bouncycastle.mail.smime.handlers.pkcs7_mime"))
   (.addMailcap (str "application/x-pkcs7-signature;; "
@@ -200,32 +203,32 @@
   (.addMailcap (str "application/x-pkcs7-mime;; "
             "x-java-content-handler=org.bouncycastle.mail.smime.handlers.x_pkcs7_mime"))
   (.addMailcap (str "multipart/signed;; "
-          "x-java-content-handler=org.bouncycastle.mail.smime.handlers.multipart_signed") ))
+          "x-java-content-handler=org.bouncycastle.mail.smime.handlers.multipart_signed") )))
 
 
 (defn pkcs-file? "" [^URL keyUrl]
   (not (-> keyUrl (.getFile) (.toLowerCase) (.endsWith ".jks"))))
 
 (defn make-MsgDigest "Get a message digest instance."
-  [^String algo]
-  (MessageDigest/getInstance (SU/nsb algo) *BCProvider*))
+  ^MessageDigest [^String algo]
+  (MessageDigest/getInstance (SU/nsb algo) _BCProvider))
 
 (defn next-serial "Get a random Big Integer."
-  []
+  ^BigInteger []
   (let [ r (Random. (.getTime (Date.))) ]
     (BigInteger/valueOf (math/abs (.nextLong r)))) )
 
 (defn dbg-provider ""
   [^PrintStream os]
   (CU/Try!
-    (.list *BCProvider* os)))
+    (.list _BCProvider os)))
 
 (defn get-srand "Get a secure random."
-  []
+  ^SecureRandom []
   (SecureRandom/getInstance "SHA1PRNG" ))
 
 (defn new-alias ""
-  []
+  ^String []
   (str "" (System/currentTimeMillis) (SN/next-int)))
 
 (defn- find-aliases "" [^KeyStore keystore pred]
@@ -233,18 +236,18 @@
     (loop [ rc (transient []) ]
       (if (not (.hasMoreElements en))
         (persistent! rc)
-        (let [ n (.nextElement en) ]
+        (let [ ^String n (.nextElement en) ]
           (if (pred keystore n)
             (recur (conj! rc n))
             (recur rc)))))))
 
 (defn cert-aliases "Enumerate all cert aliases in the key-store."
   [^KeyStore keystore]
-  (find-aliases keystore (fn [ks n] (.isCertificateEntry ks n))))
+  (find-aliases keystore (fn [^KeyStore ks ^String n] (.isCertificateEntry ks n))))
 
 (defn pkey-aliases "Enumerate all key aliases in the key-store."
   [^KeyStore keystore]
-  (find-aliases keystore (fn [ks n] (.isKeyEntry ks n))))
+  (find-aliases keystore (fn [^KeyStore ks ^String n] (.isKeyEntry ks n))))
 
 (defn- rego-certs [keystore pwdObj]
   (let [ ca (.toCharArray pwdObj) ]
@@ -257,7 +260,7 @@
 
   ([^InputStream inp ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
     (let [ ca (if (nil? pwdObj) nil (.toCharArray pwdObj))
-           ks (doto (KeyStore/getInstance "PKCS12" *BCProvider*)
+           ks (doto (KeyStore/getInstance "PKCS12" _BCProvider)
                 (.load inp ca)) ]
       (when-not (nil? inp) (rego-certs ks pwdObj))
       ks))
@@ -329,7 +332,7 @@
 (defn gen-mac "Generate a Message Auth Code."
   ([^bytes skey ^String data] (gen-mac skey data DEF_MAC))
   ([^bytes skey ^String data ^String algo]
-    (let [ mac (doto (Mac/getInstance algo *BCProvider*)
+    (let [ mac (doto (Mac/getInstance algo _BCProvider)
                      (.init (SecretKeySpec. skey algo))
                      (.update (CU/bytesify data))) ]
       (Hex/encodeHexString (.doFinal mac)))))
@@ -343,7 +346,7 @@
 
 (defn make-keypair "Make a Asymmetric key-pair."
   [^String algo ^long keylen]
-  (let [ kpg (doto (KeyPairGenerator/getInstance algo *BCProvider*)
+  (let [ kpg (doto (KeyPairGenerator/getInstance algo _BCProvider)
                    (.initialize keylen (get-srand))) ]
     (.generateKeyPair kpg)) )
 
@@ -393,7 +396,7 @@
            k (.getPrivate kp)
            u (.getPublic kp)
            csb (JcaContentSignerBuilder. DEF_ALGO)
-           cs (.build (.setProvider csb *BCProvider*) k)
+           cs (.build (.setProvider csb _BCProvider) k)
            xdn (X500Principal. dnStr)
            rbr (JcaPKCS10CertificationRequestBuilder. xdn u)
            bits (.getEncoded (.build rbr cs))
@@ -429,7 +432,7 @@
       (FileUtils/writeByteArrayToFile out (.toByteArray baos)) )) )
 
 (defn make-pkcs12 "Make a PKCS12 object from key and cert."
-  [^bytes keyPEM ^bytes certPEM 
+  [^bytes keyPEM ^bytes certPEM
    ^comzotohcljc.crypto.codec.PasswordAPI pwdObj ^File out]
   (let [ ct (.getTrustedCertificate (conv-cert certPEM))
          rdr (InputStreamReader. (IO/streamify keyPEM))
@@ -442,7 +445,7 @@
     (FileUtils/writeByteArrayToFile out (.toByteArray baos))))
 
 (defn make-ssv1PKCS12 "Make a SSV1 (root level) type PKCS12 object."
-  [^Date start ^Date end dnStr 
+  [^Date start ^Date end dnStr
    ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
    keylen ^File out]
   (let [ ks (get-pkcsStore)
@@ -450,14 +453,14 @@
     (mkSSV1 ks kp DEF_ALGO start end dnStr pwdObj keylen out)) )
 
 (defn make-ssv1JKS "Make a SSV1 (root level) type JKS object."
-  [^Date start ^Date end dnStr 
+  [^Date start ^Date end dnStr
    ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
    keylen ^File out]
   (let [ ks (get-jksStore)
          kp (make-keypair *DSA* keylen) ]
     (mkSSV1 ks kp "SHA1withDSA" start end dnStr pwdObj keylen out)) )
 
-(defn- mkSSV3Cert [pv ^KeyPair kp start end dnStr 
+(defn- mkSSV3Cert [pv ^KeyPair kp start end dnStr
                    ^Certificate issuer ^PrivateKey issuerKey keylen algo]
   (let [ top (cast X509Certificate issuer)
          subject (X500Principal. dnStr)
@@ -488,7 +491,7 @@
       (FileUtils/writeByteArrayToFile out (.toByteArray baos)))) )
 
 (defn make-ssv3PKCS12 "Make a SSV3 type PKCS12 object."
-  [^Date start ^Date end dnStr 
+  [^Date start ^Date end dnStr
    ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
     keylen issuerCerts ^PrivateKey issuerKey ^File out]
   (let [ ks (get-pkcsStore)
@@ -498,7 +501,7 @@
 
 ;; JKS uses SUN and hence needs to use DSA
 (defn make-ssv3JKS "Make a SSV3 JKS object."
-  [^Date start ^Date end dnStr 
+  [^Date start ^Date end dnStr
    ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
    keylen issuerCerts issuerKey ^File out]
   (let [ ks (get-jksStore)
@@ -513,17 +516,17 @@
          cc (.getCertificateChain pkey)
          k (.getPrivateKey pkey)
          cl (vec cc)
-         cp (.build (.setProvider (JcaDigestCalculatorProviderBuilder.) *BCProvider*))
+         cp (.build (.setProvider (JcaDigestCalculatorProviderBuilder.) _BCProvider))
          bdr (JcaSignerInfoGeneratorBuilder. cp)
 ;;    "SHA1withRSA"
-         ;;cs (.build (.setProvider (JcaContentSignerBuilder. (CMSSignedGenerator/DIGEST_SHA512)) *BCProvider*) k)
-         cs (.build (.setProvider (JcaContentSignerBuilder. *SHA512*) *BCProvider*) k)
+         ;;cs (.build (.setProvider (JcaContentSignerBuilder. (CMSSignedGenerator/DIGEST_SHA512)) _BCProvider) k)
+         cs (.build (.setProvider (JcaContentSignerBuilder. *SHA512*) _BCProvider) k)
          gen (CMSSignedDataGenerator.) ]
     (.addSignerInfoGenerator gen (.build bdr cs (cast X509Certificate (first cl))))
     (.addCertificates gen (JcaCertStore. cl))
     (let [ dummy (CMSProcessableByteArray. (CU/bytesify "Hello"))
            bits (.getEncoded (.generate gen (CMSSignedGenerator/DATA)
-                                        dummy false *BCProvider* false)) ]
+                                        dummy false _BCProvider false)) ]
       (FileUtils/writeByteArrayToFile fileOut bits))) )
 
 (defn new-session "Creates a new java-mail session."
@@ -606,9 +609,9 @@
          issAndSer (IssuerAndSerialNumber. (X500Name/getInstance (.getEncoded issuerDN)) (.getSerialNumber x0))
          dm1 (.add signedAttrs (SMIMEEncryptionKeyPreferenceAttribute. issAndSer))
          bdr (doto (JcaSignerInfoGeneratorBuilder.
-                          (-> (JcaDigestCalculatorProviderBuilder.) (.setProvider *BCProvider*) (.build)) )
+                          (-> (JcaDigestCalculatorProviderBuilder.) (.setProvider _BCProvider) (.build)) )
                 (.setDirectSignature true))
-         cs (-> (JcaContentSignerBuilder. (SU/nsb algo)) (.setProvider *BCProvider*) (.build pkey)) ]
+         cs (-> (JcaContentSignerBuilder. (SU/nsb algo)) (.setProvider _BCProvider) (.build pkey)) ]
 
     (.setSignedAttributeGenerator bdr (DefaultSignedAttributeTableGenerator. (AttributeTable. signedAttrs)))
     (.addSignerInfoGenerator gen (.build bdr cs, x0))
@@ -630,26 +633,26 @@
       :else
       (throw (IllegalArgumentException. "wrong type")))))
 
-(defmethod smime-digsig :mimemessage 
+(defmethod smime-digsig :mimemessage
   [^PrivateKey pkey certs algo ^MimeMessage mmsg]
   (do
     ;; force internal processing, just in case
     (.getContent mmsg)
-    (-> (make-signerGentor pkey certs algo) (.generate mmsg *BCProvider*))) )
+    (-> (make-signerGentor pkey certs algo) (.generate mmsg _BCProvider))) )
 
 (defmethod smime-digsig :multipart
   [^PrivateKey pkey certs algo ^Multipart mp]
   (let [ mm (new-mimeMsg) ]
     (.setContent mm mp)
-    (-> (make-signerGentor pkey certs algo) (.generate mm *BCProvider*))) )
+    (-> (make-signerGentor pkey certs algo) (.generate mm _BCProvider))) )
 
 (defmethod smime-digsig :bodypart
   [^PrivateKey pkey certs algo ^BodyPart bp]
-  (-> (make-signerGentor pkey certs algo) (.generate (cast MimeBodyPart bp) *BCProvider*)))
+  (-> (make-signerGentor pkey certs algo) (.generate (cast MimeBodyPart bp) _BCProvider)))
 
 (defn- smime-dec [^PrivateKey pkey env]
     ;;var  recId = new JceKeyTransRecipientId(cert.asInstanceOf[XCert])
-  (let [ rec (-> (JceKeyTransEnvelopedRecipient. pkey) (.setProvider *BCProvider*))
+  (let [ rec (-> (JceKeyTransEnvelopedRecipient. pkey) (.setProvider _BCProvider))
          it (-> (.getRecipientInfos env) (.getRecipients) (.iterator)) ]
     (loop [ rc nil ]
       (if (or (not (nil? rc)) (not (.hasNext it)))
@@ -704,7 +707,7 @@
                               (if (or stop (not (.hasNext it)))
                                 ret
                                 (let [ bdr (-> (JcaSimpleSignerInfoVerifierBuilder.)
-                                             (.setProvider *BCProvider*)) ]
+                                             (.setProvider _BCProvider)) ]
                                   (if (.verify si (.build bdr (cast X509CertificateHolder (.next it))))
                                     (let [ digest (.getContentDigest si) ]
                                       (if (nil? digest)
@@ -743,13 +746,13 @@
 (defmulti smime-encrypt "Generates a MimeBodyPart."
   (fn [a b c]
     (cond
-      (instance? MimeMessage c) 
+      (instance? MimeMessage c)
       :mimemsg
 
-      (instance? Multipart c) 
+      (instance? Multipart c)
       :multipart
 
-      (instance? BodyPart c) 
+      (instance? BodyPart c)
       :bodypart
 
       :else
@@ -761,30 +764,30 @@
          mb (cast MimeBodyPart bp)
          xc (cast X509Certificate cert) ]
     (.addRecipientInfoGenerator gen
-        (-> (JceKeyTransRecipientInfoGenerator. xc) (.setProvider *BCProvider*)))
+        (-> (JceKeyTransRecipientInfoGenerator. xc) (.setProvider _BCProvider)))
     (.generate gen mb
-        (-> (JceCMSContentEncryptorBuilder. algo) (.setProvider *BCProvider*) (.build)))))
+        (-> (JceCMSContentEncryptorBuilder. algo) (.setProvider _BCProvider) (.build)))))
 
-(defmethod smime-encrypt :mimemsg 
+(defmethod smime-encrypt :mimemsg
   [^Certificate cert ^String algo ^MimeMessage msg]
   (let [ gen (SMIMEEnvelopedGenerator.)
          xc (cast X509Certificate cert)
-         g (-> (JceKeyTransRecipientInfoGenerator. xc) (.setProvider *BCProvider*)) ]
+         g (-> (JceKeyTransRecipientInfoGenerator. xc) (.setProvider _BCProvider)) ]
     ;; force message to be processed, just in case.
     (.getContent msg)
     (.addRecipientInfoGenerator gen g)
     (.generate gen msg
-      (-> (JceCMSContentEncryptorBuilder. algo) (.setProvider *BCProvider*) (.build)))))
+      (-> (JceCMSContentEncryptorBuilder. algo) (.setProvider _BCProvider) (.build)))))
 
-(defmethod smime-encrypt :multipart 
+(defmethod smime-encrypt :multipart
   [^Certificate cert String algo ^Multipart mp]
   (let [ gen (SMIMEEnvelopedGenerator.)
          xc (cast X509Certificate cert)
          mm (doto (new-mimeMsg) (.setContent mp))
-         g (-> (JceKeyTransRecipientInfoGenerator. xc) (.setProvider *BCProvider*)) ]
+         g (-> (JceKeyTransRecipientInfoGenerator. xc) (.setProvider _BCProvider)) ]
     (.addRecipientInfoGenerator gen g)
     (.generate gen mm
-      (-> (JceCMSContentEncryptorBuilder. algo) (.setProvider *BCProvider*) (.build)))))
+      (-> (JceCMSContentEncryptorBuilder. algo) (.setProvider _BCProvider) (.build)))))
 
 (defn smime-compress "Generates a MimeBodyPart."
   ([cType ^XData xdata]
@@ -824,9 +827,9 @@
     (let [ gen (CMSSignedDataGenerator.)
            cl (vec certs)
            cert (cast X509Certificate (first cl))
-           cs (-> (JcaContentSignerBuilder. (SU/nsb algo)) (.setProvider *BCProvider*) (.build pkey))
+           cs (-> (JcaContentSignerBuilder. (SU/nsb algo)) (.setProvider _BCProvider) (.build pkey))
            bdr (JcaSignerInfoGeneratorBuilder.
-                  (-> (JcaDigestCalculatorProviderBuilder.) (.setProvider *BCProvider*) (.build))) ]
+                  (-> (JcaDigestCalculatorProviderBuilder.) (.setProvider _BCProvider) (.build))) ]
       (.setDirectSignature bdr true)
       (.addSignerInfoGenerator gen (.build bdr cs cert))
       (.addCertificates gen (JcaCertStore. cl))
@@ -849,7 +852,7 @@
                          (loop [ digest nil stop false ]
                            (if (or stop (not (.hasNext it)))
                              digest
-                             (let [ bdr (-> (JcaSimpleSignerInfoVerifierBuilder.) (.setProvider *BCProvider*))
+                             (let [ bdr (-> (JcaSimpleSignerInfoVerifierBuilder.) (.setProvider _BCProvider))
                                     ok (.verify si (.build bdr (cast X509CertificateHolder (.next it))))
                                     dg (if ok (.getContentDigest si) nil) ]
                                (if (not (nil? dg)) (recur dg true) (recur nil false)))))))

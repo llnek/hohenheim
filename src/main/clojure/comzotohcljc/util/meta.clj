@@ -23,7 +23,7 @@
   comzotohcljc.util.meta)
 
 
-(import '(java.lang.reflect Field Method Modifier))
+(import '(java.lang.reflect Member Field Method Modifier))
 (require '[ comzotohcljc.util.core :as CU ] )
 (require '[ comzotohcljc.util.str :as SU ] )
 
@@ -31,7 +31,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;(set! *warn-on-reflection* true)
 
 (defmulti is-child "Returns true if clazz is subclass of this base class."
   (fn [a b]
@@ -47,15 +47,15 @@
   (if (or (nil? basz) (nil? cz)) false (.isAssignableFrom basz cz)))
 
 (defmethod is-child :object
-  [^Class basz obj]
+  [^Class basz ^Object obj]
   (if (or (nil? basz) (nil? obj)) false (is-child basz (.getClass obj))))
 
 (defn bytes-class "Return the java class for byte[]."
-  []
+  ^Class []
   (Class/forName "[B"))
 
 (defn chars-class "Return the java class for char[]."
-  []
+  ^Class []
   (Class/forName "[C"))
 
 (defn is-boolean? "True if class is Boolean."
@@ -99,13 +99,13 @@
   (= classObj (bytes-class)) )
 
 (defn for-name "Load a java class by name."
-  ( [^String z] (for-name z nil))
-  ( [^String z ^ClassLoader cl]
+  (^Class [^String z] (for-name z nil))
+  (^Class [^String z ^ClassLoader cl]
     (if (nil? cl) (java.lang.Class/forName z) (java.lang.Class/forName z true cl))) )
 
 (defn get-cldr "Get the current classloader."
-  ([] (get-cldr nil))
-  ([^ClassLoader cl] (if (nil? cl) (.getContextClassLoader (Thread/currentThread)) cl)))
+  (^ClassLoader [] (get-cldr nil))
+  (^ClassLoader [^ClassLoader cl] (if (nil? cl) (.getContextClassLoader (Thread/currentThread)) cl)))
 
 (defn set-cldr "Set current classloader."
   [^ClassLoader cl]
@@ -114,18 +114,20 @@
     (.setContextClassLoader (Thread/currentThread) cl)))
 
 (defn load-class "Load this class by name."
-  ( [^String clazzName] (load-class clazzName nil))
-  ( [^String clazzName ^ClassLoader cl]
+  (^Class [^String clazzName] (load-class clazzName nil))
+  (^Class [^String clazzName ^ClassLoader cl]
     (if (not (SU/hgl? clazzName)) nil (.loadClass (get-cldr cl) clazzName))))
 
-(defn- ctorObj [cz]
+(defn- ctorObj
+  ^Object [^Class cz]
   (do
     (CU/test-nonil "java-class" cz)
-    (.newInstance (.getDeclaredConstructor cz (make-array Class 0))  (make-array Object 0)  )))
+    (.newInstance (.getDeclaredConstructor cz (make-array Class 0))
+                  (make-array Object 0)  )))
 
 (defn make-obj "Make an object of this class by calling the default constructor."
-  ([^String clazzName] (make-obj clazzName nil))
-  ([^String clazzName ^ClassLoader cl]
+  (^Object [^String clazzName] (make-obj clazzName nil))
+  (^Object [^String clazzName ^ClassLoader cl]
    (if (not (SU/hgl? clazzName)) nil (ctorObj (load-class clazzName cl)))) )
 
 (defn list-parents "List all parent classes."
@@ -135,26 +137,26 @@
                 (persistent! sum)
                 (recur (conj! sum par) (.getSuperclass par))))  ]
     ;; since we always add the original class, we need to ignore it on return
-    (if (> (.size rc) 1) (rest rc) [] )))
+    (if (> (count rc) 1) (rest rc) [] )))
 
 
-(defn- iterXXX [ ^Class cz level getDeclXXX bin ]
+(defn- iterXXX [ ^Class cz ^long level getDeclXXX bin ]
   (let [ props (getDeclXXX cz) ]
-    (reduce (fn [sum m]
+    (reduce (fn [sum ^Member m]
               (let [ x (.getModifiers m) ]
                 (if (and (> level 0)
                          (or (Modifier/isStatic x) (Modifier/isPrivate x)) )
                   sum
                   (assoc! sum (.getName m) m)))) bin props) ))
 
-(defn- listMtds [ ^Class cz level ]
+(defn- listMtds [ ^Class cz ^long level ]
   (let [ par (.getSuperclass cz) ]
-    (iterXXX cz level #(.getDeclaredMethods %)
+    (iterXXX cz level (fn [^Class c] (.getDeclaredMethods c))
              (if (nil? par) (transient {}) (listMtds par (inc level))))))
 
-(defn- listFlds [ ^Class cz level ]
+(defn- listFlds [ ^Class cz ^long level ]
   (let [ par (.getSuperclass cz) ]
-    (iterXXX cz level #(.getDeclaredFields %)
+    (iterXXX cz level (fn [^Class c] (.getDeclaredFields c))
              (if (nil? par) (transient {}) (listFlds par (inc level))))))
 
 (defn list-methods "List all methods belonging to this class, including inherited ones."

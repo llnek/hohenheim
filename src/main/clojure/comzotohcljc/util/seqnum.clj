@@ -28,18 +28,18 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;(set! *warn-on-reflection* true)
 
 (def ^:private _numInt (AtomicInteger. 1))
 (def ^:private  _numLong (AtomicLong. 1))
 
 
 (defn next-int "Return a sequence number (integer)."
-  []
+  ^Integer []
   (.getAndIncrement _numInt))
 
 (defn next-long "Return a sequence number (long)."
-  []
+  ^long []
   (.getAndIncrement _numLong))
 
 

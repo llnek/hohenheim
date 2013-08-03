@@ -39,14 +39,15 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
-
-(def ^:private HEX_CHS [ \0 \1 \2 \3 \4 \5 \6 \7 \8 \9 \A \B \C \D \E \F ])
+;;(def ^:private HEX_CHS [ \0 \1 \2 \3 \4 \5 \6 \7 \8 \9 \A \B \C \D \E \F ])
+(def ^:private HEX_CHS (.toCharArray "0123456789ABCDEF"))
 (def ^:private SZ_10MEG (* 1024 1024 10))
 
 (defn make-tmpfile "Create a temp file in the temp dir."
-  ([] (make-tmpfile "" ""))
-  ([^String pfx ^String sux]
+  (^File [] (make-tmpfile "" ""))
+  (^File [^String pfx ^String sux]
     (File/createTempFile
       (if (StringUtils/isEmpty pfx) "tmp-" pfx)
       (if (StringUtils/isEmpty sux) ".dat" sux)
@@ -59,37 +60,37 @@
       (if open [ f (FileOutputStream. f) ] [ f nil ]))) )
 
 (defn streamify "Wrapped these bytes in an input-stream."
-  [bits]
+  ^InputStream [^bytes bits]
   (if (nil? bits)
     nil
     (ByteArrayInputStream. bits)) )
 
 (defn make-baos "Make a byte array output stream."
-  []
+  ^ByteArrayOutputStream []
   (ByteArrayOutputStream. (int 4096)))
 
 (defn hexify-chars "Turn bytes into hex chars."
-  [^bytes bits]
+  ^chars [^bytes bits]
   (let [ len (* 2 (if (nil? bits) 0 (alength bits)))
          out (char-array len) ]
     (when-not (<= len 0)
-      (loop [  k 0 pos 0 ]
+      (loop [ k 0 pos 0 ]
         (if (>= pos len)
           nil
-          (let [ n (bit-and (aget bits k) 0xff) ]
-            (aset-char out pos (nth HEX_CHS (bit-shift-right n 4))) ;; high 4 bits
-            (aset-char out (+ pos 1) (nth HEX_CHS (bit-and n 0xf))) ;; low 4 bits
+          (let [ n (bit-and (aget ^bytes bits k) 0xff) ]
+            (aset-char out pos (aget ^chars HEX_CHS (bit-shift-right n 4))) ;; high 4 bits
+            (aset-char out (+ pos 1) (aget ^chars HEX_CHS (bit-and n 0xf))) ;; low 4 bits
             (recur (inc k) (+ 2 pos)) ))))
     out))
 
 (defn hexify-string "Turn bytes into hex string."
-  [^bytes bits]
+  ^String [^bytes bits]
   (if (nil? bits) nil (String. (hexify-chars bits))) )
 
 (defmulti open-file "Open this file path." class)
 
 (defn gzip "Gzip these bytes."
-  [^bytes bits]
+  ^bytes [^bytes bits]
   (if (nil? bits)
     nil
     (let [ baos (make-baos) ]
@@ -98,45 +99,47 @@
       (.toByteArray baos))))
 
 (defn gunzip "Gunzip these bytes."
-  [^bytes bits]
+  ^bytes [^bytes bits]
   (if (nil? bits)
     nil
     (IOUtils/toByteArray (GZIPInputStream. (streamify bits))) ))
 
 (defn reset-stream! "Call reset on this input stream."
-  [inp]
+  [^InputStream inp]
   (CU/Try!
-    (if-not (nil? inp)  (.reset inp)) ))
+    (when-not (nil? inp)  (.reset inp)) ))
 
 (defmethod open-file String
-  [ ^String fp]
+  ^XStream [ ^String fp]
   (if (nil? fp) nil (XStream. (File. fp))))
 
 (defmethod open-file File
-  [^File f]
+  ^XStream [^File f]
   (if (nil? f) nil (XStream. f)))
 
 (defn from-gzb64 "Unzip content which is base64 encoded + gziped."
-  [^String gzb64]
+  ^bytes [^String gzb64]
   (if (nil? gzb64) nil (gunzip (Base64/decodeBase64 gzb64))) )
 
 (defn to-gzb64 "Zip content and then base64 encode it."
-  [^bytes bits]
+  ^String [^bytes bits]
   (if (nil? bits) nil (Base64/encodeBase64String (gzip bits))) )
 
 (defn available "Get the available bytes in this stream."
-  [^InputStream inp]
+  ^Integer [^InputStream inp]
   (if (nil? inp) 0 (.available inp)) )
 
 (defn copy-stream "Copy content from this input-stream to a temp file."
-  [^InputStream inp]
-  (let [ t (newly-tmpfile true) ]
-    (with-open [ os (nth t 1) ]
-      (IOUtils/copy inp os))
-    (nth t 0)))
+  ^File [^InputStream inp]
+  (let [ [^File fp ^OutputStream os] (newly-tmpfile true) ]
+    (try
+      (IOUtils/copy inp os)
+      (finally
+        (IOUtils/closeQuietly os)))
+    fp))
 
 (defn copy-bytes "Copy x number of bytes from the source input-stream."
-  [^InputStream src ^OutputStream out bytesToCopy]
+  [^InputStream src ^OutputStream out ^long bytesToCopy]
   (when-not (<= bytesToCopy 0)
     (IOUtils/copyLarge src out 0 bytesToCopy)) )
 
@@ -152,32 +155,35 @@
         (when-not (nil? rdr) (.reset rdr)) ))))
 
 (defn make-xdata "Return a newly created XData."
-  ([] (make-xdata false))
-  ([usefile] (if usefile (XData. (make-tmpfile)) (XData.)) ))
+  (^XData [] (make-xdata false))
+  (^XData [usefile] (if usefile (XData. (make-tmpfile)) (XData.)) ))
 
-(defn- swap-bytes [baos]
-  (let [ bits (.toByteArray baos)
-         t (newly-tmpfile true) ]
-    (doto (nth t 1) (.write bits) (.flush))
+(defn- swap-bytes
+  [^ByteArrayOutputStream baos]
+  (let [ [^File fp ^OutputStream os] (newly-tmpfile true) ]
+    (doto os (.write (.toByteArray baos)) (.flush))
     (.close baos)
-    t))
+    [fp os]))
 
-(defn- swap-read-bytes [inp baos]
-  (let [ bits (byte-array 4096)
-         t (swap-bytes baos)
-         os (nth t 1) ]
+(defn- swap-read-bytes
+  [^InputStream inp ^ByteArrayOutputStream baos]
+
+  (let [ [^File fp ^OutputStream os] (swap-bytes baos)
+         bits (byte-array 4096) ]
     (try
       (loop [ c (.read inp bits) ]
         (if (< c 0)
-          (XData. (nth t 0))
+          (XData. fp)
           (if (= c 0)
             (recur (.read inp bits))
             (do (.write os bits 0 c)
                 (recur (.read inp bits))))))
       (finally
-        (.close os)))) )
+        (IOUtils/closeQuietly os)))) )
 
-(defn- slurp-bytes [inp lmt]
+(defn- slurp-bytes 
+  ^XData [^InputStream inp ^long lmt]
+
   (let [ bits (byte-array 4096)
          baos (make-baos) ]
     (loop [ c (.read inp bits) cnt 0 ]
@@ -191,31 +197,32 @@
               (swap-read-bytes inp baos)
               (recur (.read inp bits) (+ c cnt)) )))))) )
 
-(defn- swap-chars [wtr]
-  (let [ bits (.toCharArray wtr)
-         t (newly-tmpfile true)
-         os (OutputStreamWriter. (nth t 1)) ]
+(defn- swap-chars [^CharArrayWriter wtr]
+  (let [ [^File fp ^OutputStream out] (newly-tmpfile true)
+         bits (.toCharArray wtr)
+         os (OutputStreamWriter. out "utf-8") ]
     (doto os (.write bits) (.flush))
-    (.close wtr)
-    [t os]))
+    (IOUtils/closeQuietly wtr)
+    [fp os]))
 
-(defn- swap-read-chars [inp wtr]
-  (let [ v (swap-chars wtr)
-         bits (char-array 4096)
-         t (nth v 0)
-         os (nth v 1) ]
+(defn- swap-read-chars
+  ^XData [^InputStream inp ^CharArrayWriter wtr]
+
+  (let [ [^File fp ^Writer os] (swap-chars wtr)
+         bits (char-array 4096) ]
     (try
       (loop [ c (.read inp bits) ]
         (if (< c 0)
-          (XData. (nth t 0))
+          (XData. fp)
           (if (= c 0)
             (recur (.read inp bits))
             (do (.write os bits 0 c)
                 (recur (.read inp bits))))))
       (finally
-        (.close os)))) )
+        (IOUtils/closeQuietly os)))) )
 
-(defn- slurp-chars [inp lmt]
+(defn- slurp-chars 
+  ^XData [^InputStream inp ^long lmt]
   (let [ wtr (CharArrayWriter. (int 10000))
          bits (char-array 4096) ]
     (loop [ c (.read inp bits) cnt 0 ]
@@ -230,16 +237,16 @@
               (recur (.read inp bits) (+ c cnt)))))))) )
 
 (defn read-bytes "Read bytes and return a XData."
-  ([^InputStream inp usefile] (slurp-bytes inp (if usefile 1 (com.zotoh.frwk.io.IOUtils/streamLimit))))
-  ([^InputStream inp] (slurp-bytes inp (com.zotoh.frwk.io.IOUtils/streamLimit))) )
+  (^XData [^InputStream inp usefile] (slurp-bytes inp (if usefile 1 (com.zotoh.frwk.io.IOUtils/streamLimit))))
+  (^XData [^InputStream inp] (slurp-bytes inp (com.zotoh.frwk.io.IOUtils/streamLimit))) )
 
 (defn read-chars "Read chars and return a XData."
-  ([^Reader rdr] (slurp-chars rdr (com.zotoh.frwk.io.IOUtils/streamLimit)))
-  ([^Reader rdr usefile] (slurp-chars rdr (if usefile 1 (com.zotoh.frwk.io.IOUtils/streamLimit)))))
+  (^XData [^Reader rdr] (slurp-chars rdr (com.zotoh.frwk.io.IOUtils/streamLimit)))
+  (^XData [^Reader rdr usefile] (slurp-chars rdr (if usefile 1 (com.zotoh.frwk.io.IOUtils/streamLimit)))))
 
 (defn morph-chars "Convert these bytes to chars."
-  ([^bytes bits] (morph-chars bits (Charset/forName "utf-8")) )
-  ([^bytes bits ^Charset charSet]
+  (^chars [^bytes bits] (morph-chars bits (Charset/forName "utf-8")) )
+  (^chars [^bytes bits ^Charset charSet]
 ;;    (1 to min(b.length, count)).foreach { (i) =>
 ;;      val b1 = b(i-1)
 ;;      ch(i-1) = (if (b1 < 0) { 256 + b1 } else b1 ).asInstanceOf[Char]
@@ -249,7 +256,7 @@
       (IOUtils/toCharArray (streamify bits) charSet))) )
 
 (defn diff? "Tests if both streams are the same or different at byte level."
-  [inp1 inp2]
+  [^InputStream inp1 ^InputStream inp2]
   (cond
     (and (nil? inp1) (nil? inp2)) false
     (or (nil? inp1) (nil? inp2)) true
