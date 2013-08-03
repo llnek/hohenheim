@@ -125,6 +125,27 @@
   ^Calendar [^Calendar cal days]
   (add cal Calendar/DAY_OF_YEAR days))
 
+(defn plus-months ""
+  ^Date
+  [^long months]
+  (let [ now (make-cal (Date.)) ]
+    (-> (add-months now months)
+      (.getTime))))
+
+(defn plus-years ""
+  ^Date
+  [^long years]
+  (let [ now (make-cal (Date.)) ]
+    (-> (add-years now years)
+      (.getTime))))
+
+(defn plus-days ""
+  ^Date
+  [^long days]
+  (let [ now (make-cal (Date.)) ]
+    (-> (add-days now days)
+      (.getTime))))
+
 (defn fmt-cal "Formats time to yyyyMMdd-hhmmss."
   ^String [^Calendar cal]
   (do

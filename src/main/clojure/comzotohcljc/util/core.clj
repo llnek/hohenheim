@@ -223,12 +223,12 @@
     (load-javaprops inp)))
 
 (defn stringify "Make a string from bytes."
-  ([^bytes bits] (stringify bits "utf-8"))
-  ([^bytes bits ^String encoding] (if (nil? bits) nil (String. bits encoding))))
+  (^String [^bytes bits] (stringify bits "utf-8"))
+  (^String [^bytes bits ^String encoding] (if (nil? bits) nil (String. bits encoding))))
 
 (defn bytesify "Get bytes with the right encoding."
-  ([^String s] (bytesify s "utf-8"))
-  ([^String s ^String encoding] (if (nil? s) nil (.getBytes s encoding))))
+  (^bytes [^String s] (bytesify s "utf-8"))
+  (^bytes [^String s ^String encoding] (if (nil? s) nil (.getBytes s encoding))))
 
 (defn rc-stream "Load the resource as stream."
   (^InputStream [^String rcPath] (rc-stream rcPath nil))
@@ -236,20 +236,20 @@
     (if (nil? rcPath) nil (.getResourceAsStream (get-czldr czLoader) rcPath))) )
 
 (defn rc-url "Load the resource as URL."
-  ([^String rcPath] (rc-url rcPath nil))
-  ([^String rcPath ^ClassLoader czLoader]
+  (^URL [^String rcPath] (rc-url rcPath nil))
+  (^URL [^String rcPath ^ClassLoader czLoader]
     (if (nil? rcPath) nil (.getResource (get-czldr czLoader) rcPath))) )
 
 (defn rc-str "Load the resource as string."
-  ([^String rcPath ^String encoding] (rc-str encoding nil))
-  ([^String rcPath] (rc-str rcPath "utf-8" nil))
-  ([^String rcPath ^String encoding ^ClassLoader czLoader]
+  (^String [^String rcPath ^String encoding] (rc-str encoding nil))
+  (^String [^String rcPath] (rc-str rcPath "utf-8" nil))
+  (^String [^String rcPath ^String encoding ^ClassLoader czLoader]
     (with-open [ inp (rc-stream rcPath czLoader) ]
       (stringify (IOUtils/toByteArray inp) encoding ))) )
 
 (defn rc-bytes "Load the resource as byte[]."
-  ([^String rcPath] (rc-bytes rcPath nil))
-  ([^String rcPath ^ClassLoader czLoader]
+  (^bytes [^String rcPath] (rc-bytes rcPath nil))
+  (^bytes [^String rcPath ^ClassLoader czLoader]
     (with-open [ inp (rc-stream rcPath czLoader) ]
       (IOUtils/toByteArray inp))) )
 
