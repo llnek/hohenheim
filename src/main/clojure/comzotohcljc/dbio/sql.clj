@@ -32,50 +32,46 @@
 (require '[comzotohcljc.util.io :as IO])
 (require '[comzotohcljc.dbio.core :as DU])
 
-(use '[comzotohcljc.dbio.sqlserver])
-(use '[comzotohcljc.dbio.postgresql])
-(use '[comzotohcljc.dbio.mysql])
-(use '[comzotohcljc.dbio.oracle])
-(use '[comzotohcljc.dbio.h2])
-
 (import '(java.util Calendar GregorianCalendar TimeZone))
 (import '(com.zotoh.frwk.dbio DBIOError OptLockError))
-(import '(java.sql Types SQLException))
 (import '(java.math BigDecimal BigInteger))
-(import '(java.sql
-  Date Timestamp Blob Clob
-  Statement PreparedStatement Connection))
 (import '(java.io Reader InputStream))
+
+(import '(java.sql
+  ResultSet Types SQLException
+  DatabaseMetaData ResultSetMetaData Date Timestamp Blob Clob
+  Statement PreparedStatement Connection))
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
-(defn- uc-ent [ent] (.toUpperCase (name ent)))
-(defn- lc-ent [ent] (.toLowerCase (name ent)))
+(defn- uc-ent ^String [ent] (.toUpperCase (name ent)))
+(defn- lc-ent ^String [ent] (.toLowerCase (name ent)))
 
 (defn ese "Escape string entity for sql."
-  ([ent] (uc-ent ent))
-  ([ch ent] (str ch (uc-ent ent) ch))
-  ([c1 ent c2] (str c1 (uc-ent ent) c2)))
+  (^String [ent] (uc-ent ent))
+  (^String [ch ent] (str ch (uc-ent ent) ch))
+  (^String [c1 ent c2] (str c1 (uc-ent ent) c2)))
 
 (defn table-name
-  ([mdef] (:table mdef))
-  ([mid cache] (table-name (get cache mid))))
+  (^String [mdef] (:table mdef))
+  (^String [mid cache] (table-name (get cache mid))))
 
 (defn col-name
-  ([fdef] (:column fdef))
-  ([fid zm] (col-name (get zm fid))))
+  (^String [fdef] (:column fdef))
+  (^String [fid zm] (col-name (get zm fid))))
 
 (defn- merge-meta [m1 m2] (merge m1 m2))
 
-(defn- fmtUpdateWhere [lock zm]
+(defn- fmtUpdateWhere ^String [lock zm]
   (str (ese (col-name :rowid zm)) "=?"
        (if lock
           (str " AND " (ese (col-name :verid zm)) "=?")
           "")))
 
-(defn- lockError [opcode cnt table rowID]
+(defn- lockError [^String opcode ^long cnt ^String table ^long rowID]
   (when (= cnt 0)
     (throw (OptLockError. opcode table rowID))))
 
@@ -83,7 +79,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn sql-filter-clause "" [filters]
-  (let [ wc (reduce (fn [sum en]
+  (let [ wc (reduce (fn [^StringBuilder sum en]
                       (SU/add-delim! sum " AND "
                         (str (ese (first en))
                              (if (nil? (last en)) " IS NULL " " = ? "))))
@@ -91,14 +87,14 @@
                     (seq filters)) ]
     [ (SU/nsb wc) (CU/flatten-nil (vals filters)) ] ))
 
-(defn- readCol [sqlType pos rset]
+(defn- readCol ^Object [sqlType ^long pos ^ResultSet rset]
   (let [ obj (.getObject rset (int pos))
-         inp (cond
-                  (instance? Blob obj) (.getBinaryStream obj)
+         ^InputStream inp (cond
+                  (instance? Blob obj) (.getBinaryStream ^Blob obj)
                   (instance? InputStream obj) obj
                   :else nil)
-         rdr (cond
-                  (instance? Clob obj) (.getCharacterStream obj)
+         ^Reader rdr (cond
+                  (instance? Clob obj) (.getCharacterStream ^Clob obj)
                   (instance? Reader obj) obj
                   :else nil) ]
     (cond
@@ -106,10 +102,10 @@
       (CU/notnil? inp) (with-open [p inp] (IO/read-bytes p))
       :else obj)))
 
-(defn- readOneCol [sqlType pos rset]
+(defn- readOneCol [^long sqlType ^long pos ^ResultSet rset]
   (case sqlType
-      Types/TIMESTAMP (.getTimestamp rset (int pos) DU/*GMT-CAL*)
-      Types/DATE (.getDate rset (int pos) DU/*GMT-CAL*)
+      Types/TIMESTAMP (.getTimestamp rset (int pos) ^Calendar DU/*GMT-CAL*)
+      Types/DATE (.getDate rset (int pos) ^Calendar DU/*GMT-CAL*)
       (readCol sqlType pos rset)) )
 
 ;; row is a transient object.
@@ -122,24 +118,24 @@
 
 ;; generic resultset, no model defined.
 ;; row is a transient object.
-(defn- std-injtor [row cn ct cv]
+(defn- std-injtor [row ^String cn ct cv]
   (assoc! row (keyword (.toUpperCase cn)) cv))
 
-(defn- row2obj [finj rs rsmeta]
+(defn- row2obj [finj ^ResultSet rs ^ResultSetMetaData rsmeta]
   (let [ cc (.getColumnCount rsmeta)
          rr (range 1 (inc cc)) ]
     (with-local-vars [ row (transient {}) ]
-      (doseq [ pos (seq rr) ]
+      (doseq [ ^long pos (seq rr) ]
         (let [ cn (.getColumnName rsmeta (int pos))
                ct (.getColumnType rsmeta (int pos))
                cv (readOneCol ct pos rs) ]
           (var-set row (finj @row cn ct cv))))
       (persistent! @row) )) )
 
-(defn- insert? [sql]
+(defn- insert? [^String sql]
   (.startsWith (.toLowerCase (SU/strim sql)) "insert"))
 
-(defn- setBindVar [ps pos p]
+(defn- setBindVar [^PreparedStatement ps ^long pos p]
   (cond
     (instance? String p) (.setString ps pos p)
     (instance? Long p) (.setLong ps pos p)
@@ -147,27 +143,29 @@
     (instance? Short p) (.setShort ps pos p)
 
     (instance? BigDecimal p) (.setBigDecimal ps pos p)
-    (instance? BigInteger p) (.setBigDecimal ps pos (BigDecimal. p))
+    (instance? BigInteger p) (.setBigDecimal ps pos (BigDecimal. ^BigInteger p))
 
     (instance? InputStream p) (.setBinaryStream ps pos p)
     (instance? Reader p) (.setCharacterStream ps pos p)
-    (instance? Blob p) (.setBlob ps pos p)
-    (instance? Clob p) (.setClob ps pos p)
+    (instance? Blob p) (.setBlob ps pos ^Blob p)
+    (instance? Clob p) (.setClob ps pos ^Clob p)
 
-    (instance? (MU/chars-class) p) (.setString ps pos (String. p))
-    (instance? (MU/bytes-class) p) (.setBytes ps pos p)
+    (instance? (MU/chars-class) p) (.setString ps pos (String. ^chars p))
+    (instance? (MU/bytes-class) p) (.setBytes ps pos ^bytes p)
 
     (instance? Boolean p) (.setInt ps pos (if p 1 0))
     (instance? Double p) (.setDouble ps pos p)
     (instance? Float p) (.setFloat ps pos p)
 
-    (instance? Timestamp p) (.setTimestamp ps pos p DU/*GMT-CAL*)
-    (instance? Date p) (.setDate ps pos p DU/*GMT-CAL*)
-    (instance? Calendar p) (.setTimestamp ps pos (Timestamp. (.getTimeInMillis p)) DU/*GMT-CAL*)
+    (instance? Timestamp p) (.setTimestamp ps pos p ^Calendar DU/*GMT-CAL*)
+    (instance? Date p) (.setDate ps pos p ^Calendar DU/*GMT-CAL*)
+    (instance? Calendar p) (.setTimestamp ps pos 
+                                          (Timestamp. (.getTimeInMillis ^Calendar p))
+                                          ^Calendar DU/*GMT-CAL*)
 
     :else (DU/dbio-error (str "Unsupported param type: " (type p)))) )
 
-(defn- mssql-tweak-sqlstr [sqlstr token cmd]
+(defn- mssql-tweak-sqlstr [^String sqlstr ^String token ^String cmd]
   (loop [ stop false sql sqlstr ]
     (if stop
       sql
@@ -179,11 +177,11 @@
           (recur true sql)
           (recur false (str (first rc) " WITH (" cmd ") " (last rc)) ))))))
 
-(defn- jiggleSQL [db sqlstr]
+(defn- jiggleSQL [^comzotohcljc.dbio.core.DBAPI db ^String sqlstr]
   (let [ sql (SU/strim sqlstr)
          lcs (.toLowerCase sql)
          v (.vendor db)   ]
-    (if (instance? comzotohcljc.dbio.sqlserver.SQLServer v)
+    (if (= :sqlserver (:id v))
       (cond
         (.startsWith lcs "select") (mssql-tweak-sqlstr sql :where "NOLOCK")
         (.startsWith lcs "delete") (mssql-tweak-sqlstr sql :where "ROWLOCK")
@@ -191,19 +189,22 @@
         :else sql)
       sql)))
 
-(defn- build-stmt [db conn sqlstr params]
+(defn- build-stmt 
+  
+  ^PreparedStatement
+  [db ^Connection conn ^String sqlstr params]
   (let [ sql sqlstr ;; (jiggleSQL db sqlstr)
          ps (if (insert? sql)
               (.prepareStatement conn sql Statement/RETURN_GENERATED_KEYS)
               (.prepareStatement conn sql)) ]
     (debug "SQL: {}" sql)
-    (doseq [n (seq (range 0 (.size params))) ]
+    (doseq [n (seq (range 0 (count params))) ]
       (setBindVar ps (inc n) (nth params n)))))
 
-(defn- handleGKeys [rs cnt options]
+(defn- handleGKeys [^ResultSet rs ^long cnt options]
   (let [ rc (cond
               (= cnt 1) (.getObject rs 1)
-              :else (.getLong rs (:pkey options))) ]
+              :else (.getLong rs (SU/nsb (:pkey options)))) ]
     { :1 rc }))
 
 (defprotocol ^:private SQueryAPI
@@ -211,20 +212,24 @@
   (sql-executeWithOutput [_  sql pms options] )
   (sql-execute [_  sql pms] ) )
 
-(defn- make-sql [db metaCache conn]
+(defn- make-sql
+
+  ^comzotohcljc.dbio.sql.SQueryAPI
+  [db ^comzotohcljc.dbio.core.MetaCacheAPI metaCache ^Connection conn]
+
   (reify SQueryAPI
 
     (sql-executeWithOutput [this sql pms options]
       (with-open [ stmt (build-stmt db conn sql pms) ]
-        (with-open [ rc (.executeUpdate stmt) ]
-            (with-open [ rs (.getGeneratedKeys stmt) ]
-              (let [ cnt (if (nil? rs)
-                            0
-                            (-> (.getMetaData rs) (.getColumnCount))) ]
-                (if (and (> cnt 0) (.next rs))
-                  (handleGKeys rs cnt options)
-                  {}
-                  ))))))
+        (if (> (.executeUpdate stmt) 0)
+          (with-open [ rs (.getGeneratedKeys stmt) ]
+            (let [ cnt (if (nil? rs)
+                          0
+                          (-> (.getMetaData rs) (.getColumnCount))) ]
+              (if (and (> cnt 0) (.next rs))
+                (handleGKeys rs cnt options)
+                {}
+                ))))))
 
     (sql-select [this sql pms ]
       (sql-select this sql pms (partial row2obj std-injtor)))
@@ -260,7 +265,7 @@
   (with-local-vars [ ps (transient []) ]
     (doseq [ [k v] (seq obj) ]
       (let [ fdef (get flds k)
-             cn (:column fdef) ]
+             ^String cn (:column fdef) ]
         (when (and (CU/notnil? fdef)
                  (not (:auto fdef))
                  (not (:system fdef)))
@@ -271,7 +276,7 @@
 
     (persistent! @ps) ))
 
-(defn- update-fields [flds obj sb1]
+(defn- update-fields [flds obj ^StringBuilder sb1]
   (with-local-vars [ ps (transient []) ]
     (doseq [ [k v] (seq obj) ]
       (let [ fdef (get flds k)
@@ -286,7 +291,13 @@
             (var-set ps (conj! @ps v))))))
     (persistent! @ps)) )
 
-(defn make-proc "" [db metaCache]
+(defn make-proc ""
+
+  ^comzotohcljc.dbio.sql.SQLProcAPI
+
+  [^comzotohcljc.dbio.core.DBAPI db 
+   ^comzotohcljc.dbio.core.MetaCacheAPI metaCache]
+
   (reify SQLProcAPI
 
     (doQuery [_ conn sql pms model]

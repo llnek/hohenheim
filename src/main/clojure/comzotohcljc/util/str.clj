@@ -95,7 +95,7 @@
   (not (hgl? s)))
 
 (defn strim "Safely trim this string - handles null."
-  [^String s]
+  ^String [^String s]
   (if (nil? s) "" (.trim s)))
 
 (defn add-delim! "Append to a string-builder, optionally inserting a delimiter if the buffer is not empty."

@@ -34,6 +34,8 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
 
 (defn simpleSQLr "" [db metaCache]
   (let [ proc (make-proc db metaCache) ]

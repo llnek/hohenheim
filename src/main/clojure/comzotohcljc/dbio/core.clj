@@ -42,14 +42,29 @@
 (require '[comzotohcljc.util.str :as SU])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
 (def ^:dynamic *GMT-CAL* (GregorianCalendar. (TimeZone/getTimeZone "GMT")) )
 (def ^:dynamic *USE_DDL_SEP* true)
 (def ^:dynamic *DDL_SEP* "-- :")
 (def ^:dynamic *DDL_BVS* nil)
 
-(defrecord JDBCInfo [driver url user pwdObj] )
-(defn make-jdbc [driver url user pwdObj]
+(defrecord JDBCInfo [^String driver ^String url ^String user
+                     ^comzotohcljc.crypto.codec.PasswordAPI pwdObj] )
+
+(defprotocol DBAPI ""
+  (supportsOptimisticLock [_] )
+  (vendor [_]  )
+  (finz [_] )
+  (open [_] )
+  (newCompositeSQLr [_] )
+  (newSimpleSQLr [_] ) )
+
+
+(defn make-jdbc
+  ^comzotohcljc.dbio.core.JDBCInfo
+  [^String driver ^String url ^String user
+   ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
   (JDBCInfo. driver url user pwdObj))
 
 (def ^:dynamic *DBTYPES* {
@@ -60,10 +75,10 @@
     :oracle { :test-string "select 1 from DUAL" }
   })
 
-(defn dbio-error [msg]
-  (throw (DBIOError. msg)))
 
-(defn- maybeGetVendor [product]
+(defn dbio-error [^String msg] (throw (DBIOError. msg)))
+
+(defn- maybeGetVendor [^String product]
   (let [ lp (.toLowerCase product) ]
     (cond
       (SU/has-nocase? lp "microsoft") :sqlserver
@@ -73,12 +88,12 @@
       (SU/has-nocase? lp "mysql") :mysql
       :else (dbio-error (str "Unknown db product " product)))))
 
-(defn match-dbtype "" [dbtype]
+(defn match-dbtype "" [^String dbtype]
   (*DBTYPES* (keyword (.toLowerCase dbtype))))
 
-(defn match-jdbc-url "" [url]
+(defn match-jdbc-url "" [^String url]
   (let [ ss (seq (.split url ":")) ]
-    (if (> 1 (.size ss))
+    (if (> 1 (count ss))
       (match-dbtype (nth ss 1))
       nil)))
 
@@ -88,10 +103,10 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn dbio-model [nm]
+(defn dbio-model [^String nm]
   {
-    :parent nil
     :id (keyword nm)
+    :parent nil
     :table nm
     :abstract false
     :system false
@@ -104,7 +119,6 @@
   `(let [ p#  (-> (dbio-model ~(name model-name))
                ~@body) ]
      (def ~model-name  p#)))
-
 
 (defn with-db-parent-model [pojo par]
   (assoc pojo :parent par))
@@ -182,11 +196,17 @@
     :created-by {:column "dbio_created_by" :system true :domain :string } }))
 
 (defprotocol MetaCacheAPI (getMetas [_] ))
+
 (defprotocol SchemaAPI (getModels [_] ))
 
-(defn make-Schema [theModels]
+(defn make-Schema
+
+  ^comzotohcljc.dbio.core.SchemaAPI
+  [theModels]
+
   (reify SchemaAPI
     (getModels [_] theModels)) )
+
 
 (defn- resolve-local-assoc [ms zm]
   (let [ socs (:assocs zm)
@@ -197,7 +217,7 @@
         (doseq [ [id soc] (seq socs) ]
           (let [ kind (:kind soc)
                  rhs (:rhs soc)
-                 col (case kind
+                 ^String col (case kind
                         :o2m
                         (str (name rhs) "|" "fk_"
                              (name zid) "_" (name id))
@@ -229,7 +249,7 @@
 
 (defn- inject-fkeys-models [ms fks]
   (with-local-vars [ rc (merge {} ms) ]
-    (doseq [ k (seq fks) ]
+    (doseq [ ^String k (seq fks) ]
       (let [ ss (.split k "\\|")
              id (keyword (nth ss 0))
              fid (keyword (nth ss 1))
@@ -306,7 +326,7 @@
 (defn- colmap-fields [flds]
   (with-local-vars [ sum (transient {}) ]
     (doseq [ [k v] (seq flds) ]
-      (let [ cn (.toUpperCase (:column v)) ]
+      (let [ cn (.toUpperCase (SU/nsb (:column v))) ]
         (var-set sum (assoc! @sum cn v))))
     (persistent! @sum)) )
 
@@ -321,7 +341,11 @@
                                     { :columns cols :fields flds } ) ))))
     (persistent! @sum)) )
 
-(defn make-MetaCache "" [schema]
+(defn make-MetaCache ""
+
+  ^comzotohcljc.dbio.core.MetaCacheAPI
+  [^comzotohcljc.dbio.core.SchemaAPI schema]
+
   (let [ ms (if (nil? schema) {} (mapize-models (.getModels schema)))
          m1 (if (empty? ms) {} (resolve-parents ms))
          m2 (assoc m1 BASEMODEL-MONIKER dbio-basemodel)
@@ -334,10 +358,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- safeGetConn [jdbc]
-  (let [ user (:user jdbc)
-         url (:url jdbc)
-         dv (:driver jdbc)
+(defn- safeGetConn
+
+  ^Connection
+  [^comzotohcljc.dbio.core.JDBCInfo jdbc]
+
+  (let [ ^String user (:user jdbc)
+         ^String url (:url jdbc)
+         ^String dv (:driver jdbc)
          d (if (SU/hgl? url) (DriverManager/getDriver url))
          p (if (SU/hgl? user)
                (doto (Properties.) (.put "password" (SU/nsb (:pwdObj jdbc)))
@@ -352,9 +380,13 @@
         (warn "Expected " dv ", loaded with driver: " (.getClass d)))
     (.connect d url p)))
 
-(defn make-connection "" [jdbc]
-  (let [ url (:url jdbc)
-         conn (if (SU/hgl? (:user jdbc))
+(defn make-connection "" 
+
+  ^Connection
+  [^comzotohcljc.dbio.core.JDBCInfo jdbc]
+
+  (let [ ^String url (:url jdbc)
+         ^Connection conn (if (SU/hgl? (:user jdbc))
                 (safeGetConn jdbc)
                 (DriverManager/getConnection url)) ]
     (when (nil? conn)
@@ -373,7 +405,8 @@
     (resolve-vendor conn)))
 
 (defmethod resolve-vendor Connection
-  [conn]
+
+  [^Connection conn]
   (let [ md (.getMetaData conn) ]
     (-> { :id (maybeGetVendor (.getDatabaseProductName md)) }
       (assoc :version (.getDatabaseProductVersion md))
@@ -388,12 +421,13 @@
 (defmulti table-exist? (fn [a b] (class a)))
 
 (defmethod table-exist? JDBCInfo
-  [jdbc table]
+  [jdbc ^String table]
   (with-open [ conn (make-connection jdbc) ]
     (table-exist? conn table)))
 
 (defmethod table-exist? Connection
-  [conn table]
+
+  [^Connection conn ^String table]
   (with-local-vars [ rc false ]
     (CU/Try!
       (let [ mt (.getMetaData conn)
@@ -409,12 +443,12 @@
 (defmulti row-exist? (fn [a b] (class a)))
 
 (defmethod row-exist? JDBCInfo
-  [jdbc table]
+  [jdbc ^String table]
   (with-open [ conn (make-connection jdbc) ]
     (row-exist? conn table)))
 
 (defmethod row-exist? Connection
-  [conn table]
+  [^Connection conn ^String table]
   (with-local-vars [ rc false ]
     (CU/Try!
       (let [ sql (str "SELECT COUNT(*) FROM  " (.toUpperCase table)) ]
@@ -424,7 +458,7 @@
               (var-set rc (> (.getInt res (int 1)) 0)))))) )
     @rc))
 
-(defn- load-columns [mt catalog schema table]
+(defn- load-columns [^DatabaseMetaData mt ^String catalog ^String schema ^String table]
   (with-local-vars [ pkeys #{} cms {} ]
     (with-open [ rs (.getPrimaryKeys mt catalog schema table) ]
       (loop [ sum (transient #{}) more (.next rs) ]
@@ -449,7 +483,7 @@
     (with-meta @cms { :supportsGetGeneratedKeys (.supportsGetGeneratedKeys mt)
                       :supportsTransactions (.supportsTransactions mt) } )))
 
-(defn load-table-meta "" [conn table]
+(defn load-table-meta "" [^Connection conn ^String table]
   (let [ mt (.getMetaData conn) dbv (resolve-vendor conn)
          catalog nil
          schema (if (= (:id dbv) :oracle) "%" nil)
@@ -466,11 +500,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol JDBCPoolAPI
+(defprotocol JDBCPoolAPI ""
   (shutdown [_] )
   (nextFree [_] ))
 
-(defn- makePool [jdbc impl]
+(defn- makePool 
+
+  ^comzotohcljc.dbio.core.JDBCPoolAPI
+  [jdbc ^BoneCP impl]
   (reify JDBCPoolAPI
 
     (shutdown [_] (.shutdown impl))
@@ -481,10 +518,11 @@
           (dbio-error (str "No free connection."))))) ))
 
 (defn make-db-pool ""
+
   ([jdbc] (make-db-pool jdbc {}))
   ([jdbc options]
     (let [ bcf (BoneCPConfig.)
-           dv (:driver jdbc) ]
+           ^String dv (:driver jdbc) ]
       (debug "Driver : " dv)
       (debug "URL : "  (:url jdbc))
       (when (SU/hgl? dv) (MU/for-name dv))
@@ -507,23 +545,23 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- splitLines [lines]
-  (with-local-vars [ w (.length *DDL_SEP*) rc [] s2 lines ]
-    (loop [ sum (transient []) ddl lines pos (.indexOf ddl *DDL_SEP*) ]
+(defn- splitLines [^String lines]
+  (with-local-vars [ w (.length ^String *DDL_SEP*) rc [] s2 lines ]
+    (loop [ sum (transient []) ddl lines pos (.indexOf ddl (SU/nsb *DDL_SEP*)) ]
       (if (< pos 0)
         (do (var-set rc (persistent! sum)) (var-set s2 (SU/strim ddl)))
         (let [ nl (SU/strim (.substring ddl 0 pos))
                d2 (.substring ddl (+ pos w))
-               p2 (.indexOf d2 *DDL_SEP*) ]
+               p2 (.indexOf d2 (SU/nsb *DDL_SEP*)) ]
           (recur (conj! sum nl) d2 p2))))
     (if (SU/hgl? @s2)
       (conj @rc @s2)
       @rc)) )
 
-(defn- maybeOK [dbn e]
+(defn- maybeOK [^String dbn ^Throwable e]
   (let [ oracle (SU/embeds? (SU/nsb dbn) "oracle")
          ee (CU/root-cause e)
-         ec (if (instance? SQLException ee) (.getErrorCode ee) nil) ]
+         ec (if (instance? SQLException ee) (.getErrorCode ^SQLException ee) nil) ]
     (if (nil? ec)
       (throw e)
       (cond
@@ -533,16 +571,16 @@
 (defmulti upload-ddl (fn [a b] (class a)))
 
 (defmethod upload-ddl JDBCInfo
-  [jdbc ddl]
+  [jdbc ^String ddl]
    (with-open [ conn (make-connection jdbc) ]
      (upload-ddl conn ddl)))
 
 (defmethod upload-ddl Connection
-  [conn ddl]
+  [^Connection conn ^String ddl]
     (let [ dbn (.toLowerCase (-> (.getMetaData conn)(.getDatabaseProductName)))
            lines (splitLines ddl) ]
       (.setAutoCommit conn true)
-      (doseq [ line (seq lines) ]
+      (doseq [ ^String line (seq lines) ]
         (let [ ln (StringUtils/strip (SU/strim line) ";") ]
           (when (and (SU/hgl? ln) (not= (.toLowerCase ln) "go"))
             (try

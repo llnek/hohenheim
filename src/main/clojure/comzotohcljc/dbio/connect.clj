@@ -55,13 +55,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol DBAPI
-  (supportsOptimisticLock [_] )
-  (vendor [_]  )
-  (finz [_] )
-  (open [_] )
-  (newCompositeSQLr [_] )
-  (newSimpleSQLr [_] ) )
 
 
 (defn- hashJdbc [jdbc]
