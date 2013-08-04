@@ -130,7 +130,7 @@
       (FileUtils/writeByteArrayToFile fp (.javaBytes xdata)))))
 
 (defn get-file "Get a file from a directory."
-  [^File dir ^String fname]
+  ^XData [^File dir ^String fname]
   (let [ fp (File. dir fname) rc (XData.) ]
     (if (and (.exists fp) (.canRead fp))
       (doto rc (.setDeleteFile false)

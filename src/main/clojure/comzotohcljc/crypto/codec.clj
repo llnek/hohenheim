@@ -51,23 +51,26 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; using amap below causes reflection warnings, I can't fix it, so turn checking
+;; off explicitly for this file.
+(set! *warn-on-reflection* false)
 
 
 (def ^:private VISCHS
   (.toCharArray (str " @N/\\Ri2}aP`(xeT4F3mt;8~%r0v:L5$+Z{'V)\"CKI_c>z.*"
        "fJEwSU7juYg<klO&1?[h9=n,yoQGsW]BMHpXb6A|D#q^_d!-")))
-(def ^:private VISCHS_LEN (alength VISCHS))
+(def ^:private VISCHS_LEN (alength ^chars VISCHS))
 
 ;;(def ^:private PCHS "abcdefghijklmnopqrstuvqxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`1234567890-_~!@#$%^&*()" )
 (def ^:private PCHS "Ha$4Jep8!`g)GYkmrIRN72^cObZ%oXlSPT39qLMD&iC*UxKWhE#F5@qvV6j0f1dyBs-~tAQn(z_u" )
 ;;(def ^:private ACHS "abcdefghijklmnopqrstuvqxyz1234567890-_ABCDEFGHIJKLMNOPQRSTUVWXYZ" )
 (def ^:private ACHS "nhJ0qrIz6FmtPCduWoS9x8vT2-KMaO7qlgApVX5_keyZDjfE13UsibYRGQ4NcLBH" )
 
-(def ^:private s_asciiChars (.toCharArray ACHS))
-(def ^:private s_pwdChars (.toCharArray PCHS))
+(def ^:private s_asciiChars (.toCharArray ^String ACHS))
+(def ^:private s_pwdChars (.toCharArray ^String PCHS))
 
 (def ^:private PWD_PFX "CRYPT:" )
-(def ^:private PWD_PFXLEN (.length PWD_PFX))
+(def ^:private PWD_PFXLEN (.length ^String PWD_PFX))
 
 (def ^:private T3_DES "TripleDES" ) ;; AES/ECB/PKCS5Padding/TripleDES
 (def ^:private C_KEY "ed8xwl2XukYfdgR2aAddrg0lqzQjFhbs" )
@@ -75,21 +78,29 @@
 ;;(def ^:private ALPHA_CHS 26)
 
 
-(defn- ensure-key-size [keystr algo]
+(defn- ensure-key-size
+
+  ^String
+  [^String keystr ^String algo]
+
   (let [ len (alength (CU/bytesify keystr)) ]
     (when (and (= T3_DES algo) (< len 24))
       (CU/throw-badarg "Encryption key length must be 24, when using TripleDES"))
     keystr))
 
-(defn- keyAsBits [^String pwd algo]
+(defn- keyAsBits 
+  
+  ^bytes
+  [^String pwd ^String algo]
+
   (let [ bits (CU/bytesify pwd) ]
     (if (and (= T3_DES algo) (> (alength bits) 24))
       (into-array Byte/TYPE (take 24 bits)) ;; only 24 bits wanted
       bits)))
 
 (defprotocol BaseCryptor
-  (decrypt [_ pkey cipherText] [_ cipherText] )
-  (encrypt [_ pkey clearText] [_ clearText] )
+  (decrypt [_ ^String pkey ^String cipherText] [_ ^String cipherText] )
+  (encrypt [_ ^String pkey ^String clearText] [_ ^String clearText] )
   (algo [_] ))
 
 ;; BCrypt.checkpw(candidate, hashed)
@@ -106,10 +117,10 @@
 ;; caesar cipher
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- identify-ch [pos] (aget VISCHS pos))
+(defn- identify-ch ^Character [^long pos] (aget ^chars VISCHS pos))
 
-(defn- locate-ch [ch]
-  (let [ idx (some (fn [i] (if (= ch (aget VISCHS i)) i nil)) (range VISCHS_LEN)) ]
+(defn- locate-ch ^long [^Character ch]
+  (let [ idx (some (fn [i] (if (= ch (aget ^chars VISCHS i)) i nil)) (range VISCHS_LEN)) ]
     (if (nil? idx) -1 idx)))
 
 (defn- slide-forward [delta cpos]
@@ -133,12 +144,15 @@
     (slide-forward delta cpos) )
 
 (defn caesar-encrypt "Encrypt clear text by character rotation."
+
+  ^String
   [^String text ^long shiftpos]
+
   (if (or (StringUtils/isEmpty text) (= shiftpos 0))
     text
     (let [ delta (mod (math/abs shiftpos) VISCHS_LEN)
            ca (.toCharArray text)
-           out (amap ^chars ca pos ret
+           ^chars out (amap ^chars ca pos ret
                   (let [ ch (aget ^chars ca pos)
                          p (locate-ch ch) ]
                     (if (< p 0)
@@ -147,12 +161,15 @@
       (String. out))))
 
 (defn caesar-decrypt "Decrypt text which was encrypted by the caesar method."
+
+  ^String
   [^String text ^long shiftpos]
+
   (if (or (StringUtils/isEmpty text) (= shiftpos 0))
     text
     (let [ delta (mod (math/abs shiftpos) VISCHS_LEN)
            ca (.toCharArray text)
-           out (amap ^chars ca pos ret
+           ^chars out (amap ^chars ca pos ret
                   (let [ ch (aget ^chars ca pos)
                          p (locate-ch ch) ]
                     (if (< p 0)
@@ -164,41 +181,46 @@
 ;; jasypt cryptor
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- jaDecr [pkey text]
-  (let [ ec (doto (StrongTextEncryptor.) (.setPassword pkey)) ]
-    (.decrypt ec text)) )
+(defn- jaDecr ^String [^String pkey ^String text]
+  (doto (StrongTextEncryptor.)
+    (.setPassword pkey)
+    (.decrypt text)) )
 
-(defn- jaEncr [pkey text]
-  (let [ ec (doto (StrongTextEncryptor.) (.setPassword pkey)) ]
-    (.encrypt ec text)) )
+(defn- jaEncr ^String [^String pkey ^String text]
+  (doto (StrongTextEncryptor.)
+    (.setPassword pkey)
+    (.encrypt text)) )
 
-(defn jasypt-cryptor []
+(defn jasypt-cryptor ^comzotohcljc.crypto.codec.BaseCryptor []
   (reify BaseCryptor
 
     (decrypt [this cipherText] (decrypt this C_KEY cipherText))
     (decrypt [_ pkey cipherText]
-      (do
-        (jaDecr pkey cipherText)) )
+        (jaDecr pkey cipherText))
+
     (encrypt [this clearText] (encrypt this C_KEY clearText))
     (encrypt [_ pkey clearText]
-      (do
-        (jaEncr pkey clearText)) )
+        (jaEncr pkey clearText))
+
     (algo [_] "PBEWithMD5AndTripleDES") ) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; java cryptor
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- getCipher [pkey mode algo]
-  (let [ spec (SecretKeySpec. (keyAsBits pkey algo) algo)
-         c (Cipher/getInstance algo) ]
-    (.init c mode spec)
-    c))
+(defn- getCipher ^Cipher [^String pkey ^long mode ^String algo]
+  (let [ spec (SecretKeySpec. (keyAsBits pkey algo) algo) ]
+    (doto (Cipher/getInstance algo)
+      (.init mode spec))))
 
-(defn- jcEncr [pkey text algo]
+(defn- jcEncr 
+
+  ^String 
+  [^String pkey ^String text ^String algo]
+
   (if (StringUtils/isEmpty text)
     text
-    (let [ c (getCipher pkey (Cipher/ENCRYPT_MODE) algo )
+    (let [ ^Cipher c (getCipher pkey Cipher/ENCRYPT_MODE algo )
            baos (IO/make-baos)
            p (CU/bytesify text)
            out (byte-array (max 4096 (.getOutputSize c (alength p))))
@@ -208,10 +230,14 @@
         (when (> n2 0) (.write baos out 0 n2)))
       (Base64/encodeBase64URLSafeString (.toByteArray baos)))) )
 
-(defn- jcDecr [pkey encoded algo]
+(defn- jcDecr 
+  
+  ^String
+  [^String pkey ^String encoded ^String algo]
+
   (if (StringUtils/isEmpty encoded)
     encoded
-    (let [ c (getCipher pkey (Cipher/DECRYPT_MODE) algo )
+    (let [ ^Cipher c (getCipher pkey Cipher/DECRYPT_MODE algo )
            baos (ByteArrayOutputStream. (int 4096))
            p (Base64/decodeBase64 encoded)
            out (byte-array (max 4096 (.getOutputSize c (alength p))))
@@ -221,7 +247,7 @@
         (when (> n2 0) (.write baos out 0 n2)))
       (CU/stringify (.toByteArray baos)))) )
 
-(defn java-cryptor []
+(defn java-cryptor ^comzotohcljc.crypto.codec.BaseCryptor []
   (reify BaseCryptor
 
     (decrypt [this cipherText] (decrypt this C_KEY cipherText))
@@ -229,11 +255,13 @@
       (do
         (ensure-key-size pkey (algo this))
         (jcDecr pkey cipherText (algo this))) )
+
     (encrypt [this clearText] (encrypt this C_KEY clearText))
     (encrypt [this pkey clearText]
       (do
         (ensure-key-size pkey (algo this))
         (jcEncr pkey clearText (algo this))) )
+
     (algo [_] T3_DES) ) )
   ;;PBEWithMD5AndDES
 
@@ -242,7 +270,11 @@
 ;; BC cryptor
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- bcDecr [pkey text algo]
+(defn- bcDecr 
+  
+  ^String
+  [^String pkey ^String text ^String algo]
+
   (if (StringUtils/isEmpty text)
     text
     (let [ cipher (doto (PaddedBufferedBlockCipher. (CBCBlockCipher. (DESedeEngine.)))
@@ -256,7 +288,8 @@
         (when (> c2 0) (.write baos out 0 c2)))
       (CU/stringify (.toByteArray baos)))) )
 
-(defn- bcEncr [pkey text algo]
+(defn- bcEncr ^String [^String pkey ^String text ^String algo]
+
   (if (StringUtils/isEmpty text)
     text
     (let [ cipher (doto (PaddedBufferedBlockCipher. (CBCBlockCipher. (DESedeEngine.)))
@@ -270,18 +303,20 @@
         (when (> c2 0) (.write baos out 0 c2)) )
       (Base64/encodeBase64String (.toByteArray baos)))) )
 
-(defn bouncy-cryptor []
+(defn bouncy-cryptor ^comzotohcljc.crypto.codec.BaseCryptor []
   (reify BaseCryptor
     (decrypt [this cipherText] (decrypt this C_KEY cipherText))
     (decrypt [this pkey cipherText]
       (do
         (ensure-key-size pkey (algo this))
         (bcDecr pkey cipherText (algo this))) )
+
     (encrypt [this clearText] (encrypt this C_KEY clearText))
     (encrypt [this pkey clearText]
       (do
         (ensure-key-size pkey (algo this))
         (bcEncr pkey clearText (algo this))) )
+
     (algo [_] T3_DES) ) )
 
 
@@ -300,17 +335,16 @@
     :else
     (let [ r (SecureRandom/getInstance "SHA1PRNG")
            ostr (char-array len)
-           bits (byte-array 4)
            cl (alength chArray)
-           rc (amap ^chars ostr pos ret
+           ^chars rc (amap ^chars ostr pos ret
                     (let [ n (mod (.nextInt r Integer/MAX_VALUE) cl) ]
                     (aget chArray n))) ]
       (String. rc))) )
 
-(deftype Password [pwdStr pkey]
+(deftype Password [^String pwdStr ^String pkey]
   Object
-  (equals [this obj] (and (instance? Password obj) (= (.pwdStr this) (.pwdStr obj))) )
-  (hashCode [this] (.hashCode (SU/nsb pwdStr)))
+  (equals [this obj] (and (instance? Password obj) (= (.toString this) (.toString ^Object obj))) )
+  (hashCode [this] (.hashCode (SU/nsb (.pwdStr this))))
   (toString [this] (.text this))
   PasswordAPI
   (toCharArray [_] (if (nil? pwdStr) (char-array 0) (.toCharArray pwdStr)))
@@ -329,8 +363,8 @@
   (text [_] (SU/nsb pwdStr)))
 
 (defn pwdify "Create a password object."
-  ([pwdStr] (pwdify pwdStr C_KEY))
-  ([pwdStr pkey]
+  ([ ^String pwdStr] (pwdify pwdStr C_KEY))
+  ([ ^String pwdStr  ^String pkey]
     (cond
       (StringUtils/isEmpty pwdStr)
       (Password. "" pkey)
@@ -342,11 +376,17 @@
       (Password. pwdStr pkey)) ))
 
 (defn create-random-string ""
-  [len]
+
+  ^String
+  [ ^long len]
+
   (createXXX len s_asciiChars))
 
 (defn create-strong-pwd ""
-  [len]
+
+  ^comzotohcljc.crypto.codec.PasswordAPI
+  [^long len]
+
   (pwdify (createXXX len s_pwdChars)))
 
 

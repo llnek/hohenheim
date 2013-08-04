@@ -463,7 +463,10 @@
     (set! data (assoc data k v))))
 
 
-(defn make-mmap "" [] (MutableMap. {} ))
+(defn make-mmap "" 
+  ^comzotohcljc.util.core.MutableMapAPI
+  [] 
+  (MutableMap. {} ))
 
 
 

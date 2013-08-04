@@ -45,7 +45,7 @@
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
-      <arg value="comzotohcljc.crypto.core" />
+      <arg value="comzotohcljc.dbio.core" />
     </java>
   </target>
 
@@ -53,6 +53,7 @@
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
+
       <arg value="comzotohcljc.util.core" />
       <arg value="comzotohcljc.util.bytes" />
       <arg value="comzotohcljc.util.cmdline" />
@@ -63,16 +64,21 @@
       <arg value="comzotohcljc.util.guids" />
       <arg value="comzotohcljc.util.io" />
       <arg value="comzotohcljc.util.meta" />
+      <arg value="comzotohcljc.util.mime" />
       <arg value="comzotohcljc.util.process" />
       <arg value="comzotohcljc.util.seqnum" />
       <arg value="comzotohcljc.util.str" />
       <arg value="comzotohcljc.util.usastate" />
       <arg value="comzotohcljc.util.ini" />
       <arg value="comzotohcljc.util.scheduler" />
+
       <arg value="comzotohcljc.i18n.resources" />
+
       <arg value="comzotohcljc.crypto.core" />
       <arg value="comzotohcljc.crypto.codec" />
       <arg value="comzotohcljc.crypto.stores" />
+      <arg value="comzotohcljc.crypto.ssl" />
+
       <arg value="comzotohcljc.net.comms" />
       <arg value="comzotohcljc.netty.comms" />
 

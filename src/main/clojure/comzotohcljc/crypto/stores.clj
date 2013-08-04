@@ -30,6 +30,7 @@
 (import '(java.security.cert CertificateFactory X509Certificate Certificate))
 (import '(java.security KeyStore PrivateKey
   KeyStore$TrustedCertificateEntry
+  KeyStore$ProtectionParameter 
   KeyStore$PasswordProtection
   KeyStore$PrivateKeyEntry))
 (import '(javax.net.ssl KeyManagerFactory TrustManagerFactory))
@@ -39,15 +40,21 @@
 (require '[comzotohcljc.crypto.codec :as CR])
 (require '[comzotohcljc.crypto.core :as CO])
 (require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* false)
 
 
-(defn- onNewKey [^KeyStore keystore nm ^PrivateKey pkey pm]
+
+(defn- onNewKey [^KeyStore keystore ^String nm 
+                 ^KeyStore$PrivateKeyEntry pkey 
+                 ^KeyStore$ProtectionParameter pm]
+
   (let [ cc (.getCertificateChain pkey) ]
-    (doseq [ c (seq cc) ]
+    (doseq [ ^Certificate c (seq cc) ]
       (.setCertificateEntry keystore (CO/new-alias) c))
     (.setEntry keystore nm pkey pm)))
 
@@ -56,9 +63,10 @@
     (loop [ rc (transient []) ]
         (if (not (.hasMoreElements en))
           (persistent! rc)
-          (let [ a (.nextElement en) ]
+          (let [ ^String a (.nextElement en) ]
             (if (.isCertificateEntry keystore a)
-              (let [ cert (.getTrustedCertificate (.getEntry keystore a nil))
+              (let [ ^KeyStore$TrustedCertificateEntry ce (.getEntry keystore a nil)
+                     ^X509Certificate cert (.getTrustedCertificate ce)
                      issuer (.getIssuerX500Principal cert)
                      subj (.getSubjectX500Principal cert)
                      matched (and (not (nil? issuer)) (= issuer subj)) ]
@@ -68,21 +76,22 @@
               (recur rc)))))))
 
 (defprotocol CryptoStoreAPI
-  (addKeyEntity [this bits pwdObj] )
-  (addCertEntity [this bits] )
-  (trustManagerFactory [this] )
-  (keyManagerFactory [this] )
-  (certAliases [this] )
-  (keyAliases [this] )
-  (keyEntity [this nm pwdObj] )
-  (certEntity [this nm] )
-  (removeEntity [this nm] )
-  (intermediateCAs [this] )
-  (rootCAs [this] )
-  (trustedCerts [this] )
-  (addPKCS7Entity [this bits] ))
 
-(defn- mkStore [^KeyStore keystore]
+  (addKeyEntity [_ ^bytes bits ^comzotohcljc.crypto.codec.PasswordAPI pwdObj] )
+  (addCertEntity [_ ^bytes bits] )
+  (trustManagerFactory [_] )
+  (keyManagerFactory [_] )
+  (certAliases [_] )
+  (keyAliases [_] )
+  (keyEntity [_ ^String nm ^comzotohcljc.crypto.codec.PasswordAPI pwdObj] )
+  (certEntity [_ ^String nm] )
+  (removeEntity [_ ^String nm] )
+  (intermediateCAs [_] )
+  (rootCAs [_] )
+  (trustedCerts [_] )
+  (addPKCS7Entity [_ ^bytes bits] ))
+
+(defn- mkStore ^KeyStore [^KeyStore keystore]
   (case (.getType keystore)
     "PKCS12" (CO/get-pkcsStore)
     "JKS" (CO/get-jksStore)
@@ -90,6 +99,7 @@
 
 (defn make-crypto-store ""
 
+  ^comzotohcljc.crypto.stores.CryptoStoreAPI
   [^KeyStore keystore
    ^comzotohcljc.crypto.codec.PasswordAPI passwdObj]
 
@@ -98,14 +108,15 @@
     (addKeyEntity [this bits pwdObj]
       ;; we load the p12 content into an empty keystore, then extract the entry
       ;; and insert it into the current one.
-      (let [ ch (.toCharArray pwdObj)
+      (let [ ch (.toCharArray ^comzotohcljc.crypto.codec.PasswordAPI pwdObj)
              tmp (doto (mkStore keystore) (.load bits ch))
              pp (KeyStore$PasswordProtection. ch)
-             pkey (cast KeyStore$PrivateKeyEntry (.getEntry tmp (.nextElement (.aliases tmp)) pp)) ]
-      (onNewKey this (CO/new-alias) pkey pp)))
+             ^KeyStore$PrivateKeyEntry pkey (.getEntry tmp (.nextElement (.aliases tmp)) pp) ]
+        (onNewKey this (CO/new-alias) pkey pp)))
 
     (addCertEntity [_ bits]
-      (let [ c (cast X509Certificate (.generateCertificate (CertificateFactory/getInstance "X.509") bits)) ]
+      (let [ fac (CertificateFactory/getInstance "X.509")
+             ^X509Certificate c (.generateCertificate fac bits) ]
         (.setCertificateEntry keystore (CO/new-alias) c)))
 
     (trustManagerFactory [_]
@@ -120,25 +131,31 @@
     (keyAliases [_] (CO/pkey-aliases keystore))
 
     (keyEntity [_ nm pwdObj]
-      (.getEntry keystore nm (KeyStore$PasswordProtection. (.toCharArray pwdObj))))
+      (let [ ca (.toCharArray ^comzotohcljc.crypto.codec.PasswordAPI pwdObj) ]
+        (.getEntry keystore nm (KeyStore$PasswordProtection. ca))))
 
     (certEntity [_ nm]
-      (.getEntry keystore nm nil) )
+      (if (SU/hgl? nm)
+        (.getEntry keystore ^String nm nil) ))
 
     (removeEntity [_ nm]
-      (when-not (nil? nm)
-        (when (.containsAlias keystore nm) (.deleteEntry keystore nm))))
+      (if (SU/hgl? nm)
+        (when (.containsAlias keystore ^String nm) (.deleteEntry keystore ^String nm))))
 
     (intermediateCAs [_] (getCAs keystore true false))
     (rootCAs [_] (getCAs keystore false true))
 
-    (trustedCerts [this]
-      (map #(-> (.certEntity this %) (.getTrustedCertificate)) (.certAliases this)))
+    (trustedCerts [me]
+      (map (fn [^String nm]
+             (let [ ^KeyStore$TrustedCertificateEntry tc (.certEntity me nm) ]
+                (.getTrustedCertificate tc)))
+           (.certAliases me)))
 
     (addPKCS7Entity [_ bits]
-      (let [ certs (.generateCertificates (CertificateFactory/getInstance "X.509") bits) ]
-        (doseq [ c (seq certs) ]
-          (.setCertificateEntry keystore (CO/new-alias) (cast Certificate c)))))
+      (let [ fac (CertificateFactory/getInstance "X.509")
+             certs (.generateCertificates fac bits) ]
+        (doseq [ ^X509Certificate c (seq certs) ]
+          (.setCertificateEntry keystore (CO/new-alias) c))))
 
   ))
 

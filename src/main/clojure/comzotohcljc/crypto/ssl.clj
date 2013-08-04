@@ -26,27 +26,32 @@
 (import '(javax.net.ssl X509TrustManager TrustManager))
 (import '(javax.net.ssl SSLEngine SSLContext))
 (import '(java.net URL))
+(import '(javax.net.ssl KeyManagerFactory TrustManagerFactory))
 
 (require '[comzotohcljc.crypto.stores :as CS])
 (require '[comzotohcljc.crypto.core :as CY])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* false)
+
 
 (defn make-sslContext "Make a server-side SSLContext."
-  ([^URL keyUrl ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+
+  (^SSLContext [^URL keyUrl ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
    (make-sslContext keyUrl pwdObj "TLS"))
-  ([^URL keyUrl ^comzotohcljc.crypto.codec.PasswordAPI pwdObj flavor]
+
+  (^SSLContext [^URL keyUrl ^comzotohcljc.crypto.codec.PasswordAPI pwdObj ^String flavor]
     (let [ ctx (SSLContext/getInstance flavor)
            ks (with-open [ inp (.openStream keyUrl) ]
                 (if (CY/pkcs-file? keyUrl)
                     (CY/get-pkcsStore inp pwdObj)
                     (CY/get-jksStore inp pwdObj)))
-      cs (CS/make-crypto-store ks pwdObj) ]
-      (.init ctx
-        (-> cs (.keyManagerFactory) (.getKeyManagers))
-        (-> cs (.trustManagerFactory) (.getTrustManagers))
-        (CY/get-srand))
+           cs (CS/make-crypto-store ks pwdObj)
+           ^TrustManagerFactory tmf   (.trustManagerFactory cs)
+           ^KeyManagerFactory kmf   (.keyManagerFactory cs) ]
+
+      (.init ctx (.getKeyManagers kmf) (.getTrustManagers tmf) (CY/get-srand))
       ctx)) )
 
 

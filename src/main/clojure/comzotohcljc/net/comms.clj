@@ -39,7 +39,7 @@
 (import '(com.zotoh.frwk.net SSLTrustMgrFactory))
 (import '(com.zotoh.frwk.io XData))
 (import '(org.apache.commons.lang3 StringUtils))
-(import '(org.apache.http.client))
+(import '(org.apache.http.client HttpClient))
 (import '(org.apache.http.client.methods HttpGet HttpPost))
 (import '(org.apache.http.impl.client DefaultHttpClient))
 (import '(org.apache.http
@@ -51,6 +51,10 @@
 (import '(org.apache.http.params HttpConnectionParams))
 (import '(org.apache.http.entity InputStreamEntity))
 (import '(com.zotoh.frwk.io XData))
+(import '(org.jboss.netty.handler.codec.http HttpResponseStatus))
+
+
+(use '[comzotohcljc.util.core :only (MutableMapAPI) ])
 
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.mime :as MM])
@@ -59,6 +63,8 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* false)
+
 
 
 (def ^:dynamic *socket-timeout* 5000)
@@ -69,16 +75,17 @@
 (def ^:dynamic  *WP_FTP* "FTP")
 (def ^:dynamic  *WP_FILE* "FILE")
 
-(defprotocol NetResult
+(defprotocol NetResult ""
   (hasError? [_] ) )
 
-(defprotocol HTTPResultAPI
+(defprotocol HTTPResultAPI ""
   (getStatus [_] )
   (getCookies [_] )
   (getData [_] )
   (getHeaders [_] ) )
 
-(defn http-response [status]
+(defn http-response [ ^HttpResponseStatus status]
+
   (let [ impl (CU/make-mmap) ]
     (reify HTTPResultAPI
       (getStatus [_] status)
@@ -90,7 +97,6 @@
         (hasError? [_] ) )))
 
 
-
 (defrecord HTTPMsgInfo [^String protocol ^String method ^String uri
                         is-chunked keep-alive
                         ^long clen headers params] )
@@ -100,23 +106,24 @@
 ;; internal functions to support apache http client.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- mkApacheClientHandle []
+(defn- mkApacheClientHandle ^HttpClient []
   (let [ cli (DefaultHttpClient.)
          pms (.getParams cli) ]
     (HttpConnectionParams/setConnectionTimeout pms *socket-timeout*)
     (HttpConnectionParams/setSoTimeout pms *socket-timeout*)
     cli))
 
-(defn- get-bits [ent] (if (nil? ent) nil (EntityUtils/toByteArray ent)) )
-(defn- get-str [ent] (EntityUtils/toString ent "utf-8"))
-(defn- p-ok [rsp]
+(defn- get-bits ^bytes [^HttpEntity ent] (if (nil? ent) nil (EntityUtils/toByteArray ent)) )
+(defn- get-str ^String [^HttpEntity ent] (EntityUtils/toString ent "utf-8"))
+
+(defn- p-ok [^HttpResponse rsp]
   (let [ ent (.getEntity rsp)
          ct (if (nil? ent) nil (.getContentType ent))
          cv (if (nil? ct) "" (SU/strim (.getValue ct)))
-         cl (.toLowerCase cv) ]
+         cl (.toLowerCase ^String cv) ]
     (CU/Try!
-      (debug "content-encoding: " (.getContentEncoding ent))
-      (debug "content-type: " cv))
+      (debug "content-encoding: " (.getContentEncoding ent) "\n" 
+             "content-type: " cv))
     (let [ bits (get-bits ent)
            clen (if (nil? bits) 0 (alength bits)) ]
       { :content-type (SU/nsb cv)
@@ -128,16 +135,16 @@
           ;;(.startsWith cl "application/json")) (get-bits ent) ;;(get-str ent)
       ;;:else (get-bits ent))) )
 
-(defn- p-error [rsp exp]
+(defn- p-error [^HttpResponse rsp ^Throwable exp]
   (do
     (CU/Try! (EntityUtils/consumeQuietly (.getEntity rsp)))
     (throw exp)) )
 
-(defn- p-redirect [rsp]
+(defn- p-redirect [^HttpResponse rsp]
   ;;TODO - handle redirect
   (p-error rsp (IOException. "Redirect not supported.")) )
 
-(defn- p-reply [ ^HttpResponse rsp ]
+(defn- p-reply [^HttpResponse rsp]
   (let [ st (.getStatusLine rsp)
          msg (if (nil? st) "" (.getReasonPhrase st))
          rc (if (nil? st) 0 (.getStatusCode st)) ]
@@ -152,10 +159,10 @@
       (p-error rsp (IOException. (str "Service Error: code = " rc ": " msg))))) )
 
 
-(defn- do-post [cli ^URL targetUrl contentType ^XData xdata beforeSendFunc]
+(defn- do-post [^HttpClient cli ^URL targetUrl ^String contentType ^XData xdata beforeSendFunc]
   (try
     (let [ ent (InputStreamEntity. (.stream xdata) (.size xdata))
-           p (HttpPost. targetUrl) ]
+           p (HttpPost. (.toURI targetUrl)) ]
       (.setEntity p (doto ent
                           (.setContentType contentType)
                           (.setChunked true)))
@@ -174,9 +181,9 @@
     (let [ cli (mkApacheClientHandle) ]
       (do-post cli targetUrl contentType xdata beforeSendFunc))) )
 
-(defn- do-get [cli ^URL targetUrl beforeSendFunc]
+(defn- do-get [^HttpClient cli ^URL targetUrl beforeSendFunc]
   (try
-    (let [ g (HttpGet. targetUrl) ]
+    (let [ g (HttpGet. (.toURI targetUrl)) ]
       (when (fn? beforeSendFunc) (beforeSendFunc g))
       (p-reply (.execute cli g)))
     (finally
@@ -195,20 +202,20 @@
   (let [ c (SSLContext/getInstance "TLS") ]
     (.init c nil (SSLTrustMgrFactory/getTrustManagers) nil)) )
 
-(defn- clean-str [s]
+(defn- clean-str [^String s]
   (StringUtils/stripStart (StringUtils/stripEnd s ";,") ";,"))
 
-(defn parse-ie [line]
+(defn parse-ie [^String line]
   (let [ p1 #".*(MSIE\s*(\S+)\s*).*"
          m1 (re-matches p1 line)
          p2 #".*(Windows\s*Phone\s*(\S+)\s*).*"
          m2 (re-matches p2 line)
          bw "IE"
          dt (if (SU/has-nocase? "iemobile") :mobile :pc) ]
-    (let [ bv (if (and (not (empty? m1)) (> (.size m1) 2))
+    (let [ bv (if (and (not (empty? m1)) (> (count m1) 2))
                 (clean-str (nth m1 2))
                 "")
-           dev (if (and (not (empty? m2)) (> (.size m2) 2))
+           dev (if (and (not (empty? m2)) (> (count m2) 2))
                  { :device-version (clean-str (nth m1 2))
                   :device-moniker "windows phone"
                   :device-type :phone }
@@ -216,42 +223,42 @@
       (merge {:browser :ie :browser-version bv :device-type dt}
              dev))))
 
-(defn parse-chrome [line]
+(defn parse-chrome [^String line]
   (let [ p1 #".*(Chrome/(\S+)).*"
          m1 (re-matches p1 line)
-         bv   (if (and (not (empty? m1)) (> (.size m1) 2))
+         bv   (if (and (not (empty? m1)) (> (count m1) 2))
                 (clean-str (nth m1 2))
                 "") ]
     {:browser :chrome :browser-version bv :device-type :pc }))
 
-(defn parse-kindle [line]
+(defn parse-kindle [^String line]
   (let [ p1 #".*(Silk/(\S+)).*"
          m1 (re-matches p1 line)
-         bv   (if (and (not (empty? m1)) (> (.size m1) 2))
+         bv   (if (and (not (empty? m1)) (> (count m1) 2))
                 (clean-str (nth m1 2))
                 "") ]
     { :browser :silk :browser-version bv :device-type :mobile :device-moniker "kindle" } ))
 
-(defn parse-android [line]
+(defn parse-android [^String line]
   (let [ p1 #".*(Android\s*(\S+)\s*).*"
          m1 (re-matches p1 line)
-         bv   (if (and (not (empty? m1)) (> (.size m1) 2))
+         bv   (if (and (not (empty? m1)) (> (count m1) 2))
                 (clean-str (nth m1 2))
                 "") ]
     { :browser :chrome :browser-version bv :device-type :mobile :device-moniker "android" } ))
 
-(defn parse-ffox [line]
+(defn parse-ffox [^String line]
   (let [ p1 #".*(Firefox/(\S+)\s*).*"
          m1 (re-matches p1 line)
-         bv   (if (and (not (empty? m1)) (> (.size m1) 2))
+         bv   (if (and (not (empty? m1)) (> (count m1) 2))
                 (clean-str (nth m1 2))
                 "") ]
     { :browser :firefox :browser-version bv :device-type :pc } ))
 
-(defn parse-safari [line]
+(defn parse-safari [^String line]
   (let [ p1 #".*(Version/(\S+)\s*).*"
          m1 (re-matches p1 line)
-         bv   (if (and (not (empty? m1)) (> (.size m1) 2))
+         bv   (if (and (not (empty? m1)) (> (count m1) 2))
                 (clean-str (nth m1 2))
                 "")
          rc { :browser :safari :browser-version bv :device-type :pc } ]
@@ -264,7 +271,7 @@
 
 
 (defn parse-userAgentLine "Retuns a map of browser/device attributes."
-  [agentLine]
+  [^String agentLine]
   (let [ line (SU/strim agentLine) ]
     (cond
       (and (SU/embeds? line "Windows") (SU/embeds? line "Trident/"))
