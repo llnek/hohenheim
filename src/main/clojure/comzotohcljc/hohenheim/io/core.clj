@@ -24,7 +24,7 @@
 
   comzotohcljc.hohenheim.io.core )
 
-(import '(com.zotoh.hohenheim.core Disposable Startable))
+(import '(com.zotoh.hohenheim.core Identifiable Disposable Startable))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hohenheim.core.sys])
@@ -33,8 +33,11 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
 
 (defprotocol EmitterAPI
+  ""
   (enabled? [_] )
   (active? [_] )
 
@@ -75,7 +78,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-emitter "" [container id]
+(defn make-emitter "" [container emId]
   (let [ impl (CU/make-mmap) ]
     (.mm-s impl :backlog (atom {}) )
     (with-meta
@@ -90,7 +93,7 @@
           (getAttr [_ a] (.mm-g impl a) )
           (version [_] "1.0")
           (parent [_] container)
-          (id [_] "")
+          (id [_] emId)
 
         Disposable
 
@@ -112,13 +115,13 @@
           (release [_ wevt]
             (when-not (nil? wevt)
               (let [ b (.mm-g impl :backlog)
-                     wid (.id wevt) ]
+                     wid (.id ^Identifiable wevt) ]
                 (swap! b dissoc wid))))
 
           (hold [_ wevt]
             (when-not (nil? wevt)
               (let [ b (.mm-g impl :backlog)
-                     wid (.id wevt) ]
+                     wid (.id ^Identifiable wevt) ]
                 (swap! b assoc wid wevt))))
 
           (dispatch [this ev]

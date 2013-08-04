@@ -109,11 +109,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Container
 
-(defprotocol ContainerAPI ""
+(defprotocol Container ""
   (reifyOneService [_ sid cfg] )
   (reifyService [_ svc cfg] )
   (reifyServices [_] )
-  (core [_] )
+  (notifyObservers [_ evt] )
   (enabled? [_] ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -128,6 +128,10 @@
     (with-meta
       (reify
 
+        comzotohcljc.wflow.core.ContainerAPI
+          (core [this]
+            (.getAttr this K_SCHEDULER))
+
         Component
 
           (setAttr! [_ a v] (.mm-s impl a v) )
@@ -139,7 +143,9 @@
           (parent [_] nil)
           (id [_] (.id pod) )
 
-        ContainerAPI
+        Container
+
+          (notifyObservers [_ evt] )
 
           (enabled? [_]
             (let [ env (.mm-g impl K_ENVCONF)

@@ -37,6 +37,7 @@
 
 (import '(org.apache.commons.io IOUtils))
 (import '(com.zotoh.frwk.io XData))
+(import '(com.zotoh.hohenheim.core Identifiable))
 
 (require '[comzotohcljc.net.comms :as NU])
 (require '[comzotohcljc.util.core :as CU])
@@ -163,7 +164,12 @@
 
 (defn make-async-wait-holder [event trigger]
   (let [ impl (CU/make-mmap) ]
-    (reify WaitEventHolder
+    (reify 
+
+      Identifiable
+      (id [_] (.id event))
+      
+      WaitEventHolder
 
       (resumeOnResult [this res]
         (let [ tm (.mm-g impl :timer) ]

@@ -25,6 +25,8 @@
   comzotohcljc.hohenheim.core.sys )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
 
 (defprotocol Component ""
   (setCtx! [_ ctx] )

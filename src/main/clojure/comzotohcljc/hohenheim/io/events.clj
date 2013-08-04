@@ -33,7 +33,7 @@
 (import '(javax.jms Message))
 (import '(java.io File))
 (import '(com.zotoh.frwk.io XData))
-
+(import '(com.zotoh.hohenheim.core Identifiable))
 
 (require '[comzotohcljc.util.core :as CU])
 
@@ -48,7 +48,7 @@
 (defprotocol EventObj
   (emitter [_] ))
 
-(defn make-event [src id]
+(defn make-event [src evtId]
   (let [ impl (CU/make-mmap) ]
     (with-meta
       (reify
@@ -60,6 +60,9 @@
           (getf [_ k] (.mm-g impl k) )
           (clrf! [_ k] (.mm-r impl k) )
           (clear! [_] (.mm-c impl))
+
+        Identifiable
+          (id [_] evtId)
 
         EventObj
           (emitter [_] src) )
