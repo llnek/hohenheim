@@ -26,8 +26,8 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(import '(com.zotoh.frwk.util RunnableWithId))
-(import '(com.zotoh.hohenheim.core Job))
+(import '(com.zotoh.frwk.util Schedulable RunnableWithId))
+(import '(com.zotoh.wflow.core Job))
 
 (use '[comzotohcljc.util.core :only (MutableObjectAPI) ])
 (require '[comzotohcljc.wflow.activity :as ACT ])
@@ -39,6 +39,25 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
+(defprotocol ContainerAPI ""
+  (core [_] ))
+
+(defprotocol PipelineDelegateAPI ""
+  (getStart [_ pipe] )
+  (getStop [_ pipe] )
+  (getError [_ pipe error cur] ) )
+
+(defprotocol PipelineAPI ""
+  (^ContainerAPI container [_] )
+  (isActive [_] )
+  (job [_] )
+  (onError [_ error curPoint] )
+  (start [_] )
+  (stop [_] ))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; for flow points
 (defmulti fw-configure! "" (fn [a b c] (:typeid (meta a))))
@@ -69,18 +88,21 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn fw-runafter [fw]
-  (let [ pipe (fw-pipe* fw)
+(defn fw-runafter
+
+  [^comzotohcljc.util.core.MutableObjectAPI fw]
+
+  (let [ ^comzotohcljc.wflow.core.PipelineAPI
+         pipe (fw-pipe* fw)
          np (fw-next* fw)
          id (fw-id* fw)
-         c (->
-             pipe
-             (.container)
-             (.core)) ]
+         ^comzotohcljc.wflow.core.ContainerAPI 
+         ct (.container pipe)
+         ^Schedulable c (.core ct) ]
 
     (cond
       (= id :czc.wflow/DelayPoint)
-      (.delay c np (.getf fw :delayMillis))
+      (.postpone c np (.getf fw :delayMillis))
 
       (= id :czc.wflow/AsyncWaitPoint)
       (.hold c np)
@@ -93,23 +115,26 @@
     fw))
 
 
-(defn fw-rerun "" [fw]
-  (let [ pipe (fw-pipe* fw) ]
-    (-> pipe
-      (.container)
-      (.core)
-      (.reschedule fw))
+(defn fw-rerun "" [^comzotohcljc.util.core.MutableObjectAPI fw]
+  (let [ ^comzotohcljc.wflow.core.PipelineAPI
+         pipe (fw-pipe* fw)
+         ^comzotohcljc.wflow.core.ContainerAPI
+         ct (.container pipe)
+         ^Schedulable
+         c  (.core ct) ]
+    (.reschedule c fw)
     fw))
 
 
-(defn fw-run "" [fw]
-  (let [ pipe (fw-pipe* fw)
-         job (.job pipe)
+(defn fw-run "" [^comzotohcljc.util.core.MutableObjectAPI fw]
+
+  (let [ ^comzotohcljc.wflow.core.PipelineAPI pipe (fw-pipe* fw)
+         ^Job job (.job pipe)
          np (fw-next* fw)
-         c (->
-             pipe
-             (.container)
-             (.core)) ]
+         ^comzotohcljc.wflow.core.ContainerAPI
+         ct (.container pipe)
+         ^Schedulable c (.core ct) ]
+
     (debug "nested inside fw-run: pipe= " pipe ", job= " job ", fw=" fw ", next=" np)
     (with-local-vars [ rc nil err nil ]
       (try
@@ -125,17 +150,19 @@
         (fw-runafter @rc)))))
 
 ;; attmt is data passed back from previous async call, if any
-(defn fw-popattmt! "" [fw]
+(defn fw-popattmt! "" [^comzotohcljc.util.core.MutableObjectAPI fw]
   (let [ c (.getf fw :attmt) ]
     (.setf! fw :attmt nil)
     c))
 
-(defn fw-setattmt! "" [fw c]
+(defn fw-setattmt! "" [^comzotohcljc.util.core.MutableObjectAPI fw c]
   (do
     (when-not (nil? fw) (.setf! fw :attmt c))
     fw))
 
-(defmethod fw-configure! :default [fw ac cur]
+(defmethod fw-configure! :default [^comzotohcljc.util.core.MutableObjectAPI fw 
+                                   ac 
+                                   ^comzotohcljc.util.core.MutableObjectAPI cur]
   (do
     (.setf! fw :pipeline (fw-pipe* cur))
     (.setf! fw :pid (SN/next-long))
@@ -143,7 +170,7 @@
     (.setf! fw :next cur)
     fw))
 
-(defmethod fw-realize! :default [fw]
+(defmethod fw-realize! :default [^comzotohcljc.util.core.MutableObjectAPI fw]
   (let [ a (.getf fw :template) ]
     (ac-realize! a fw)
     fw))
@@ -156,8 +183,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn make-flowpoint "" [ id ]
-  (let [ impl (CU/make-mmap) nid (SN/next-long) ]
+(defn make-flowpoint "" [id]
+
+  (let [ impl (CU/make-mmap)
+         nid (SN/next-long) ]
     (with-meta
       (reify
 
@@ -176,8 +205,6 @@
 
           (run [this]
             (CU/TryC
-              (debug "inside java-runnable:run()")
-              (debug "pipeline object = " (.getf this :pipeline))
               (fw-run this)))
 
         comzotohcljc.wflow.point.FlowPoint
@@ -185,7 +212,8 @@
 
       { :typeid  id } )) )
 
-(defn make-activity "" [ id ]
+(defn make-activity "" [id]
+
   (let [ impl (CU/make-mmap) ]
      (with-meta
        (reify
@@ -203,7 +231,7 @@
 
        { :typeid  id } )))
 
-(defn ac-spawnpoint "" [ ac cur id ]
+(defn ac-spawnpoint "" [ac cur id]
   (let [ f (make-flowpoint id) ]
     (fw-configure! f ac cur)
     (fw-realize! f)))
@@ -213,30 +241,18 @@
 (defn make-nihil "" [] (make-activity :czc.wflow/Nihil) )
 
 (defn ac-reify-nihil "" [pipe]
-  (let [ f (make-flowpoint :czc.wflow/NihilPoint) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI 
+         f (make-flowpoint :czc.wflow/NihilPoint) ]
     (.setf! f :pipeline pipe)
     (fw-configure! f (make-nihil) f)
     (fw-realize! f)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol PipelineDelegateAPI
-  (getStart [_ pipe] )
-  (getStop [_ pipe] )
-  (getError [_ pipe error cur] ) )
+(defn make-pipeline [^Job theJob ^String delegateClassName]
 
-(defprotocol PipelineAPI
-  (container [_] )
-  (isActive [_] )
-  (job [_] )
-  (onError [_ error curPoint] )
-  (start [_] )
-  (stop [_] ))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn make-pipeline [theJob delegateClassName]
-  (let [ delegate (MU/make-obj delegateClassName)
+  (let [ ^comzotohcljc.wflow.core.PipelineDelegateAPI 
+         delegate (MU/make-obj delegateClassName)
          pid (SN/next-long)
          impl (CU/make-mmap) ]
     (CU/test-cond "Delegate does not implement PipelineDelegateAPI"
@@ -249,7 +265,7 @@
         Object
 
           (finalize [this]
-            (debug (str "=====================>" (.toString this) " finz'ed")) )
+            (printf (str "=====================>" (.toString this) " finz'ed")) )
           (toString [this]
             (str (-> this (.getClass)(.getSimpleName)) "(" pid ")" ))
 
@@ -259,7 +275,7 @@
           (container [_] (.parent theJob))
 
           (onError [this err cur]
-            (let [ h (.getError delegate) ]
+            (let [ h (.getError delegate this err cur) ]
               (error err "")
               (let [ a (if (fn? h)
                          (CU/TryC (h this err cur))) ]
@@ -270,19 +286,20 @@
           (start [this]
             (with-local-vars [ f9 nil ]
               (let [ f1 (ac-reify-nihil this)
-                     h (.getStart delegate) ]
-                (debug "Pipeline " pid " starting...")
-                (when-not (fn? h)
-                  (warn "no start function defined by delegate!"))
+                     h (.getStart delegate this) ]
+                ;;(when-not (fn? h) (warn "no start function defined by delegate!"))
                 (try
-                  (let [ a (if (fn? h) (h this))
+                  (let [ ^comzotohcljc.wflow.activity.Activity a (if (fn? h) (h this))
+                         ^comzotohcljc.wflow.core.ContainerAPI
+                         ct (.container this)
+                         ^Schedulable c (.core ct)
                          f2 (cond
                                 (or (nil? a) (= :czc.wflow/Nihil (.moniker a)))
                                 (ac-reify-nihil this)
                                 :else
                                 (ac-reify a f1)) ]
                     (var-set f9 f2)
-                    (-> this (.container) (.core) (.run @f9))
+                    (.run c @f9)
                     (.mm-s impl :active true))
                   (catch Throwable e#
                       (onError this e# @f9))))) )
@@ -291,8 +308,8 @@
 
           (stop [this]
             (CU/TryC
-              (debug "Pipeline " pid " stopping...")
-              (let [ h (.getStop delegate) ]
+              ;;(debug "Pipeline " pid " stopping...")
+              (let [ h (.getStop delegate this) ]
                 (when (fn? h)
                   (h this)))) ) )
 

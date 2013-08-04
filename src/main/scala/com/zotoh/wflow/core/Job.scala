@@ -19,13 +19,14 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.wflow.core
 
 /**
  * @author kenl
  */
-trait Job extends Identifiable {
+trait Job {
   def parent() : Any
   def event() : Any
+  def id() : Any
 }
 

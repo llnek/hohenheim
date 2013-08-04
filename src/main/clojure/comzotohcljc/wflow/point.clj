@@ -23,7 +23,12 @@
 
   comzotohcljc.wflow.point )
 
-(defprotocol FlowPoint
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
+
+(defprotocol FlowPoint ""
   (moniker [_] ))
 
 (def ^:private point-eof nil)

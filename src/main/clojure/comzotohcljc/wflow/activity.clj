@@ -23,7 +23,12 @@
 
   comzotohcljc.wflow.activity )
 
-(defprotocol Activity
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
+
+
+(defprotocol Activity ""
   (moniker [_] ))
 
 (def ^:private activity-eof nil)

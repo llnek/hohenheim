@@ -409,7 +409,7 @@
 
 (defprotocol Transactable
   (execWith [_ func] )
-  (begin [_] )
+  (^Connection begin [_] )
   (commit [_ conn] )
   (rollback [_ conn] ))
 

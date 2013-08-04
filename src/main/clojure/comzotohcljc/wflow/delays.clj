@@ -26,7 +26,7 @@
 
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(import '(com.zotoh.hohenheim.core Job))
+(import '(com.zotoh.wflow.core FAsyncResumeToken Job))
 
 (require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
@@ -34,17 +34,10 @@
 (use '[comzotohcljc.wflow.core])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
-(defprotocol AsyncWaitPoint)
-(defprotocol AsyncWait)
 
-(defprotocol DelayPoint)
-(defprotocol Delay)
-
-(defprotocol FAsyncResumeToken
-  (resume [_ resArg] ))
-
-(defn async-resume-token [fw]
+(defn async-resume-token [^comzotohcljc.util.core.MutableObjectAPI fw]
   (reify
     FAsyncResumeToken
       (resume [_ resArg]
@@ -58,16 +51,16 @@
 
 (defn make-delay "Create a Delay Activity."
   [delayMillis]
-  (let [ b (make-activity Delay) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI b (make-activity :czc.wflow/Delay) ]
     (.setf! b :delayMillis delayMillis)
     b))
 
-(defmethod ac-reify :comzotohcljc.wflow.delays/Delay
+(defmethod ac-reify :czc.wflow/Delay
   [ac cur]
-  (ac-spawnpoint ac cur DelayPoint))
+  (ac-spawnpoint ac cur :czc.wflow/DelayPoint))
 
-(defmethod ac-realize! :comzotohcljc.wflow.delays/Delay
-  [ac fw]
+(defmethod ac-realize! :czc.wflow/Delay
+  [^comzotohcljc.util.core.MutableObjectAPI ac ^comzotohcljc.util.core.MutableObjectAPI fw]
   (let [ d (.getf ac :delayMillis) ]
     (.setf! fw :delayMillis d)
     fw))
@@ -77,12 +70,12 @@
 
 (defn make-asyncwait "Make a AsyncWait Activity."
   []
-  (let [ b (make-activity AsyncWait) ]
+  (let [ b (make-activity :czc.wflow/AsyncWait) ]
     b))
 
-(defmethod ac-reify :comzotohcljc.wflow.delays/AsyncWait
+(defmethod ac-reify :czc.wflow/AsyncWait
   [ac cur]
-  (ac-spawnpoint ac cur AsyncWaitPoint))
+  (ac-spawnpoint ac cur :czc.wflow/AsyncWaitPoint))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

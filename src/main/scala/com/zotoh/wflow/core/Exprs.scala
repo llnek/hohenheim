@@ -19,9 +19,19 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.wflow.core
 
 
 trait BoolExpr {
   def evaluate(job:Job) : Boolean
 }
+
+trait ForLoopCountExpr {
+  def getCount(job:Job) : Int
+}
+
+trait SwitchChoiceExpr {
+  def getChoice(job:Job) : Any
+}
+
+

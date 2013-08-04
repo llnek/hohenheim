@@ -56,7 +56,7 @@
   (supportsOptimisticLock [_] )
   (vendor [_]  )
   (finz [_] )
-  (open [_] )
+  (^Connection open [_] )
   (newCompositeSQLr [_] )
   (newSimpleSQLr [_] ) )
 

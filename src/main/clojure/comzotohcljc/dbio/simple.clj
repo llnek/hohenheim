@@ -37,7 +37,13 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(defn simpleSQLr "" [db metaCache]
+(defn simpleSQLr "" 
+  
+  ^comzotohcljc.dbio.sql.SQLr 
+
+  [^comzotohcljc.dbio.core.DBAPI db
+   ^comzotohcljc.dbio.core.MetaCacheAPI metaCache]
+
   (let [ proc (make-proc db metaCache) ]
     (reify SQLr
 
@@ -51,74 +57,55 @@
       (findSome [this  model filters] (findSome this model filters ""))
 
       (findSome [this model filters ordering]
-        (let [ conn (.open db) ]
-          (try
-            (let [ zm (get metaCache model)
-                   tbl (table-name zm)
-                   s (str "SELECT * FROM " (ese tbl))
-                   [wc pms] (sql-filter-clause filters)
-                   extra (if (SU/hgl? ordering)
-                             (str " ORDER BY " ordering)
-                             "") ]
-              (if (SU/hgl? wc)
-                (.doQuery proc conn (str s " WHERE " wc extra) pms model)
-                (.doQuery proc conn (str s extra) [] model)))
-            (finally
-              (.close db conn)))))
+        (with-open [ conn (.open db) ]
+          (let [ zm (get metaCache model)
+                 tbl (table-name zm)
+                 s (str "SELECT * FROM " (ese tbl))
+                 [wc pms] (sql-filter-clause filters)
+                 extra (if (SU/hgl? ordering)
+                           (str " ORDER BY " ordering)
+                           "") ]
+            (if (SU/hgl? wc)
+              (.doQuery proc conn (str s " WHERE " wc extra) pms model)
+              (.doQuery proc conn (str s extra) [] model))) ))
 
       (update [this obj]
-        (let [ conn (.open db) ]
-          (try
-            (.setAutoCommit conn true)
-            (.doUpdate proc conn obj)
-            (finally (.close db conn)))))
+        (with-open [ conn (.open db) ]
+          (.setAutoCommit conn true)
+          (.doUpdate proc conn obj) ))
 
       (delete [this obj]
-        (let [ conn (.open db) ]
-          (try
+        (with-open [ conn (.open db) ]
             (.setAutoCommit conn true)
-            (.doDelete proc conn obj)
-            (finally (.close db conn)))))
+            (.doDelete proc conn obj) ))
 
       (insert [this obj]
-        (let [ conn (.open db) ]
-          (try
+        (with-open [ conn (.open db) ]
             (.setAutoCommit conn true)
-            (.doInsert proc conn obj)
-            (finally (.close db conn)))))
+            (.doInsert proc conn obj) ))
 
       (select [this sql params]
-        (let [ conn (.open db) ]
-          (try
-            (.doQuery proc conn sql params)
-          (finally (.close db conn)))))
+        (with-open [ conn (.open db) ]
+            (.doQuery proc conn sql params) ))
 
       (executeWithOutput [this sql pms]
-        (let [ conn (.open db) ]
-          (try
+        (with-open [ conn (.open db) ]
             (.setAutoCommit conn true)
-            (.doExecuteWithOutput proc conn sql pms)
-          (finally (.close db conn)))))
+            (.doExecuteWithOutput proc conn sql pms) ))
 
       (execute [this sql pms]
-        (let [ conn (.open db) ]
-          (try
+        (with-open [ conn (.open db) ]
             (.setAutoCommit conn true)
-            (doExecute proc conn sql pms)
-          (finally (.close db conn)))))
+            (doExecute proc conn sql pms) ))
 
       (count* [this model]
-        (let [ conn (.open db) ]
-          (try
-            (.doCount proc conn model)
-          (finally (.close db conn)))))
+        (with-open [ conn (.open db) ]
+            (.doCount proc conn model) ))
 
       (purge [this model]
-        (let [ conn (.open db) ]
-          (try
+        (with-open [ conn (.open db) ]
             (.setAutoCommit conn true)
-            (.doPurge proc conn model)
-          (finally (.close db conn)))))   )))
+            (.doPurge proc conn model) )) )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

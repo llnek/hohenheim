@@ -26,6 +26,8 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
+(import '(java.util HashMap))
+
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
@@ -43,6 +45,8 @@
   DBIOLocal DBIOError OptLockError))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
 
 (def POSTGRESQL-DRIVER "org.postgresql.Driver")
 (def MYSQL-DRIVER "com.mysql.jdbc.Driver")
@@ -57,22 +61,27 @@
 
 
 
-(defn- hashJdbc [jdbc]
+(defn- hashJdbc ^long [jdbc]
   (.hashCode
     (str (:driver jdbc) (:url jdbc)
          (:user jdbc) (SU/nsb (:pwd jdbc)))))
 
-(defn- maybe-finz-pool [hc]
+(defn- maybe-finz-pool [^long hc]
   (let [ tloc (DBIOLocal/getCache) ;; a thread local
-         c (.get tloc) ;; c == java hashmap
+         ^HashMap c (.get tloc) ;; c == java hashmap
+         ^comzotohcljc.dbio.core.JDBCPoolAPI
          m (.get c hc) ]
     (when-not (nil? m)
       (CU/Try! (.shutdown m))
       (.remove c hc))))
 
-(defn- maybe-get-pool [hc jdbc options]
+(defn- maybe-get-pool
+
+  ^comzotohcljc.dbio.core.JDBCPoolAPI
+  [^long hc jdbc options]
+
   (let [ tloc (DBIOLocal/getCache) ;; get the thread local
-         c (.get tloc) ] ;; c == java hashmap
+         ^HashMap c (.get tloc) ] ;; c == java hashmap
     ;; check if pool is there
     (when-not (.containsKey c hc)
       (debug "no db pool found in thread-local, creating one...")
@@ -81,17 +90,24 @@
     (.get c hc)))
 
 
-(defn dbio-connect "" [jdbc metaCache options]
+(defn dbio-connect ""
+
+  ^comzotohcljc.dbio.core.DBAPI
+  [jdbc metaCache options]
+
   (let [ dbv (DU/resolve-vendor jdbc)
          hc (hashJdbc jdbc) ]
-    (reify DBAPI
+    (reify comzotohcljc.dbio.core.DBAPI
+
       (supportsOptimisticLock [_]
         (if (false? (:opt-lock options)) false true))
       (vendor [_] dbv)
       (finz [_] (maybe-finz-pool hc))
 
       (open [_]
-        (let [ p (maybe-get-pool hc jdbc options) ]
+        (let [ 
+             ^comzotohcljc.dbio.core.JDBCPoolAPI
+              p (maybe-get-pool hc jdbc options) ]
           (if (nil? p)
             nil
             (.nextFree p))))

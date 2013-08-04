@@ -22,6 +22,10 @@
 
 package com.zotoh.wflow.core
 
+trait FAsyncResumeToken {
+  def resume(resultArg:Any) : Unit
+}
+
 /**
  * @author kenl
  */

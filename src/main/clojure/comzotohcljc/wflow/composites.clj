@@ -27,12 +27,14 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 
 (import '(java.util.concurrent.atomic AtomicLong))
-(import '(com.zotoh.hohenheim.core Job))
+(import '(com.zotoh.frwk.util Schedulable))
+(import '(com.zotoh.wflow.core Job))
 
 (require '[comzotohcljc.util.core :as CU])
 (use '[comzotohcljc.wflow.core])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
 (defprotocol ^:private MutableListAPI
   ""
@@ -53,7 +55,7 @@
         f))))
 
 (defprotocol ^:private InnerPointsAPI
-  (isEmpty [_])
+  (isEmpty? [_])
   (size [_])
   (nextPoint [_]))
 
@@ -63,8 +65,8 @@
     (reify
       InnerPointsAPI
 
-      (isEmpty [_] (.is-empty? impl))
-      (size [_] (.size impl))
+      (isEmpty? [_] (.is-empty? impl))
+      (size [_] (.length impl))
       (nextPoint [_]
         (let [ ac (.shift impl) ]
           (if (nil? ac)
@@ -74,10 +76,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Composite
 
-(defprotocol CompositePoint)
-(defprotocol Composite)
 
-(defn- composite-add! [b a]
+(defn- composite-add! [^comzotohcljc.util.core.MutableObjectAPI b a]
   (when-not (nil? a)
     (let [ c (.getf b :children) ]
       (.setf! b :children (conj c a))))
@@ -86,36 +86,38 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Block
 
-(defprotocol BlockPoint)
-(defprotocol Block)
 
 (defn make-block "Create a new Block Activity."
   [ & args ]
-  (let [ b (make-activity Composite Block)
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI
+         b (make-activity :czc.wflow/Block)
          v (if (empty? args)
              []
              (vec (flatten (conj [] args)))) ]
     (.setf! b :children v)
     b))
 
-(defmethod ac-reify :comzotohcljc.wflow.composites/Block
+(defmethod ac-reify :czc.wflow/Block
   [ac cur]
-  (ac-spawnpoint ac cur CompositePoint BlockPoint))
+  (ac-spawnpoint ac cur :czc.wflow/BlockPoint))
 
-(defmethod ac-realize! :comzotohcljc.wflow.composites/Block
-  [ac fw]
+(defmethod ac-realize! :czc.wflow/Block
+
+  [^comzotohcljc.util.core.MutableObjectAPI ac
+   ^comzotohcljc.util.core.MutableObjectAPI fw]
+
   (let [ w (make-innerPoints fw (.getf ac :children)) ]
     (.setf! fw :inner-points w)
     fw))
 
-(defmethod fw-evaluate! :comzotohcljc.wflow.composites/BlockPoint
-  [fw  job]
-  (let [ w (.getf fw :inner-points)
+(defmethod fw-evaluate! :czc.wflow/BlockPoint
+  [^comzotohcljc.util.core.MutableObjectAPI fw  job]
+  (let [ ^comzotohcljc.wflow.composites.InnerPointsAPI w (.getf fw :inner-points)
          c (fw-popattmt! fw)
          np (fw-next* fw) ]
 
     (with-local-vars [ rc nil ]
-      (if (or (nil? w) (.isEmpty w))
+      (if (or (nil? w) (.isEmpty? w))
         (do
           (debug "no more inner points.")
           (var-set rc np)
@@ -129,49 +131,37 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Join
 
-(defprotocol JoinPoint)
-(defprotocol Join)
-
-(defprotocol NullJoinPoint)
-(defprotocol NullJoin)
-
-(defprotocol AndJoinPoint)
-(defprotocol AndJoin)
-
-(defprotocol OrJoinPoint)
-(defprotocol OrJoin)
-
 (defn- make-nulljoin "Create a NULL Join Activity."
   []
-  (let [ a (make-activity Join NullJoin) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI a (make-activity :czc.wflow/NullJoin) ]
     (.setf! a :branches 0)
     (.setf! a :body nil)
     a))
 
-(defmethod ac-reify :comzotohcljc.wflow.composites/NullJoin
+(defmethod ac-reify :czc.wflow/NullJoin
   [ac cur]
-  (ac-spawnpoint ac cur  JoinPoint NullJoinPoint))
+  (ac-spawnpoint ac cur  :czc.wflow/NullJoinPoint))
 
-(defmethod fw-evaluate! :comzotohcljc.wflow.composites/NullJoinPoint
+(defmethod fw-evaluate! :czc.wflow/NullJoinPoint
   [fw  job] nil)
 
-(defmethod ac-realize! :comzotohcljc.wflow.composites/NullJoin
+(defmethod ac-realize! :czc.wflow/NullJoin
   [ac fw] fw)
 
 
 (defn make-andjoin "Create an And Join Activity."
   [body]
-  (let [ a (make-activity Join AndJoin) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI a (make-activity :czc.wflow/AndJoin) ]
     (.setf! a :body body)
     (.setf! a :branches 0)
     a))
 
-(defmethod ac-reify :comzotohcljc.wflow.composites/AndJoin
+(defmethod ac-reify :czc.wflow/AndJoin
   [ac cur]
-  (ac-spawnpoint ac cur JoinPoint AndJoinPoint))
+  (ac-spawnpoint ac cur :czc.wflow/AndJoinPoint))
 
-(defmethod ac-realize! :comzotohcljc.wflow.composites/AndJoin
-  [ac fw]
+(defmethod ac-realize! :czc.wflow/AndJoin
+  [^comzotohcljc.util.core.MutableObjectAPI ac ^comzotohcljc.util.core.MutableObjectAPI fw]
   (let [ n (.getf ac :branches)
          b (.getf ac :body)
          np (fw-next* fw) ]
@@ -181,13 +171,13 @@
     (.setf! fw :counter (AtomicLong. 0))
     fw))
 
-(defmethod fw-evaluate! :comzotohcljc.wflow.composites/AndJoinPoint
-  [fw job]
+(defmethod fw-evaluate! :czc.wflow/AndJoinPoint
+  [^comzotohcljc.util.core.MutableObjectAPI fw job]
   (let [ b (.getf fw :branches)
          body (.getf fw :body)
          c (fw-popattmt! fw)
          np (fw-next* fw)
-         n (.getf fw :counter)
+         ^AtomicLong n (.getf fw :counter)
          nn (.incrementAndGet n) ]
 
     (debug "branches " b ", counter " nn ", join(pid) = " fw)
@@ -201,17 +191,17 @@
 
 (defn make-orjoin "Create a Or Join Activity."
   [body]
-  (let [ a (make-activity Join OrJoin) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI a (make-activity :czc.wflow/OrJoin) ]
     (.setf! a :body body)
     (.setf! a :branches 0)
     a))
 
-(defmethod ac-reify :comzotohcljc.wflow.composites/OrJoin
+(defmethod ac-reify :czc.wflow/OrJoin
   [ac cur]
-  (ac-spawnpoint ac cur JoinPoint OrJoinPoint))
+  (ac-spawnpoint ac cur :czc.wflow/OrJoinPoint))
 
-(defmethod ac-realize! :comzotohcljc.wflow.composites/OrJoin
-  [ac fw]
+(defmethod ac-realize! :czc.wflow/OrJoin
+  [^comzotohcljc.util.core.MutableObjectAPI ac ^comzotohcljc.util.core.MutableObjectAPI fw]
   (let [ n (.getf ac :branches)
          b (.getf ac :body)
          np (fw-next* fw) ]
@@ -222,13 +212,13 @@
     (.setf! fw :counter (AtomicLong. 0))
     fw))
 
-(defmethod fw-evaluate! :comzotohcljc.wflow.composites/OrJoinPoint
-  [fw job]
+(defmethod fw-evaluate! :czc.wflow/OrJoinPoint
+  [^comzotohcljc.util.core.MutableObjectAPI fw job]
   (let [ b (.getf fw :branches)
          c (fw-popattmt! fw)
          np (fw-next* fw)
          body (.getf fw :body)
-         n (.getf fw :counter)
+         ^AtomicLong n (.getf fw :counter)
          nn (.incrementAndGet n) ]
 
     (debug "branches " b ", counter " nn ", join(pid) = " fw)
@@ -243,22 +233,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Split
 
-(defprotocol SplitPoint)
-(defprotocol Split)
 
 (defn make-split [joiner]
-  (let [ s (make-activity Composite Split) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI s (make-activity :czc.wflow/Split) ]
     (.setf! s :children [])
     (.setf! s :join joiner)
     s))
 
-(defmethod ac-reify :comzotohcljc.wflow.composites/Split
+(defmethod ac-reify :czc.wflow/Split
   [ac cur]
-  (ac-spawnpoint ac cur CompositePoint SplitPoint))
+  (ac-spawnpoint ac cur :czc.wflow/SplitPoint))
 
-(defmethod ac-realize! :comzotohcljc.wflow.composites/Split
-  [ac fw]
+(defmethod ac-realize! :czc.wflow/Split
+  [^comzotohcljc.util.core.MutableObjectAPI ac ^comzotohcljc.util.core.MutableObjectAPI fw]
   (let [ cs (.getf ac :children)
+         ^comzotohcljc.util.core.MutableObjectAPI 
          j (.getf ac :join)
          np (fw-next* fw)
          n (count cs)
@@ -272,16 +261,21 @@
     (.setf! fw :inner-points (make-innerPoints s cs))
     fw))
 
-(defmethod fw-evaluate! :comzotohcljc.wflow.composites/SplitPoint
-  [fw job]
-  (let [ w (:getf fw :inner-points)
+(defmethod fw-evaluate! :czc.wflow/SplitPoint
+  [^comzotohcljc.util.core.MutableObjectAPI fw job]
+  (let [ ^comzotohcljc.wflow.composites.InnerPointsAPI
+         w (:getf fw :inner-points)
+         ^comzotohcljc.wflow.core.PipelineAPI
          pipe (fw-pipe* fw)
+         ^comzotohcljc.wflow.core.ContainerAPI
+         ct (.container pipe)
+         ^Schedulable cc (.core ct)
          c (fw-popattmt! fw) ]
 
-    (while (and (CU/notnil? w) (not (.isEmpty w)))
+    (while (and (CU/notnil? w) (not (.isEmpty? w)))
       (let [ n (.nextPoint w) ]
         (fw-setattmt! n c)
-        (.run pipe n)))
+        (.run cc n)))
     (fw-realize! fw)
     ;; should we also pass the closure to the next step ? not for now
     (if (.getf fw :fall-thru)

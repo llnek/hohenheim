@@ -35,29 +35,31 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
-(defprotocol DBDriver
+
+(defprotocol DBDriver ""
   (getTestString [_] )
   (getId [_] ))
 
-(defn- getcolname [flds fid]
-  (let [ c (:column (get flds fid)) ]
+(defn- getcolname ^String [flds fid]
+  (let [ ^String c (:column (get flds fid)) ]
     (if (SU/hgl? c) (.toUpperCase c) c)))
 
-(defn- getNotNull [db] "NOT NULL")
+(defn- getNotNull ^String [db] "NOT NULL")
 
-(defn- getNull [db] "NULL")
+(defn- getNull ^String [db] "NULL")
 
-(defn getPad [db] "    ")
+(defn getPad ^String [db] "    ")
 
 (defn- nullClause [db opt?]
   (if opt? (getNull db) (getNotNull db)))
 
-(defn- genSep [db]
+(defn- genSep ^String [db]
   (if *USE_DDL_SEP* *DDL_SEP* ""))
 
-(defn genCol [fld]
-  (.toUpperCase (:column fld)))
+(defn genCol ^String [fld]
+  (.toUpperCase ^String (:column fld)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -96,21 +98,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmethod genExec :default [db] (str ";\n" (genSep db)))
+(defmethod genExec :default ^String [db] (str ";\n" (genSep db)))
 
-(defmethod genDrop :default [db table]
+(defmethod genDrop :default ^String [db table]
   (str "DROP TABLE " table (genExec db) "\n\n"))
 
-(defmethod genBegin :default [db table]
+(defmethod genBegin :default ^String [db table]
   (str "CREATE TABLE " table "\n(\n"))
 
-(defmethod genEnd :default [db table] (str "\n)" (genExec db) "\n\n"))
+(defmethod genEnd :default ^String [db table] (str "\n)" (genExec db) "\n\n"))
 
-(defmethod genGrant :default [db table] "")
+(defmethod genGrant :default ^String [db table] "")
 
-(defmethod genEndSQL :default [db] "")
+(defmethod genEndSQL :default ^String [db] "")
 
-(defn genColDef [db col ty opt? dft]
+(defn genColDef ^String [db ^String col ty opt? dft]
   (str (getPad db) (.toUpperCase col) " " ty " " (nullClause db opt?)
        (if (nil? dft) "" (str " DEFAULT " dft))))
 
@@ -173,7 +175,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- genExIndexes [db cache table flds zm]
+(defn- genExIndexes ^String [db cache table flds zm]
   (let [ m (collect-db-indexes cache zm)
          bf (StringBuilder.) ]
     (doseq [ [nm nv] (seq m) ]
@@ -207,7 +209,7 @@
     (with-local-vars [ pkeys (transient #{}) ]
       ;; 1st do the columns
       (doseq [ [fid fld] (seq flds) ]
-        (let [ cn (.toUpperCase (:column fld))
+        (let [ cn (.toUpperCase ^String (:column fld))
                dt (:domain fld)
                col (case dt
                     :boolean (genBool db fld)
@@ -241,7 +243,7 @@
     [ (.toString bf) (.toString inx) ] )) )
 
 (defn- genOneTable [db ms zm]
-  (let [ table (.toUpperCase (:table zm))
+  (let [ table (.toUpperCase ^String (:table zm))
            b (genBegin db table)
            d (genBody db ms table zm)
            e (genEnd db table)
@@ -251,13 +253,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn getDDL  "" [db metaCache]
+(defn getDDL  "" 
+
+  ^String 
+  [^comzotohcljc.dbio.core.DBAPI db
+   ^comzotohcljc.dbio.core.MetaCacheAPI metaCache]
+
   (binding [ *DDL_BVS* (HashMap.) ]
     (let [ ms (.getMetas metaCache)
            drops (StringBuilder.)
            body (StringBuilder.) ]
       (doseq [ [id tdef] (seq ms) ]
-        (let [ tbl (:table tdef) ]
+        (let [ ^String tbl (:table tdef) ]
           (when (and (not (:abstract tdef)) (SU/hgl? tbl))
             (debug "model id: " (name id) " table: " tbl)
             (-> drops (.append (genDrop db (.toUpperCase tbl) )))

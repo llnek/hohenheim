@@ -25,7 +25,7 @@
 
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(import '(com.zotoh.hohenheim.core Job))
+(import '(com.zotoh.wflow.core Job))
 
 (require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
@@ -33,10 +33,11 @@
 (use '[comzotohcljc.wflow.core])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
-(defprotocol PTaskPoint)
-(defprotocol PTask)
-(defprotocol Work
+
+
+(defprotocol ^:private Work
   (perform [_ fw job] ))
 
 (defn- make-ptask-work [cb]
@@ -49,29 +50,31 @@
           (cb fw job c))))))
 
 (defn make-ptask "Create a PTask Activity."
+
+  ;; function signature (fw job arg)
   [cb]
-  (let [ b (make-activity PTask) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI b (make-activity :czc.wflow/PTask) ]
     (.setf! b :task (make-ptask-work cb))
     b))
 
-(defmethod ac-reify :comzotohcljc.wflow.user/PTask
+(defmethod ac-reify :czc.wflow/PTask
   [ac cur]
-  (ac-spawnpoint ac cur PTaskPoint))
+  (ac-spawnpoint ac cur :czc.wflow/PTaskPoint))
 
-(defmethod ac-realize! :comzotohcljc.wflow.user/PTask
-  [ac fw]
+(defmethod ac-realize! :czc.wflow/PTask
+  [^comzotohcljc.util.core.MutableObjectAPI ac ^comzotohcljc.util.core.MutableObjectAPI fw]
   (let [ w (.getf ac :task) ]
     (.setf! fw :task w)
     fw))
 
-(defmethod fw-evaluate! :comzotohcljc.wflow.user/PTaskPoint
-  [fw job]
+(defmethod fw-evaluate! :czc.wflow/PTaskPoint
+  [^comzotohcljc.util.core.MutableObjectAPI fw job]
   (do
     (debug "[" (.getf fw :pid) "] about to perform work.")
-    (let [ pipe (fw-pipe* fw)
-           w (.getf fw :task)
+    (let [ ^comzotohcljc.wflow.core.PipelineAPI pipe (fw-pipe* fw)
+           ^comzotohcljc.wflow.user.Work w (.getf fw :task)
            np (fw-next* fw)
-           na (.perform w fw job) ]
+           ^comzotohcljc.wflow.activity.Activity na (.perform w fw job) ]
       (with-local-vars [rc np]
         (when-not (nil? na)
           (if (= :czc.wflow/Nihil (.moniker na))
