@@ -24,6 +24,8 @@
 
   comzotohcljc.dbio.simple )
 
+(import '(java.sql Connection))
+
 (use '[clojure.tools.logging :only (info warn error debug)])
 
 (require '[comzotohcljc.util.core :as CU])
@@ -37,14 +39,14 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(defn simpleSQLr "" 
-  
-  ^comzotohcljc.dbio.sql.SQLr 
+(defn simpleSQLr ""
+
+  ^comzotohcljc.dbio.sql.SQLr
 
   [^comzotohcljc.dbio.core.DBAPI db
    ^comzotohcljc.dbio.core.MetaCacheAPI metaCache]
 
-  (let [ proc (make-proc db metaCache) ]
+  (let [ ^comzotohcljc.dbio.sql.SQLProcAPI proc (make-proc db metaCache) ]
     (reify SQLr
 
       (findAll [this model ordering] (findSome this model {} ordering))
@@ -57,7 +59,8 @@
       (findSome [this  model filters] (findSome this model filters ""))
 
       (findSome [this model filters ordering]
-        (with-open [ conn (.open db) ]
+        (let [ ^Connection dbc (.open db) ]
+        (with-open [ conn dbc ]
           (let [ zm (get metaCache model)
                  tbl (table-name zm)
                  s (str "SELECT * FROM " (ese tbl))
@@ -67,45 +70,53 @@
                            "") ]
             (if (SU/hgl? wc)
               (.doQuery proc conn (str s " WHERE " wc extra) pms model)
-              (.doQuery proc conn (str s extra) [] model))) ))
+              (.doQuery proc conn (str s extra) [] model))) )))
 
       (update [this obj]
-        (with-open [ conn (.open db) ]
+        (let [ ^Connection dbc (.open db) ]
+        (with-open [ conn dbc ]
           (.setAutoCommit conn true)
-          (.doUpdate proc conn obj) ))
+          (.doUpdate proc conn obj) )) )
 
       (delete [this obj]
-        (with-open [ conn (.open db) ]
+        (let [ ^Connection dbc (.open db) ]
+        (with-open [ conn dbc ]
             (.setAutoCommit conn true)
-            (.doDelete proc conn obj) ))
+            (.doDelete proc conn obj) )) )
 
       (insert [this obj]
-        (with-open [ conn (.open db) ]
+        (let [ ^Connection dbc (.open db) ]
+        (with-open [ conn dbc ]
             (.setAutoCommit conn true)
-            (.doInsert proc conn obj) ))
+            (.doInsert proc conn obj) )) )
 
       (select [this sql params]
-        (with-open [ conn (.open db) ]
-            (.doQuery proc conn sql params) ))
+        (let [ ^Connection dbc (.open db) ]
+        (with-open [ conn dbc ]
+            (.doQuery proc conn sql params) )) )
 
       (executeWithOutput [this sql pms]
-        (with-open [ conn (.open db) ]
+        (let [ ^Connection dbc (.open db) ]
+        (with-open [ conn dbc ]
             (.setAutoCommit conn true)
-            (.doExecuteWithOutput proc conn sql pms) ))
+            (.doExecuteWithOutput proc conn sql pms { :pkey "dbio_rowid" } ) )) )
 
       (execute [this sql pms]
-        (with-open [ conn (.open db) ]
+        (let [ ^Connection dbc (.open db) ]
+        (with-open [ conn dbc ]
             (.setAutoCommit conn true)
-            (doExecute proc conn sql pms) ))
+            (doExecute proc conn sql pms) )) )
 
       (count* [this model]
-        (with-open [ conn (.open db) ]
-            (.doCount proc conn model) ))
+        (let [ ^Connection dbc (.open db) ]
+        (with-open [ conn dbc ]
+            (.doCount proc conn model) )) )
 
       (purge [this model]
-        (with-open [ conn (.open db) ]
+        (let [ ^Connection dbc (.open db) ]
+        (with-open [ conn dbc ]
             (.setAutoCommit conn true)
-            (.doPurge proc conn model) )) )) )
+            (.doPurge proc conn model) )) ) )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

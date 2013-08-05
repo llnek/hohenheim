@@ -36,11 +36,11 @@
 
 (defn next-int "Return a sequence number (integer)."
   ^Integer []
-  (.getAndIncrement _numInt))
+  (.getAndIncrement ^AtomicInteger _numInt))
 
 (defn next-long "Return a sequence number (long)."
   ^long []
-  (.getAndIncrement _numLong))
+  (.getAndIncrement ^AtomicLong _numLong))
 
 
 

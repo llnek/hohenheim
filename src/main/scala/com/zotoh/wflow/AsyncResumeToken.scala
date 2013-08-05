@@ -1,5 +1,5 @@
 /*??
- * COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
+ * COPYRIGHT (C) 2012-2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
  *
  * THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
  * MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE,
@@ -19,26 +19,21 @@
  *
  ??*/
 
-package com.zotoh.frwk.util
+package com.zotoh.wflow
 
 /**
  * @author kenl
+ *
  */
-trait Schedulable {
+class AsyncResumeToken(p:FlowPoint) extends FAsyncResumeToken(p) {
 
-  def dequeue(w:Runnable) : Unit
-  def run(w:Runnable) : Unit
-  def postpone(w:Runnable, delayMillis:Long) : Unit
-  def hold(pid:Long, w:Runnable) : Unit
-  def hold(w:Runnable) : Unit
+  def resume(resultArg:Any) {
+    val p =if (_proc != null) _proc.nextPoint() else null
+    if (p != null) {
+      p.attachClosureArg(resultArg)
+      p.rerun()
+    }
+  }
 
-  def delay(w:Runnable, delayMillis:Long): Unit
-  def dispose() : Unit
-
-  def wakeup(w:Runnable) : Unit
-  def wakeAndRun(pid:Long,w:Runnable) : Unit
-  def reschedule(w:Runnable) : Unit
 
 }
-
-

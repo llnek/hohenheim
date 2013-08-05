@@ -45,7 +45,7 @@
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
-      <arg value="comzotohcljc.wflow.user" />
+      <arg value="comzotohcljc.dbio.simple" />
     </java>
   </target>
 
@@ -117,7 +117,7 @@
       <arg value="comzotohcljc.hohenheim.io.netty"/>
       <arg value="comzotohcljc.hohenheim.io.servlet"/>
       <arg value="comzotohcljc.hohenheim.io.triggers"/>
-
+      <!--
       <arg value="comzotohcljc.wflow.activity" />
       <arg value="comzotohcljc.wflow.point" />
       <arg value="comzotohcljc.wflow.core" />
@@ -125,7 +125,7 @@
       <arg value="comzotohcljc.wflow.conditionals" />
       <arg value="comzotohcljc.wflow.delays" />
       <arg value="comzotohcljc.wflow.user" />
-
+      -->
     </java>
   </target>
 
