@@ -46,6 +46,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defmethod ioes-reify-event :czc.hhh.io/JettyIO
+  [co & args]
+  (let [ e (make-servlet-event co
+                    (nth args 0)) ]
+    (reify HTTPEvent
+      ())))
+
+
 (defn- replyService [ this res rsp]
   (let [ s (.getStatus res)
          sc (.getCode s)
@@ -91,7 +100,7 @@
 
 (defn -service [this req rsp]
   (let [ state (.myState this)
-         evt nil ] ;;(HTTPHplr/extract @state req) ]
+         evt (ioes-reify-event @state req) ]
     (debug
       "********************************************************************"
       (.getRequestURL req)

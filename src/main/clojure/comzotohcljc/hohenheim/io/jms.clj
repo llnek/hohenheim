@@ -46,6 +46,7 @@
   TopicSubscriber))
 (import '(javax.naming Context InitialContext))
 (import '(java.io IOException))
+(import '(com.zotoh.hohenheim.io JMSEvent))
 
 (require '[comzotohcljc.crypto.codec :as CR])
 (require '[comzotohcljc.util.core :as CU])
@@ -63,7 +64,9 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/JMS
   [co & args]
-  (make-jms-event co (first args)))
+  (let [ e (make-jms-event co (first args)) ]
+    (reify JMSEvent
+      (getMsg [_] (.getf e :msg)))))
 
 (defn- onMessage [co msg]
       ;;if (msg!=null) block { () => msg.acknowledge() }

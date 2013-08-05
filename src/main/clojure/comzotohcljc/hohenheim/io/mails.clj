@@ -97,7 +97,9 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/POP3
   [co args]
-  (make-email-event co (first args)))
+  (let [ e (make-email-event co (first args)) ]
+    (reify EmailEvent
+      (getMsg [_] (.getf e :msg)))))
 
 
 (defn- connect-pop3 [co]
@@ -187,7 +189,9 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/IMAP
   [co & args]
-  (make-email-event co (first args)))
+  (let [ e (make-email-event co (first args)) ]
+    (reify EmailEvent
+      (getMsg [_] (.getf e :msg)))))
 
 (defn- connect-imap [co] (connect-pop3 co))
 

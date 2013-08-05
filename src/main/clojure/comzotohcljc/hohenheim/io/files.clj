@@ -69,9 +69,11 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/FilePicker
   [co & args]
-  (make-filepicker-event co (nth args 0)
+  (let [ e (make-filepicker-event co (nth args 0)
                          (nth args 1)
-                         (nth args 2) ))
+                         (nth args 2) ) ]
+    (reify FileEvent
+      (getFile [_] (.getf e :file)))))
 
 (defn- postPoll [co f action]
   (let [ des (.getAttr co :dest)

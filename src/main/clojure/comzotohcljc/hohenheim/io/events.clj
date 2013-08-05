@@ -61,13 +61,10 @@
           (clrf! [_ k] (.mm-r impl k) )
           (clear! [_] (.mm-c impl))
 
-        Identifiable
-          (id [_] evtId)
-
         EventObj
           (emitter [_] src) )
 
-      { :typeid id } )))
+      { :typeid evtId } )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -102,10 +99,13 @@
 
 (defn make-servlet-event [src req]
   (let [ e (make-event src :czc.hhh.io/HTTPEvent) ]
+    (.setf! e :request req)
     e))
 
 (defn make-netty-event [src msginfo ^XData xdata]
   (let [ e (make-event src :czc.hhh.io/HTTPEvent) ]
+    (.setf! e :request-data xdata)
+    (.setf! e :request msginfo)
     e))
 
 (defn eve-unbind [ev]
@@ -144,6 +144,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(derive :czc.hhh.io/WebSockEvent :czc.hhh.io/EmEvent)
 (derive :czc.hhh.io/SocketEvent :czc.hhh.io/EmEvent)
 (derive :czc.hhh.io/TimerEvent :czc.hhh.io/EmEvent)
 (derive :czc.hhh.io/JMSEvent :czc.hhh.io/EmEvent)

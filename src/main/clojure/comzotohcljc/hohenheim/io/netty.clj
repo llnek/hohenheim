@@ -42,9 +42,11 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/NettyIO
   [co & args]
-  (make-netty-event co
+  (let [ e (make-netty-event co
                     (nth args 0)
-                    (nth args 1)))
+                    (nth args 1)) ]
+    (reify HTTPEvent
+      ())))
 
 (defmethod comp-configure :czc.hhh.io/NettyIO
   [co cfg]

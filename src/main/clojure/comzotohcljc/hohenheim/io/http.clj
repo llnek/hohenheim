@@ -170,6 +170,35 @@
           (.stop svr) ))
     (ioes-stopped co)))
 
+(defn make-http-result []
+  (let [ impl (CU/make-mmap) ]
+    (.mm-s impl :version "HTTP/1.1" )
+    (.mm-s impl :hds (NCMap.))
+    (reify HTTPResult
+      (setProtocolVersion [_ ver]  (.mm-s impl :version ver))
+      (setStatus [_ code] (.mm-s impl :code code))
+      (addCookie [_ c] )
+
+      (containsHeader [_ nm]
+        (let [ ^NCMap m (.mm-g impl :hds) ]
+          (.containsKey m nm)))
+
+      (removeHeader [_ nm]
+        (let [ ^NCMap m (.mm-g impl :hds) ]
+          (.remove m nm)))
+
+      (clearHeaders [_]
+        (let [ ^NCMap m (.mm-g impl :hds) ]
+          (.clear m)))
+
+      (addHeader [_ nm v] )
+      (setHeader [_ nm v] )
+
+      (setChunked [_ b] (.mm-s impl :chunked b))
+
+      (setContent [_ data] (.mm-s impl :data data))
+      
+      )) )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

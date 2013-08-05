@@ -114,7 +114,9 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/RepeatingTimer
   [co & args]
-  (make-timer-event co true))
+  (let [ e (make-timer-event co true) ]
+    (reify TimerEvent
+      (isRepeating [_] (.getf e :repeating)))))
 
 (defmethod comp-configure :czc.hhh.io/RepeatingTimer
   [co cfg]
@@ -149,7 +151,9 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/OnceTimer
   [co & args]
-  (make-timer-event co false))
+  (let [ e (make-timer-event co false) ]
+    (reify TimerEvent
+      (isRepeating [_] (.getf e :repeating)))))
 
 (defmethod comp-configure :czc.hhh.io/OnceTimer
   [co cfg]

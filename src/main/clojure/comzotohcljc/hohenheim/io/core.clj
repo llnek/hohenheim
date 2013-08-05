@@ -25,6 +25,7 @@
   comzotohcljc.hohenheim.io.core )
 
 (import '(com.zotoh.hohenheim.core Identifiable Disposable Startable))
+(import '(java.util HashMap))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hohenheim.core.sys])
@@ -80,7 +81,7 @@
 
 (defn make-emitter "" [container emId]
   (let [ impl (CU/make-mmap) ]
-    (.mm-s impl :backlog (atom {}) )
+    (.mm-s impl :backlog (HashMap.))
     (with-meta
       (reify
 
@@ -116,13 +117,13 @@
             (when-not (nil? wevt)
               (let [ b (.mm-g impl :backlog)
                      wid (.id ^Identifiable wevt) ]
-                (swap! b dissoc wid))))
+                (.remove b wid))))
 
           (hold [_ wevt]
             (when-not (nil? wevt)
               (let [ b (.mm-g impl :backlog)
                      wid (.id ^Identifiable wevt) ]
-                (swap! b assoc wid wevt))))
+                (.put b wid wevt))))
 
           (dispatch [this ev]
             (CU/TryC

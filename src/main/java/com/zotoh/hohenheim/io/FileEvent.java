@@ -19,25 +19,14 @@
  *
  ??*/
 
+package com.zotoh.hohenheim.io;
 
-package com.zotoh.hohenheim.io
+import java.io.File;
 
-import org.eclipse.jetty.webapp.WebAppContext
+public interface FileEvent  extends AbstractEvent {
 
-/**
- * @author kenl
- */
-object JettyUtils {
-
-  def newWebAppContext( attr:String, obj:Any ) = {
-    new WebAppContext()  {
-      override def setContextPath(s:String) {
-        super.setContextPath(s)
-        _scontext.setAttribute(attr, obj)
-      }
-    }
-  }
-
+  public File getFile();
 
 }
+
 
