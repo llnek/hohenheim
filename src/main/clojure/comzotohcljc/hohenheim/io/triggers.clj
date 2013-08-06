@@ -28,12 +28,13 @@
 (import '(org.jboss.netty.handler.codec.http HttpResponseStatus))
 (import '(org.eclipse.jetty.continuation ContinuationSupport))
 (import '(org.eclipse.jetty.continuation Continuation))
-(import '(org.jboss.netty.channel ChannelFuture ChannelFutureListener))
+(import '(org.jboss.netty.channel Channel ChannelFuture ChannelFutureListener))
 (import '(org.jboss.netty.handler.codec.http
   HttpHeaders HttpHeaders$Names HttpVersion CookieEncoder DefaultHttpResponse))
 (import '(java.nio.channels ClosedChannelException))
+(import '(java.io OutputStream IOException))
 (import '(org.jboss.netty.handler.stream ChunkedStream))
-(import '(java.util Timer TimerTask))
+(import '(java.util List Timer TimerTask))
 (import '(java.net HttpCookie))
 (import '(javax.servlet.http Cookie HttpServletRequest HttpServletResponse))
 
@@ -46,9 +47,11 @@
 (use '[comzotohcljc.netty.comms :only (*HTTP-CODES*) ])
 (require '[comzotohcljc.net.comms :as NU])
 (require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
 
 (use '[comzotohcljc.hohenheim.io.events :rename { emitter evt-emitter } ])
 (use '[comzotohcljc.hohenheim.io.core])
+(use '[comzotohcljc.hohenheim.io.http :only (isServletKeepAlive) ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -63,151 +66,145 @@
       (.setSecure (.getSecure c))
       (.setVersion (.getVersion c))) )
 
-(defn- replyResult [ ^comzotohcljc.util.core.MutableObjectAPI res
+(defn- replyServlet [ ^comzotohcljc.util.core.MutableObjectAPI res
                      ^HttpServletRequest req
                      ^HttpServletResponse rsp
                     src]
-  (let [ ^NCMap hds (.getf res :hds)
+  (let [ ^OutputStream os (.getOutputStream rsp)
+         ^NCMap hds (.getf res :hds)
          ^List cks (.getf res :cookies)
+         ^URL url (.getf res :redirect)
          code (.getf res :code)
          data (.getf res :data)
          ^HttpResponseStatus
          status (get *HTTP-CODES* code) ]
 
-    (when (nil? status) (throw (IOException. "Bad HTTP Status code: " + code)))
+    (when (nil? status) (throw (IOException. (str "Bad HTTP Status code: " code))))
     (try
       (.setStatus rsp code)
-      (cond
-        (and (>= code 300) (< code 400))
-        (redirectServlet rsp (.getf res :redirect)) )
-      (doseq [[nm vs] (seq hdrs)]
-        (when-not (= "content-length" (.toLowerCase n))
+      (doseq [[^String nm vs] (seq hds)]
+        (when-not (= "content-length" (.toLowerCase nm))
           (doseq [vv (seq vs) ]
             (.addHeader rsp nm vv))))
       (doseq [ c (seq cks) ]
         (.addCookie rsp (cookieToServlet c)))
-      (let [ ^XData dd (cond
-                    (instance? XData data)
-                    data
-                    (CU/notnil? data)
-                    (XData. data)
-                    :else nil)
-             clen (if (and (CU/notnil? dd) (.hasContent dd))
-                      (.size dd)
-                      0) ]
-          (.setContentLength clen)
-          (when (> clen 0)
-            (IOUtils/copyLarge (.stream dd)
-                               (.getOutputStream rsp)
-                               clen))))
+      (cond
+        (and (>= code 300)(< code 400))
+        (.sendRedirect rsp (.encodeRedirectURL rsp (SU/nsb url)))
+        :else
+        (let [ ^XData dd (cond
+                            (instance? XData data) data
+                            (CU/notnil? data) (XData. data)
+                            :else nil)
+               clen (if (and (CU/notnil? dd) (.hasContent dd))
+                        (.size dd)
+                        0) ]
+            (.setContentLength rsp clen)
+            (.flushBuffer rsp)
+            (when (> clen 0)
+                (IOUtils/copyLarge (.stream dd) os 0 clen)
+                (.flush os) )))
       (catch Throwable e#
         (error e# ""))
       (finally
+        (CU/Try! (when-not (isServletKeepAlive req) (.close os)))
         (-> (ContinuationSupport/getContinuation req)
-          (.complete))) ) )
+          (.complete))) ) ) )
 
 
 (defn make-servlet-trigger "" [^HttpServletRequest req ^HttpServletResponse rsp src]
   (reify AsyncWaitTrigger
 
     (resumeWithResult [this res]
-      (let [ code (.statusCode res)
-             hdrs (.headers res) ]
-        (try
-          (doseq [[n v] (seq hdrs)]
-            (when-not (= "content-length" (.toLowerCase n))
-              (.setHeader rsp n v)))
-
-          (if (.hasError res)
-            (.sendError rsp code (.errorMsg res))
-            (let [ data (.data res)
-                   clen (if (and (instance? XData data) (.hasContent data))
-                          (.size data)
-                          0) ]
-              (.setStatus rsp code)
-              (.setContentLength clen)
-              (when (> clen 0)
-                (IOUtils/copyLarge (.stream data)
-                                   (.getOutputStream rsp)
-                                   clen))))
-          (catch Throwable e#
-            (error e# ""))
-          (finally
-            (-> (ContinuationSupport/getContinuation req)
-              (.complete))) )))
-
+      (replyServlet res req rsp src) )
 
     (resumeWithError [_]
-      (let [ s HttpResponseStatus/INTERNAL_SERVER_ERROR ]
         (try
-            (.sendError rsp (.getCode s) (.getReasonPhrase s))
+            (.sendError rsp 500)
           (catch Throwable e#
             (error e# ""))
           (finally
             (-> (ContinuationSupport/getContinuation req)
-              (.complete)))) )) ) )
-
+              (.complete)))) )) )
 
 (defn- maybeClose [^HTTPEvent evt ^ChannelFuture cf]
   (when-not (.isKeepAlive evt)
     (when-not (nil? cf)
       (.addListener cf ChannelFutureListener/CLOSE ))))
 
-(defn- netty-reply [ch evt res]
-  (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1 (.getStatus res))
-         data (.getData res)
-         clen (if (and (instance? XData data) (.hasContent data))
-                (.size data)
-                0)
-         cke (CookieEncoder. true)
-         hdrs (.getHeaders res) ]
+(defn- cookiesToNetty ^String [^List cookies]
+  (let [ cke (CookieEncoder. true) ]
+    (doseq [ ^HttpCookie c (seq cookies) ]
+      (.addCookie cke (.getName c)(.getValue c)))
+    (.encode cke)))
 
-    (doseq [[n v] (seq hdrs)]
-      (when-not (= "content-length" (.toLowerCase n))
-        (.setHeader rsp n v)))
+(defn- netty-reply [^comzotohcljc.util.core.MutableObjectAPI res
+                    ^Channel ch
+                    ^HTTPEvent evt
+                    src]
+  (let [ code (.getf res :code)
+         rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1
+                                   (HttpResponseStatus/valueOf code))
+         cks (cookiesToNetty (.getf res :cookies))
+         data (.getf res :data)
+         hdrs (.getf res :hds) ]
+    (with-local-vars [ clen 0 xd nil ]
+      (doseq [[^String nm vs] (seq hdrs)]
+        (when-not (= "content-length" (.toLowerCase nm))
+          (doseq [vv (seq vs)]
+            (.addHeader rsp nm vv))))
+      (when (SU/hgl? cks)
+        (.addHeader rsp HttpHeaders$Names/SET_COOKIE2 cks) )
+      (cond
+        (and (>= code 300)(< code 400))
+        (.setHeader rsp "Location" (SU/nsb (.getf res :redirect)))
+        :else
+        (let [ ^XData dd (if (nil? data)
+                            (XData.)
+                            (cond
+                              (instance? XData data) data
+                              :else (XData. data))) ]
+          (var-set clen (if (.hasContent dd) (.size dd) 0))
+          (var-set xd dd)
+          (.setHeader rsp "content-length" (str "" clen)) ) )
+      (try
+          (let [ cf (.write ch rsp) ]
+            (when (= @clen 0) (maybeClose evt cf)))
+        (catch ClosedChannelException e#
+          (warn "ClosedChannelException thrown while flushing headers"))
+        (catch Throwable t# (error t# "") ))
+      (when (> @clen 0)
+        (try
+          (maybeClose evt (.write ch (ChunkedStream. (.stream ^XData @xd))))
+          (catch ClosedChannelException e#
+            (warn "ClosedChannelException thrown while flushing body"))
+          (catch Throwable t# (error t# "") )))
+      )))
 
-    (.setHeader rsp "content-length" (str "" clen))
 
-    (doseq [ c (seq (.getCookies res)) ]
-      (.addCookie cke c))
-    (.addHeader rsp HttpHeaders$Names/SET_COOKIE (.encode cke))
-
-    ;; this throw NPE some times !
-    (let [ cf
-              (try
-                  (.write ch rsp)
-                (catch ClosedChannelException e#
-                  (warn "ClosedChannelException thrown: NettyTrigger @line 86")
-                  nil)
-                (catch Throwable t# (error t# "") nil))
-           cf2
-              (try
-                  (if (> clen 0)
-                    (.write ch (ChunkedStream. (.stream data)))
-                    nil)
-                (catch ClosedChannelException e#
-                  (warn "ClosedChannelException thrown: NettyTrigger @line 94")
-                  nil)
-                (catch Throwable t# (error t# "") nil)) ]
-
-        (maybeClose evt (if (nil? cf2) cf cf2)))) )
-
-
-(defn make-netty-trigger [ch evt src]
+(defn make-netty-trigger [^Channel ch evt src]
   (reify AsyncWaitTrigger
 
     (resumeWithResult [_ res]
-      (CU/TryC
-        (netty-reply ch evt res) ))
+      (CU/Try! (netty-reply ch evt res) ))
 
-    (resumeWithError [this]
-      (resumeWithResult this
-        (NU/http-response HttpResponseStatus/INTERNAL_SERVER_ERROR) ) )
+    (resumeWithError [_]
+      (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1
+                                   (HttpResponseStatus/valueOf 500)) ]
+        (try
+          (maybeClose evt (.write ch rsp))
+          (catch ClosedChannelException e#
+            (warn "ClosedChannelException thrown while flushing headers"))
+          (catch Throwable t# (error t# "") )) ))
 
-    (emitter [_] src) ))
+    ))
 
 
-(defn make-async-wait-holder [^HTTPEvent event trigger]
+(defn make-async-wait-holder 
+  
+  [ ^comzotohcljc.hohenheim.io.core.AsyncWaitTrigger trigger
+    ^HTTPEvent event ]
+
   (let [ impl (CU/make-mmap) ]
     (reify
 
@@ -217,49 +214,34 @@
       WaitEventHolder
 
       (resumeOnResult [this res]
-        (let [ tm (.mm-g impl :timer) ]
+        (let [ ^Timer tm (.mm-g impl :timer) 
+               ^comzotohcljc.hohenheim.io.core.EmitterAPI src (.emitter event) ]
           (when-not (nil? tm) (.cancel tm))
-          (-> (.emitter event) (.release this))
+          (.release src this)
           (.mm-s impl :result res)
           (eve-unbind event)
           (.resumeWithResult trigger res)
           ))
 
-      (timeoutMillis [this millis]
+      (timeoutMillis [me millis]
         (let [ tm (Timer. true) ]
           (.mm-s impl :timer tm)
-          (eve-bind event this)
+          (eve-bind event me)
           (.schedule tm (proxy [TimerTask][]
-            (run [_] (onExpiry this))) millis)))
+            (run [_] (.onExpiry me))) ^long millis)))
 
-      (timeoutSecs [this secs] (timeoutMillis this (* 1000 secs)))
+      (timeoutSecs [this secs] 
+        (timeoutMillis this (* 1000 secs)))
 
       (onExpiry [this]
-        (do
-          (-> (.emitter event) (.release this))
+        (let [ ^comzotohcljc.hohenheim.io.core.EmitterAPI
+               src (.emitter event) ]
+          (.release src this)
           (.mm-s impl :timer nil)
           (eve-unbind event)
-          (.resumeWithError trigger)
-          ))
+          (.resumeWithError trigger) ))
 
       )))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

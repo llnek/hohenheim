@@ -50,6 +50,7 @@
 (use '[comzotohcljc.hohenheim.io.events :only (make-filepicker-event) ])
 (use '[comzotohcljc.hohenheim.io.core])
 
+(use '[comzotohcljc.util.seqnum :as SN])
 (use '[comzotohcljc.util.core :as CU])
 (use '[comzotohcljc.util.str :as SU])
 
@@ -57,6 +58,8 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(set! *warn-on-reflection* false)
+
 
 
 (def FP_CREATED :FP-CREATED )
@@ -71,28 +74,34 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/FilePicker
   [co & args]
-  (let [ e (make-filepicker-event co (nth args 0)
-                         (nth args 1)
-                         (nth args 2) ) ]
-    (reify FileEvent
-      (getFile [_] (.getf e :file)))))
+  (let [ f (nth args 1)  eeid (SN/next-long) ]
+    (with-meta 
+      (reify FileEvent
+        (getSession [_] nil)
+        (emitter [_] co)
+        (getId [_] eeid)
+        (getFile [_] f))
+      { :typeid :czc.hhh.io/FileEvent } )))
 
-(defn- postPoll [co f action]
-  (let [ des (.getAttr co :dest)
+(defn- postPoll [^comzotohcljc.hohenheim.core.sys.Component co
+                 ^File f 
+                 action]
+  (let [ ^File des (.getAttr co :dest)
+        ^comzotohcljc.hohenheim.io.core.EmitterAPI src co
          fname (.getName f)
          cf  (if (and (not= action :FP-DELETED) (CU/notnil? des))
                 (CU/TryC
                     (FileUtils/moveFileToDirectory f des false)
                     (File. des fname) )
                 f) ]
-    (.dispatch co (ioes-reify-event co fname cf action))))
+    (.dispatch src (ioes-reify-event co fname cf action))))
 
 
 (defmethod comp-configure :czc.hhh.io/FilePicker
-  [co cfg]
-  (let [ root (CU/subs-var (SU/nsb (:target-folder cfg)))
-         dest (CU/subs-var (SU/nsb (:recv-folder cfg)))
-         mask (SU/nsb (:fmask cfg)) ]
+  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+  (let [ ^String root (CU/subs-var (SU/nsb (:target-folder cfg)))
+         ^String dest (CU/subs-var (SU/nsb (:recv-folder cfg)))
+         ^String mask (SU/nsb (:fmask cfg)) ]
     (cfg-loopable co cfg)
     (CU/test-nestr "file-root-folder" root)
     (.setAttr! co :target (doto (File. root) (.mkdirs)))
@@ -118,7 +127,7 @@
     co))
 
 (defmethod comp-initialize :czc.hhh.io/FilePicker
-  [co]
+  [^comzotohcljc.hohenheim.core.sys.Component co]
   (let [ obs (FileAlterationObserver.
                (.getAttr co :target)
                (.getAttr co :mask))
@@ -138,8 +147,9 @@
 
 
 (defmethod loopable-oneloop :czc.hhh.io/FilePicker
-  [co]
-  (-> (.getAttr co :monitor) (.start)))
+  [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^FileAlterationMonitor mon (.getAttr co :monitor) ]
+    (.start mon)))
 
 
 

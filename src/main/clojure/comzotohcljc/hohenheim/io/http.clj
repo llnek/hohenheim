@@ -28,6 +28,7 @@
 (import '(java.util List Map HashMap ArrayList))
 (import '(java.io File))
 (import '(com.zotoh.frwk.util NCMap))
+(import '(javax.servlet.http HttpServletRequest))
 
 (import '(org.eclipse.jetty.server
   Connector
@@ -53,6 +54,8 @@
 (use '[comzotohcljc.hohenheim.io.core])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
 
 
 (defn http-basic-config [co cfg]
@@ -171,6 +174,10 @@
       (CU/TryC
           (.stop svr) ))
     (ioes-stopped co)))
+
+(defn isServletKeepAlive [^HttpServletRequest req]
+  (let [ v (.getHeader req "connection") ]
+    (= "keep-alive" (.toLowerCase (SU/nsb v)))))
 
 (defn make-http-result []
   (let [ impl (CU/make-mmap) ]
