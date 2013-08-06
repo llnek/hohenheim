@@ -39,6 +39,8 @@
  FileAlterationListenerAdaptor
  FileAlterationMonitor
  FileAlterationObserver))
+(import '(com.zotoh.hohenheim.io FileEvent))
+
 
 
 (use '[comzotohcljc.hohenheim.core.sys :rename { seq* rego-seq* has? rego-has? } ])

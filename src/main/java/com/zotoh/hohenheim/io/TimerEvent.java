@@ -22,7 +22,7 @@
 package com.zotoh.hohenheim.io;
 
 
-public interface TimerEvent  extends AbstractEvent {
+public interface TimerEvent  extends IOEvent {
 
   public boolean isRepeating();
 

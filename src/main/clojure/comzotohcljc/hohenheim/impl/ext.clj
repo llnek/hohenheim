@@ -81,7 +81,7 @@
 
       { :typeid (keyword "czc.hhh.impl/Job") } )))
 
-(defprotocol ^:private JobCreatorAPI
+(defprotocol ^:private JobCreator
   (update [_ event options] ))
 
 (defn- make-jobcreator "" [parObj]
@@ -89,7 +89,7 @@
     (with-meta
       (reify
 
-        JobCreatorAPI
+        JobCreator
 
           (update [_ evt options]
             (let [ cz (if (.hasRouter evt)
@@ -107,13 +107,12 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Container
+;; ContainerAPI
 
-(defprotocol Container ""
+(defprotocol ContainerAPI ""
   (reifyOneService [_ sid cfg] )
   (reifyService [_ svc cfg] )
   (reifyServices [_] )
-  (notifyObservers [_ evt] )
   (enabled? [_] ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -128,7 +127,8 @@
     (with-meta
       (reify
 
-        comzotohcljc.wflow.core.ContainerAPI
+        Container
+          (notifyObservers [_ evt] )
           (core [this]
             (.getAttr this K_SCHEDULER))
 
@@ -143,9 +143,7 @@
           (parent [_] nil)
           (id [_] (.id pod) )
 
-        Container
-
-          (notifyObservers [_ evt] )
+        ContainerAPI
 
           (enabled? [_]
             (let [ env (.mm-g impl K_ENVCONF)

@@ -25,7 +25,7 @@ package com.zotoh.hohenheim.io;
 import javax.jms.Message;
 
 
-public interface JMSEvent  extends AbstractEvent {
+public interface JMSEvent  extends IOEvent {
 
   public Message getMsg();
 

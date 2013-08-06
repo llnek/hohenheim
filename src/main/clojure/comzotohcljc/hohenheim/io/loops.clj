@@ -25,7 +25,7 @@
   comzotohcljc.hohenheim.io.loops )
 
 (import '(java.util Date Timer TimerTask))
-
+(import '(com.zotoh.hohenheim.io TimerEvent))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 

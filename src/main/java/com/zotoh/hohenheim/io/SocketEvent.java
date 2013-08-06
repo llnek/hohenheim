@@ -24,7 +24,7 @@ package com.zotoh.hohenheim.io;
 import java.io.OutputStream;
 import java.io.InputStream;
 
-public interface SocketEvent  extends AbstractEvent {
+public interface SocketEvent  extends IOEvent {
 
   public OutputStream getSockOut();
 

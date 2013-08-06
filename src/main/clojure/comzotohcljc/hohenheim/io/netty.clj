@@ -25,6 +25,10 @@
 
 (import '(java.net URI URL InetSocketAddress))
 (import '(java.net InetAddress))
+(import '(com.zotoh.hohenheim.io HTTPEvent))
+(import '(javax.net.ssl SSLContext))
+(import '(org.jboss.netty.channel.group
+  ChannelGroup))
 
 (use '[comzotohcljc.hohenheim.io.events :only (make-netty-event) ])
 (use '[comzotohcljc.hohenheim.core.sys])
@@ -46,7 +50,7 @@
                     (nth args 0)
                     (nth args 1)) ]
     (reify HTTPEvent
-      ())))
+      )))
 
 (defmethod comp-configure :czc.hhh.io/NettyIO
   [co cfg]

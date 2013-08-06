@@ -22,7 +22,7 @@
 package com.zotoh.hohenheim.io;
 
 
-public interface WebSockEvent  extends AbstractEvent {
+public interface WebSockEvent  extends IOEvent {
 
   public boolean isBinary();
   public boolean isText();

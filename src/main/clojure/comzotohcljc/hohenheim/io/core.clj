@@ -25,17 +25,20 @@
   comzotohcljc.hohenheim.io.core )
 
 (import '(com.zotoh.hohenheim.core Identifiable Disposable Startable))
+(import '(com.zotoh.hohenheim.core Container))
+(import '(com.zotoh.hohenheim.io Emitter))
+
 (import '(java.util HashMap))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hohenheim.core.sys])
 
+(require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
-
 
 (defprotocol EmitterAPI
   ""
@@ -48,6 +51,19 @@
   (release [_ wevt] )
   (hold [_ wevt] )
   (dispatch [_ ev] ))
+
+(defprotocol WaitEventHolder ""
+  (resumeOnResult [_ res] )
+  (timeoutMillis [_ millis] )
+  (onExpiry [_])
+  (timeoutSecs [_ secs] ) )
+
+(defprotocol AsyncWaitTrigger ""
+  (resumeWithResult [_ res] )
+  (resumeWithError [_] )
+  (emitter [_] ))
+
+
 
 (defmulti ioes-dispatch "" (fn [a & args] (:typeid (meta a))))
 (defmulti ioes-dispose "" (fn [a] (:typeid (meta a))))
@@ -79,8 +95,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-emitter "" [container emId]
-  (let [ impl (CU/make-mmap) ]
+(defn make-emitter "" [^Container parObj emId]
+  (let [ eeid (SN/next-long)
+         impl (CU/make-mmap) ]
     (.mm-s impl :backlog (HashMap.))
     (with-meta
       (reify
@@ -93,8 +110,11 @@
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
           (version [_] "1.0")
-          (parent [_] container)
-          (id [_] emId)
+          (parent [_] parObj)
+          (id [_] eeid)
+
+        Emitter
+          (container [this] (parent this))
 
         Disposable
 
@@ -115,21 +135,21 @@
 
           (release [_ wevt]
             (when-not (nil? wevt)
-              (let [ b (.mm-g impl :backlog)
+              (let [ ^HashMap b (.mm-g impl :backlog)
                      wid (.id ^Identifiable wevt) ]
                 (.remove b wid))))
 
           (hold [_ wevt]
             (when-not (nil? wevt)
-              (let [ b (.mm-g impl :backlog)
+              (let [ ^HashMap b (.mm-g impl :backlog)
                      wid (.id ^Identifiable wevt) ]
                 (.put b wid wevt))))
 
           (dispatch [this ev]
             (CU/TryC
-                (.notifyObservers container ev) )) )
+                (.notifyObservers parObj ev) )) )
 
-      { :typeid id } )))
+      { :typeid emId } )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

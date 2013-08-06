@@ -19,13 +19,14 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.io;
+package com.zotoh.hohenheim.io
 
+import com.zotoh.hohenheim.core.Container
 
-abstract interface AbstractEvent {
-
-  //public long getId();
-
+/**
+ * @author kenl
+ *
+ */
+trait Emitter {
+  def container() : Container
 }
-
-

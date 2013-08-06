@@ -23,7 +23,7 @@ package com.zotoh.hohenheim.io;
 
 import java.io.File;
 
-public interface FileEvent  extends AbstractEvent {
+public interface FileEvent  extends IOEvent {
 
   public File getFile();
 

@@ -31,25 +31,27 @@
 (import '(org.apache.commons.io IOUtils))
 (import '(javax.mail.internet MimeMessage))
 (import '(javax.jms Message))
+(import '(java.net Socket))
 (import '(java.io File))
 (import '(com.zotoh.frwk.io XData))
 (import '(com.zotoh.hohenheim.core Identifiable))
+(import '(com.zotoh.hohenheim.io IOResult IOEvent Emitter))
 
+(require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
 
 
 (defmulti eve-set-session "" (fn [a b] (:typeid (meta a))))
 (defmulti eve-set-result "" (fn [a b] (:typeid (meta a))))
 (defmulti eve-destroy "" (fn [a] (:typeid (meta a))))
 
-(defprotocol EventObj
-  (emitter [_] ))
-
 (defn make-event [src evtId]
-  (let [ impl (CU/make-mmap) ]
+  (let [ eeid (SN/next-long) impl (CU/make-mmap) ]
     (with-meta
       (reify
 
@@ -61,84 +63,83 @@
           (clrf! [_ k] (.mm-r impl k) )
           (clear! [_] (.mm-c impl))
 
-        EventObj
+        IOEvent
           (emitter [_] src) )
 
       { :typeid evtId } )))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (defn make-filepicker-event [src ^String origFile ^File f action]
-  (let [ e (make-event src :czc.hhh.io/FileEvent) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI e (make-event src :czc.hhh.io/FileEvent) ]
     (.setf! e :originalFile (File. origFile))
     (.setf! e :file f)
     (.setf! e :action action)
     e))
 
 (defn make-email-event [src ^MimeMessage msg]
-  (let [ e (make-event src :czc.hhh.io/EmailEvent) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI e (make-event src :czc.hhh.io/EmailEvent) ]
     (.setf! e :msg msg)
     e))
 
 (defn make-jms-event [src ^Message msg]
-  (let [ e (make-event src :czc.hhh.io/JMSEvent) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI e (make-event src :czc.hhh.io/JMSEvent) ]
     (.setf! e :msg msg)
     e))
 
 (defn make-timer-event [src repeating]
-  (let [ e (make-event src :czc.hhh.io/TimerEvent) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI e (make-event src :czc.hhh.io/TimerEvent) ]
     (.setf! e :repeating repeating)
     e))
 
 (defn make-socket-event [src sock]
-  (let [ e (make-event src :czc.hhh.io/SocketEvent) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI e (make-event src :czc.hhh.io/SocketEvent) ]
     (.setf! e :socket sock)
     e))
 
 (defn make-servlet-event [src req]
-  (let [ e (make-event src :czc.hhh.io/HTTPEvent) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI e (make-event src :czc.hhh.io/HTTPEvent) ]
     (.setf! e :request req)
     e))
 
 (defn make-netty-event [src msginfo ^XData xdata]
-  (let [ e (make-event src :czc.hhh.io/HTTPEvent) ]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI e (make-event src :czc.hhh.io/HTTPEvent) ]
     (.setf! e :request-data xdata)
     (.setf! e :request msginfo)
     e))
 
-(defn eve-unbind [ev]
+(defn eve-unbind [^comzotohcljc.util.core.MutableObjectAPI ev]
   (.setf! ev :waitHolder nil))
 
-(defn eve-bind [ev obj]
+(defn eve-bind [^comzotohcljc.util.core.MutableObjectAPI ev obj]
   (.setf! ev :waitHolder obj))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod eve-set-session :czc.hhh.io/EmEvent [obj s]
+(defmethod eve-set-session :czc.hhh.io/EmEvent [^comzotohcljc.util.core.MutableObjectAPI obj s]
   (do
     (.setf! obj :session s)
     obj))
 
-(defmethod eve-destroy :czc.hhh.io/EmEvent [obj] nil)
+(defmethod eve-destroy :czc.hhh.io/EmEvent [^comzotohcljc.util.core.MutableObjectAPI obj] nil)
 
-(defmethod eve-set-result :czc.hhh.io/EmEvent [obj res]
-  (let [ weh (.getf obj :waitEventHolder)
-         s (.getf obj :session)
-         src (.getf obj :emitter) ]
+(defmethod eve-set-result :czc.hhh.io/EmEvent [^IOEvent obj ^IOResult res]
+  (let [ ^comzotohcljc.hohenheim.io.core.WaitEventHolder
+         weh (.getf ^comzotohcljc.util.core.MutableObjectAPI obj :waitEventHolder)
+         s (.getSession obj)
+         src (.emitter obj) ]
     (when-not (nil? s) (.handleResult s obj res))
-    (.setf! obj :result res)
+    (.setf! ^comzotohcljc.util.core.MutableObjectAPI obj :result res)
     (when-not (nil? weh)
       (try
           (.resumeOnResult weh res)
         (finally
-          (.setf! obj :waitEventHolder nil)
-          (.release src weh))))))
+          (.setf! ^comzotohcljc.util.core.MutableObjectAPI obj :waitEventHolder nil)
+          (.release ^comzotohcljc.hohenheim.io.core.EmitterAPI src weh))))))
 
 
-(defmethod eve-destroy :czc.hhh.io/SocketEvent [obj]
-  (let [ s (.getf obj :socket) ]
+(defmethod eve-destroy :czc.hhh.io/SocketEvent [^comzotohcljc.util.core.MutableObjectAPI obj]
+  (let [ ^Socket s (.getf obj :socket) ]
     (.setf! obj :socket nil)
     (when-not (nil? s) (IOUtils/closeQuietly s))))
 

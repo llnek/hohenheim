@@ -21,21 +21,21 @@
 
 package com.zotoh.hohenheim.io;
 
-import com.zotoh.frwk.io.XData;
+
 import java.util.List;
 import java.util.Map;
 import java.net.HttpCookie;
 
 
-public interface HTTPEvent  extends AbstractEvent {
+public interface HTTPEvent  extends IOEvent {
 
-  public Map<String,HttpCookie> getCookies();
+  public List<HttpCookie> getCookies();
 
   public HttpCookie getCookie(String name);
 
   public boolean isKeepAlive();
 
-  public XData data();
+  public Object data();
 
   public boolean hasData();
 
@@ -49,11 +49,11 @@ public interface HTTPEvent  extends AbstractEvent {
 
   public List<String> getHeaderValues(String nm);
   public List<String> getHeaders();
+  public String getHeaderValue(String nm);
 
   public List<String> getParameterValues(String nm);
   public List<String> getParameters();
-
-  public String domain();
+  public String getParameterValue(String nm);
 
   public String localAddr();
 
@@ -64,6 +64,7 @@ public interface HTTPEvent  extends AbstractEvent {
   public String method();
 
   public String protocol();
+  public String host();
 
   public String queryString();
 
@@ -75,11 +76,10 @@ public interface HTTPEvent  extends AbstractEvent {
 
   public String scheme();
 
-  public String server();
+  public String serverName();
 
   public int serverPort();
 
-  public String servletPath() ;
 
   public boolean isSSL();
 

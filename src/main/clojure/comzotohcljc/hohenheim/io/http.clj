@@ -25,7 +25,9 @@
 
 (import '(org.eclipse.jetty.server Server Connector))
 (import '(java.net URL))
+(import '(java.util List Map HashMap ArrayList))
 (import '(java.io File))
+(import '(com.zotoh.frwk.util NCMap))
 
 (import '(org.eclipse.jetty.server
   Connector
@@ -38,7 +40,7 @@
 (import '(org.eclipse.jetty.util.ssl SslContextFactory))
 (import '(org.eclipse.jetty.util.thread QueuedThreadPool))
 
-(import '(com.zotoh.hohenheim.io JettyUtils))
+(import '(com.zotoh.hohenheim.io HTTPResult HTTPEvent JettyUtils))
 
 (use '[comzotohcljc.crypto.ssl])
 
@@ -173,11 +175,20 @@
 (defn make-http-result []
   (let [ impl (CU/make-mmap) ]
     (.mm-s impl :version "HTTP/1.1" )
+    (.mm-s impl :code -1)
     (.mm-s impl :hds (NCMap.))
-    (reify HTTPResult
+    (.mm-s impl :cookies (ArrayList.))
+    (reify
+
+      HTTPResult
+      (setRedirect [_ url] (.mm-s impl :redirect url))
+
       (setProtocolVersion [_ ver]  (.mm-s impl :version ver))
       (setStatus [_ code] (.mm-s impl :code code))
-      (addCookie [_ c] )
+      (addCookie [_ c]
+        (let [ ^List a (.mm-g impl :cookies) ]
+          (when-not (nil? c)
+            (.add a c))))
 
       (containsHeader [_ nm]
         (let [ ^NCMap m (.mm-g impl :hds) ]
@@ -191,13 +202,23 @@
         (let [ ^NCMap m (.mm-g impl :hds) ]
           (.clear m)))
 
-      (addHeader [_ nm v] )
-      (setHeader [_ nm v] )
+      (addHeader [_ nm v]
+        (let [ ^NCMap m (.mm-g impl :hds) ^List a (.get m nm) ]
+          (if (nil? a)
+            (.put m nm (doto (ArrayList.) (.add v)))
+            (.add a v))))
+
+      (setHeader [_ nm v]
+        (let [ m (.mm-g impl :hds)  a (ArrayList.) ]
+          (.add a v)
+          (.put m nm a)))
 
       (setChunked [_ b] (.mm-s impl :chunked b))
 
-      (setContent [_ data] (.mm-s impl :data data))
-      
+      (setContent [_ data]
+        (if-not (nil? data)
+          (.mm-s impl :data data)) )
+
       )) )
 
 

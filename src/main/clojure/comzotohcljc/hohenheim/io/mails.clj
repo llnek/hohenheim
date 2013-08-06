@@ -28,6 +28,8 @@
   Flags Flags$Flag Folder
   Session Provider Provider$Type))
 (import '(java.io IOException))
+(import '(com.zotoh.hohenheim.io EmailEvent))
+
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 

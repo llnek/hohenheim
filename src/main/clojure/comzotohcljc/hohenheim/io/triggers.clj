@@ -28,41 +28,86 @@
 (import '(org.jboss.netty.handler.codec.http HttpResponseStatus))
 (import '(org.eclipse.jetty.continuation ContinuationSupport))
 (import '(org.eclipse.jetty.continuation Continuation))
-(import '(org.jboss.netty.channel ChannelFutureListener))
-(import '(org.jboss.netty.handler.codec.http 
+(import '(org.jboss.netty.channel ChannelFuture ChannelFutureListener))
+(import '(org.jboss.netty.handler.codec.http
   HttpHeaders HttpHeaders$Names HttpVersion CookieEncoder DefaultHttpResponse))
 (import '(java.nio.channels ClosedChannelException))
 (import '(org.jboss.netty.handler.stream ChunkedStream))
 (import '(java.util Timer TimerTask))
+(import '(java.net HttpCookie))
+(import '(javax.servlet.http Cookie HttpServletRequest HttpServletResponse))
 
 (import '(org.apache.commons.io IOUtils))
+(import '(com.zotoh.frwk.util NCMap))
 (import '(com.zotoh.frwk.io XData))
 (import '(com.zotoh.hohenheim.core Identifiable))
+(import '(com.zotoh.hohenheim.io HTTPEvent))
 
+(use '[comzotohcljc.netty.comms :only (*HTTP-CODES*) ])
 (require '[comzotohcljc.net.comms :as NU])
 (require '[comzotohcljc.util.core :as CU])
 
 (use '[comzotohcljc.hohenheim.io.events :rename { emitter evt-emitter } ])
 (use '[comzotohcljc.hohenheim.io.core])
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defprotocol WaitEventHolder ""
-  (resumeOnResult [_ res] )
-  (timeoutMillis [_ millis] )
-  (onExpiry [_])
-  (timeoutSecs [_ secs] ) )
-
-(defprotocol AsyncWaitTrigger ""
-  (resumeWithResult [_ res] )
-  (resumeWithError [_] )
-  (emitter [_] ))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
 
-(defn make-servlet-trigger "" [req rsp src]
+(defn- cookieToServlet ^Cookie [^HttpCookie c]
+  (doto (Cookie. (.getName c) (.getValue c))
+      (.setDomain (.getDomain c))
+      (.setHttpOnly (.isHttpOnly c))
+      (.setMaxAge (.getMaxAge c))
+      (.setPath (.getPath c))
+      (.setSecure (.getSecure c))
+      (.setVersion (.getVersion c))) )
+
+(defn- replyResult [ ^comzotohcljc.util.core.MutableObjectAPI res
+                     ^HttpServletRequest req
+                     ^HttpServletResponse rsp
+                    src]
+  (let [ ^NCMap hds (.getf res :hds)
+         ^List cks (.getf res :cookies)
+         code (.getf res :code)
+         data (.getf res :data)
+         ^HttpResponseStatus
+         status (get *HTTP-CODES* code) ]
+
+    (when (nil? status) (throw (IOException. "Bad HTTP Status code: " + code)))
+    (try
+      (.setStatus rsp code)
+      (cond
+        (and (>= code 300) (< code 400))
+        (redirectServlet rsp (.getf res :redirect)) )
+      (doseq [[nm vs] (seq hdrs)]
+        (when-not (= "content-length" (.toLowerCase n))
+          (doseq [vv (seq vs) ]
+            (.addHeader rsp nm vv))))
+      (doseq [ c (seq cks) ]
+        (.addCookie rsp (cookieToServlet c)))
+      (let [ ^XData dd (cond
+                    (instance? XData data)
+                    data
+                    (CU/notnil? data)
+                    (XData. data)
+                    :else nil)
+             clen (if (and (CU/notnil? dd) (.hasContent dd))
+                      (.size dd)
+                      0) ]
+          (.setContentLength clen)
+          (when (> clen 0)
+            (IOUtils/copyLarge (.stream dd)
+                               (.getOutputStream rsp)
+                               clen))))
+      (catch Throwable e#
+        (error e# ""))
+      (finally
+        (-> (ContinuationSupport/getContinuation req)
+          (.complete))) ) )
+
+
+(defn make-servlet-trigger "" [^HttpServletRequest req ^HttpServletResponse rsp src]
   (reify AsyncWaitTrigger
 
     (resumeWithResult [this res]
@@ -103,7 +148,7 @@
               (.complete)))) )) ) )
 
 
-(defn- maybeClose [evt cf]
+(defn- maybeClose [^HTTPEvent evt ^ChannelFuture cf]
   (when-not (.isKeepAlive evt)
     (when-not (nil? cf)
       (.addListener cf ChannelFutureListener/CLOSE ))))
@@ -162,13 +207,13 @@
     (emitter [_] src) ))
 
 
-(defn make-async-wait-holder [event trigger]
+(defn make-async-wait-holder [^HTTPEvent event trigger]
   (let [ impl (CU/make-mmap) ]
-    (reify 
+    (reify
 
       Identifiable
-      (id [_] (.id event))
-      
+      (id [_] (.getId event))
+
       WaitEventHolder
 
       (resumeOnResult [this res]

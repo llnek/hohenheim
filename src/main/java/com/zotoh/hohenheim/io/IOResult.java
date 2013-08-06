@@ -22,30 +22,7 @@
 package com.zotoh.hohenheim.io;
 
 
-//import com.zotoh.frwk.io.XData;
-
-import java.net.HttpCookie;
-import java.net.URL;
-
-public interface HTTPResult extends IOResult {
-
-  public void setRedirect(URL location);
-
-  public void setProtocolVersion(String ver);
-  public void setStatus(int code);
-  public void addCookie(HttpCookie c);
-
-  public void containsHeader(String name);
-  public void removeHeader(String name);
-  public void clearHeaders();
-
-  public void addHeader(String name, String value);
-  public void setHeader(String name, String value);
-
-  public void setChunked(boolean c);
-  public void setContent(Object data);
-
+abstract interface IOResult {
 }
-
 
 

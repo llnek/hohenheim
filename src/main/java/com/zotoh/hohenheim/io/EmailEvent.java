@@ -25,6 +25,6 @@ package com.zotoh.hohenheim.io;
 import javax.mail.internet.MimeMessage;
 
 
-public interface EmailEvent extends AbstractEvent {
+public interface EmailEvent extends IOEvent {
   public MimeMessage getMsg();
 }

@@ -34,57 +34,146 @@
 
 (import '(org.eclipse.jetty.continuation ContinuationSupport))
 (import '(org.eclipse.jetty.continuation Continuation))
+(import '(javax.servlet.http Cookie HttpServletRequest))
+(import '(javax.servlet ServletConfig))
+(import '(java.util ArrayList))
+(import '(java.net HttpCookie))
 
 (import '(org.apache.commons.io IOUtils))
 (import '(java.io IOException))
 (import '(com.zotoh.frwk.io XData))
+(import '(com.zotoh.hohenheim.io IOSession HTTPResult HTTPEvent))
+
+
+(use '[comzotohcljc.hohenheim.io.events  :only (make-servlet-event) ])
+(use '[comzotohcljc.hohenheim.io.http  :only (make-http-result) ])
+
 
 (use '[clojure.tools.logging :only (info warn error debug)])
+(require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
+(require '[comzotohcljc.util.mime :as MM])
 (use '[comzotohcljc.hohenheim.io.triggers])
+(use '[comzotohcljc.hohenheim.io.core])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn- cookie-to-javaCookie [^Cookie c]
+  (doto (HttpCookie. (.getName c) (.getValue c))
+      (.setDomain (.getDomain c))
+      (.setHttpOnly (.isHttpOnly c))
+      (.setMaxAge (.getMaxAge c))
+      (.setPath (.getPath c))
+      (.setSecure (.getSecure c))
+      (.setVersion (.getVersion c))) )
 
 (defmethod ioes-reify-event :czc.hhh.io/JettyIO
   [co & args]
-  (let [ e (make-servlet-event co
-                    (nth args 0)) ]
+  (let [ ^HttpServletRequest req (first args)
+         ^HTTPResult result (make-http-result)
+         eid (SN/next-long) ]
     (reify HTTPEvent
-      ())))
+
+      (getCookie [_ nm]
+        (let [ lnm (.toLowerCase nm) cs (.getCookies req) ]
+          (some (fn [^Cookie c]
+                  (if (= lnm (.toLowerCase (.getName c)))
+                    (cookie-to-javaCookie c)
+                    nil) )
+                  (if (nil? cs) [] (seq cs)))) )
+
+      (getCookies [_]
+        (let [ rc (ArrayList.) cs (.getCookies req) ]
+          (if-not (nil? cs)
+            (doseq [ c (seq cs) ]
+              (.add rc (cookie-to-javaCookie c))))
+          rc))
+
+      (getSession [_] nil)
+      (emitter [_] co)
+      (getId [_] eid)
+      (isKeepAlive [_]
+        (= (-> (SU/nsb (.getHeader req "connection")) (.toLowerCase))
+        "keep-alive"))
+      (data [_] nil)
+      (hasData [_] false)
+      (contentLength [_] (.getContentLength req))
+      (contentType [_] (.getContentType req))
+      (encoding [_] (.getCharacterEncoding req))
+      (contextPath [_] (.getContextPath req))
+
+      (getHeaderValue [_ nm] (.getHeader req nm))
+
+      (getHeaderValues [_ nm]
+        (let [ rc (ArrayList.) ]
+          (doseq [ s (seq (.getHeaders req nm)) ]
+            (.add rc s))))
+
+      (getHeaders [_]
+        (let [ rc (ArrayList.) ]
+          (doseq [ ^String s (seq (.getHeaderNames req)) ]
+            (.add rc s))) )
+
+      (getParameterValue [_ nm] (.getParameter req nm))
+
+      (getParameterValues [_ nm]
+        (let [ rc (ArrayList.) ]
+          (doseq [ s (seq (.getParameterValues req nm)) ]
+            (.add rc s))))
+
+      (getParameters [_]
+        (let [ rc (ArrayList.) ]
+          (doseq [ ^String s (seq (.getParameterNames req)) ]
+            (.add rc s))) )
+
+      (localAddr [_] (.getLocalAddr req))
+      (localHost [_] (.getLocalName req))
+      (localPort [_] (.getLocalPort req))
+
+      (method [_] (.getMethod req))
+      (protocol [_] (.getProtocol req))
+      (queryString [_] (.getQueryString req))
+
+      (remoteAddr [_] (.getRemoteAddr req))
+      (remoteHost [_] (.getRemoteHost req))
+      (remotePort [_] (.getRemotePort req))
+
+      (scheme [_] (.getScheme req))
+
+      (serverName [_] (.getServerName req))
+      (serverPort [_] (.getServerPort req))
+
+      (host [_] (.getHeader req "host"))
 
 
-(defn- replyService [ this res rsp]
-  (let [ s (.getStatus res)
-         sc (.getCode s)
-         hdrs (.getHeaders res)
-         data  (.getData res) ]
-    (with-local-vars [clen 0]
-      (CU/TryC
-        (doseq [[n v] (seq hdrs)]
-          (when-not (= "content-length" (.toLowerCase n))
-            (.setHeader rsp n v)))
-        (if (.hasError res)
-          (.sendError rsp sc (.getReasonPhrase s))
-          (.setStatus rsp sc))
-        (when-not (and (instance? XData data) (.hasContent data))
-          (var-set clen (.size data))
-          (IOUtils/copyLarge (.stream data) (.getOutputStream rsp) 0 clen))
-        (.setContentLength rsp @clen) ))))
+      (isSSL [_] (= "https" (.getScheme req)))
+
+      (getUri [_] (.getRequestURI req))
+
+      (getRequestURL [_] (.getRequestURL req))
+
+      (getResultObject [_] result)
+      (replyResult [_] )
 
 
-(defn- dispREQ [this ct evt req rsp]
-  (let [ dev @(.myState this)
+      )))
+
+(defn- dispREQ [ ^comzotohcljc.hohenheim.io.WebServlet c0 
+                 ^Continuation ct evt req rsp]
+  (let [ ^comzotohcljc.hohenheim.core.sys.Component dev @(.myState c0)
          wm (.getAttr dev :waitMillis) ]
     (doto ct
       (.setTimeout wm)
       (.suspend rsp))
-    (let [ w  (make-async-wait-holder evt
-                  (make-servlet-trigger req rsp dev)) ]
+    (let [ ^comzotohcljc.hohenheim.io.triggers.WaitEventHolder 
+           w  (make-async-wait-holder evt
+                  (make-servlet-trigger req rsp dev))
+          ^comzotohcljc.hohenheim.io.core.Emitter src @(.myState c0) ]
       (.timeoutMillis w wm)
-      (.hold dev w)
-      (.dispatch dev evt))))
+      (.hold src w)
+      (.dispatch src evt))))
 
 (defn- doASyncSvc [this evt req rsp]
   (let [ c (ContinuationSupport/getContinuation req) ]
@@ -98,7 +187,8 @@
 (defn -myInit []
   ([] (atom nil)))
 
-(defn -service [this req rsp]
+(defn -service [ ^comzotohcljc.hohenheim.io.WebServlet this
+                 ^HttpServletRequest req rsp]
   (let [ state (.myState this)
          evt (ioes-reify-event @state req) ]
     (debug
@@ -110,7 +200,7 @@
       (doSyncSvc this evt req rsp))))
 
 
-(defn -init [this cfg]
+(defn -init [ ^comzotohcljc.hohenheim.io.WebServlet this ^ServletConfig cfg]
   (do
     (.super-init this cfg)
     (let [ ctx (.getServletContext cfg)

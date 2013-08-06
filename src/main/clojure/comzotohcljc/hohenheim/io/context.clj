@@ -31,7 +31,11 @@
     :state myState
   ))
 
+(import '(javax.servlet 
+  ServletContextListener ServletContext ServletContextEvent))
 (import '(java.io File))
+(import '(com.zotoh.hohenheim.core Container))
+(import '(com.zotoh.hohenheim.io Emitter))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (require '[comzotohcljc.util.core :as CU])
@@ -39,13 +43,14 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(set! *warn-on-reflection* false)
 
-(defn- inizAsJ2EE [ctx ctxPath]
+(defn- inizAsJ2EE [^ServletContext ctx ^String ctxPath]
   (let [ webinf (File. (.getRealPath ctx "/WEB-INF/"))
          root (.getParentFile webinf) ]
     nil))
 
-(defn -contextInitialized [_ evt]
+(defn -contextInitialized [_ ^ServletContextEvent evt]
   (let [ x (.getServletContext evt)
          m (.getMajorVersion x)
          n (.getMinorVersion x)
@@ -58,10 +63,10 @@
 
 (defn -contextDestroyed [this e]
   (let [ state (.myState this)
-         src @state ]
+         ^Emitter src @state ]
     (debug "WEBContextListener: contextDestroyed()")
+    (reset! state nil)
     (when-not (nil? src)
-      (reset! state nil)
       (-> src (.container) (.dispose )))))
 
 (defn -myInit []
