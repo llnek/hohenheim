@@ -103,8 +103,8 @@
 (defprotocol NettyServiceIO ""
   (before-send [_ ^Channel ch msg] )
   (onerror [_ ^Channel ch msginfo ^MessageEvent evt] )
-  (onreq [_ ^Channel ch msginfo ^XData xdata] )
-  (onres [_ ^Channel ch msginfo ^XData xdata] ))
+  (onreq [_ ^Channel ch req msginfo ^XData xdata] )
+  (onres [_ ^Channel ch rsp msginfo ^XData xdata] ))
 
 (defn make-nilServiceIO ""
 
@@ -113,8 +113,8 @@
   (reify NettyServiceIO
     (before-send [_ ch msg] (debug "empty before-send." ))
     (onerror [_ ch msginfo evt] (debug "empty onerror." ))
-    (onreq [_ ch msginfo xdata] (debug "empty onreq." ))
-    (onres [_ ch msginfo xdata] (debug "empty onres." ))))
+    (onreq [_ ch req msginfo xdata] (debug "empty onreq." ))
+    (onres [_ ch rsp msginfo xdata] (debug "empty onres." ))))
 
 (defn server-bootstrap "Make a netty server bootstrap."
 
@@ -279,11 +279,11 @@
     (when (and (> clen 0) (instance? ByteArrayOutputStream os))
       (.resetContent xdata os))
     (cond
-      (= dir -1) (do
+      (instance? HttpResponse dir) (do
                    (CU/TryC (.close ch))
-                   (.onres usercb ch info xdata))
-      (= dir 1) (do
-                  (.onreq usercb ch info xdata))
+                   (.onres usercb ch dir info xdata))
+      (instance? HttpRequest dir) (do
+                  (.onreq usercb ch dir info xdata))
       :else nil)
     ))
 
@@ -326,7 +326,7 @@
 ;; handle a request
 (defn- nio-preq [^ChannelHandlerContext ctx ^HttpRequest req usercb]
   (let [ msginfo (nio-extract-req req)
-         attObj (nio-cfgctx ctx { :dir 1 :info msginfo } usercb) ]
+         attObj (nio-cfgctx ctx { :dir req :info msginfo } usercb) ]
     (debug "nio-preq: received a " (:method msginfo ) " request from " (:uri msginfo))
     (when (HttpHeaders/is100ContinueExpected req) (send-100-cont ctx))
     (if (:is-chunked msginfo)
@@ -355,7 +355,7 @@
          r (.getReasonPhrase s)
          c (.getCode s) ]
     (debug "nio-pres: got a response: code " c " reason: " r)
-    (nio-cfgctx ctx { :dir -1 :info msginfo } usercb)
+    (nio-cfgctx ctx { :dir res :info msginfo } usercb)
     (cond
       (and (>= c 200) (< c 300)) (nio-presbody ctx res)
       (and (>= c 300) (< c 400)) (nio-redirect ctx ev)
@@ -503,8 +503,8 @@
         (do
           (if (instance? ExceptionEvent evt) (error (.getCause ^ExceptionEvent evt) ""))
           (reply-xxx ch (HttpResponseStatus/INTERNAL_SERVER_ERROR))))
-      (onres [_ ch msginfo xdata] nil)
-      (onreq [_ ch msginfo xdata]
+      (onres [_ ch rsp msginfo xdata] nil)
+      (onreq [_ ch req msginfo xdata]
         (let [ mtd (.toUpperCase (SU/nsb (:method msginfo)))
                uri (SU/nsb (:uri msginfo))
                pos (.lastIndexOf uri (int \/))

@@ -45,7 +45,7 @@
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
-      <arg value="comzotohcljc.hohenheim.io.files"/>
+      <arg value="comzotohcljc.hohenheim.etc.cmdline"/>
     </java>
   </target>
 

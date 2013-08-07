@@ -59,6 +59,8 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
 
 (defn- cookie-to-javaCookie [^Cookie c]
   (doto (HttpCookie. (.getName c) (.getValue c))
@@ -167,10 +169,10 @@
     (doto ct
       (.setTimeout wm)
       (.suspend rsp))
-    (let [ ^comzotohcljc.hohenheim.io.triggers.WaitEventHolder 
+    (let [ ^comzotohcljc.hohenheim.io.core.WaitEventHolder 
            w  (make-async-wait-holder evt
                   (make-servlet-trigger req rsp dev))
-          ^comzotohcljc.hohenheim.io.core.Emitter src @(.myState c0) ]
+          ^comzotohcljc.hohenheim.io.core.EmitterAPI src @(.myState c0) ]
       (.timeoutMillis w wm)
       (.hold src w)
       (.dispatch src evt))))

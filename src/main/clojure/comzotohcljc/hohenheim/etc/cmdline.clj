@@ -28,7 +28,7 @@
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(com.zotoh.hohenheim.etc CmdHelpError))
 (import '(org.apache.commons.io FileUtils))
-(import '(java.util Date))
+(import '(java.util Properties Date))
 (import '(java.io File))
 
 (require '[comzotohcljc.hohenheim.core.climain :as CLI])
@@ -51,15 +51,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- getHomeDir [] *HOHENHEIM-HOME-DIR*)
-(defn- rcb [] *HOHENHEIM-RSBUNDLE*)
+(defn- rcb ^ResourceBundle [] *HOHENHEIM-RSBUNDLE*)
+(defn- getHomeDir ^File [] *HOHENHEIM-HOME-DIR*)
 
-(defn- getBuildFilePath []
+(defn- getBuildFilePath ^String []
   (CU/nice-fpath (File. (File. (getHomeDir) (str DN_CFG "/app")) "ant.xml")))
 
 (defn- runTarget [target]
   (org.apache.tools.ant.Main/main  (into-array String
-      [ (str "-DHOHENHEIM_HOME=" (CU/nice-fpath (getHomeDir)))
+      [ (str "-Dhohenheim_home=" (CU/nice-fpath (getHomeDir)))
         "-buildfile"
         (getBuildFilePath)
         ;; "-quiet"
@@ -72,7 +72,7 @@
     (org.apache.tools.ant.Main/start
       (into-array String
         (-> rc
-          (conj (str "-DHOHENHEIM_HOME=" (CU/nice-fpath (getHomeDir))) )
+          (conj (str "-Dhohenheim_home=" (CU/nice-fpath (getHomeDir))) )
           (conj "-buildfile")
           (conj (getBuildFilePath))
           ;;(conj "-quiet")
@@ -84,10 +84,10 @@
   (let [ domain (-> (str "com." (SU/nsb (CU/getuser))) (.toLowerCase))
          q1 (CQ/make-CmdSeqQ "domain" "What is the application domain"
                        domain domain true
-                       (fn [ans jps] (do (.put jps "hohenheim.app.domain" ans) "app" )))
+                       (fn [ans ^Properties jps] (do (.put jps "hohenheim.app.domain" ans) "app" )))
          q2 (CQ/make-CmdSeqQ "app" "What is the application name"
                        "" "" true
-                       (fn [ans jps] (do (.put jps "hohenheim.appid" ans) "" )))
+                       (fn [ans ^Properties jps] (do (.put jps "hohenheim.appid" ans) "" )))
          ps (CQ/cli-converse {"domain" q1 "app" q2} "domain") ]
     [ (CU/notnil? ps) ps ] ))
 
@@ -111,18 +111,18 @@
 (defn- onBuild [ & args]
   (if (>= (count args) 2)
     (runTargetExtra "build-app"
-        { :app-id (nth args 1)
-          :app-task (if (> (count args) 2) (nth args 2) "devmode") } )
+        { :hohenheim.appid (nth args 1)
+          :hohenheim.app.task (if (> (count args) 2) (nth args 2) "devmode") } )
     (throw (CmdHelpError.))))
 
 (defn- onPodify [ & args]
   (if (> (count args) 1)
-    (runTargetExtra "bundle-app" { :app-id (nth args 1) :app-task "release" })
+    (runTargetExtra "bundle-app" { :hohenheim.appid (nth args 1) :hohenheim.app.task "release" })
     (throw (CmdHelpError.))))
 
 (defn- onTest [ & args]
   (if (> (count args) 1)
-    (runTargetExtra "test-code" { :app-id (nth args 1) })
+    (runTargetExtra "test-code" { :hohenheim.appid (nth args 1) })
     (throw (CmdHelpError.))))
 
 (defn- onStart [ & args]
@@ -143,75 +143,75 @@
     (let [ s (nth args 1) ]
       (if (= "samples" s)
         (runTarget "create-samples")
-        (runTargetExtra "create-demo" { :demo-id s})) )
+        (runTargetExtra "create-demo" { :demo.id s})) )
     (throw (CmdHelpError.))))
 
 (defn- generatePassword [len]
   (println (.text (CE/create-strong-pwd len))))
 
-(defn- make-csr-qs [rcb]
+(defn- make-csr-qs [^ResourceBundle rcb]
   { "fname"
     (CQ/make-CmdSeqQ "fname" (RC/get-string rcb "cmd.save.file")
                    "" "csr-req" true
-                   (fn [a ps] (do (.put ps "fn" a) "")))
+                   (fn [a ^Properties ps] (do (.put ps "fn" a) "")))
 
     "size"
     (CQ/make-CmdSeqQ "size" (RC/get-string rcb "cmd.key.size")
                    "" "1024" true
-                   (fn [a ps] (do (.put ps "size" a) "fname")))
+                   (fn [a ^Properties ps] (do (.put ps "size" a) "fname")))
     "c"
     (CQ/make-CmdSeqQ "c" (RC/get-string rcb "cmd.dn.c")
                    "" "US" true
-                   (fn [a ps] (do (.put ps "c" a) "size")))
+                   (fn [a ^Properties ps] (do (.put ps "c" a) "size")))
 
     "st"
     (CQ/make-CmdSeqQ "st" (RC/get-string rcb "cmd.dn.st")
                    "" "" true
-                   (fn [a ps] (do (.put ps "st" a) "c")))
+                   (fn [a ^Properties ps] (do (.put ps "st" a) "c")))
 
     "loc"
     (CQ/make-CmdSeqQ "loc" (RC/get-string rcb "cmd.dn.loc")
                    "" "" true
-                   (fn [a ps] (do (.put ps "l" a) "st")))
+                   (fn [a ^Properties ps] (do (.put ps "l" a) "st")))
 
     "o"
     (CQ/make-CmdSeqQ "o" (RC/get-string rcb "cmd.dn.org")
                    "" "" true
-                   (fn [a ps] (do (.put ps "o" a) "loc")))
+                   (fn [a ^Properties ps] (do (.put ps "o" a) "loc")))
 
     "ou"
     (CQ/make-CmdSeqQ "ou" (RC/get-string rcb "cmd.dn.ou")
                    "" "" true
-                   (fn [a ps] (do (.put ps "ou" a) "o")))
+                   (fn [a ^Properties ps] (do (.put ps "ou" a) "o")))
 
     "cn"
     (CQ/make-CmdSeqQ "cn" (RC/get-string rcb "cmd.dn.cn")
                    "" "" true
-                   (fn [a ps] (do (.put ps "cn" a) "ou")))
+                   (fn [a ^Properties ps] (do (.put ps "cn" a) "ou")))
   } )
 
-(defn- make-key-qs [rcb]
+(defn- make-key-qs [^ResourceBundle rcb]
 
   {
     "fname"
     (CQ/make-CmdSeqQ "fname" (RC/get-string rcb "cmd.save.file")
                      "" "test.p12" true
-                     (fn [a ps] (do (.put ps "fn" a) "")))
+                     (fn [a ^Properties ps] (do (.put ps "fn" a) "")))
 
     "pwd"
     (CQ/make-CmdSeqQ "pwd" (RC/get-string rcb "cmd.key.pwd")
                      "" "" true
-                     (fn [a ps] (do (.put ps "pwd" a) "fname")))
+                     (fn [a ^Properties ps] (do (.put ps "pwd" a) "fname")))
 
     "duration"
     (CQ/make-CmdSeqQ "duration" (RC/get-string rcb "cmd.key.duration")
                      "" "12" true
-                     (fn [a ps] (do (.put ps "months" a) "pwd")))
+                     (fn [a ^Properties ps] (do (.put ps "months" a) "pwd")))
 
     "size"
     (CQ/make-CmdSeqQ "size" (RC/get-string rcb "cmd.key.size")
                    "" "1024" true
-                   (fn [a ps] (do (.put ps "size" a) "duration")))
+                   (fn [a ^Properties ps] (do (.put ps "size" a) "duration")))
 
    } )
 
@@ -327,7 +327,7 @@
   (let [ cwd (File. (getHomeDir) (str DN_BOXX "/" app))
          ec (File. (CU/getcwd) "eclipse.projfiles")
          sb (StringBuilder.)
-         lang "clojure"
+         lang "scala"
          ulang (.toUpperCase lang) ]
     (.mkdirs ec)
     (FileUtils/cleanDirectory ec)

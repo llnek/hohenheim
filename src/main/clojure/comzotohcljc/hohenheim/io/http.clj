@@ -40,6 +40,7 @@
   SslConnectionFactory))
 (import '(org.eclipse.jetty.util.ssl SslContextFactory))
 (import '(org.eclipse.jetty.util.thread QueuedThreadPool))
+(import '(org.eclipse.jetty.webapp WebAppContext))
 
 (import '(com.zotoh.hohenheim.io HTTPResult HTTPEvent JettyUtils))
 
@@ -58,10 +59,10 @@
 
 
 
-(defn http-basic-config [co cfg]
-  (let [ file (:server-key cfg)
+(defn http-basic-config [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+  (let [ ^String file (:server-key cfg)
          port (:port cfg)
-         fv (:flavor cfg)
+         ^String fv (:flavor cfg)
          socto (:soctoutmillis cfg)
          kbs (:threshold-kb cfg)
          w (:wait-millis cfg)
@@ -77,7 +78,7 @@
     (when (SU/hgl? file)
       (CU/test-cond "server-key file url" (.startsWith file "file:"))
       (.setAttr! co :serverKey (URL. file))
-      (.setAttr! co :pwd (CR/pwdify (:passwd cfg))) )
+      (.setAttr! co :pwd (CR/pwdify ^String (:passwd cfg))) )
 
     (.setAttr! co :sockTimeOut
                (if (and (number? socto)(pos? socto)) socto 0))
@@ -97,12 +98,12 @@
   (http-basic-config co cfg))
 
 (defmethod comp-configure :czc.hhh.io/JettyIO
-  [co cfg]
+  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
   (let [ c (SU/nsb (:context cfg)) ]
     (.setAttr! co :contextPath (SU/strim c))
     (http-basic-config co cfg) ))
 
-(defn- cfgHTTPS [server port keyfile pwd conf]
+(defn- cfgHTTPS ^ServerConnector [^Server server port ^URL keyfile ^String pwd conf]
   ;; SSL Context Factory for HTTPS and SPDY
   (let[ sslxf (doto (SslContextFactory.)
                 (.setKeyStorePath (-> keyfile (.toURI)(.toURL)(.toString)))
@@ -118,19 +119,19 @@
       (.setIdleTimeout (int 500000)))))
 
 (defmethod comp-initialize :czc.hhh.io/JettyIO
-  [co]
+  [^comzotohcljc.hohenheim.core.sys.Component co]
   (let [ conf (doto (HttpConfiguration.)
                 (.setRequestHeaderSize 8192)  ;; from jetty examples
                 (.setOutputBufferSize (int 32768)))
          keyfile (.getAttr co :serverKey)
-         host (.getAttr co :host)
+         ^String host (.getAttr co :host)
          port (.getAttr co :port)
          pwdObj (.getAttr co :pwd)
          ws (.getAttr co :workers)
          q (QueuedThreadPool. (if (pos? ws) ws 8))
          svr (Server. q)
          cc  (if (nil? keyfile)
-               (doto (ServerConnector. svr (HttpConnectionFactory. conf))
+               (doto (JettyUtils/makeConnector svr conf)
                  (.setPort port)
                  (.setIdleTimeout (int 30000)))
                (cfgHTTPS svr port keyfile (SU/nsb pwdObj)
@@ -148,16 +149,15 @@
 
 
 (defmethod ioes-start :czc.hhh.io/JettyIO
-  [co]
-  (let [ container (.getParent co)
-         app (.getAppDir container)
-         jetty (.getAttr co :jetty)
-         webapp (JettyUtils/newWebAppContext "czchhhiojetty" co)
-         logDir (-> (File. app WEB_LOG)(.toURI)(.toURL)(.toString))
+  [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^WebAppContext webapp (JettyUtils/newWebAppContext "czchhhiojetty" co)
+         ^Server jetty (.getAttr co :jetty)
+         ^File app (.getAttr co :app-dir)
+         logDir (-> (File. app "WEB-INF/logs")(.toURI)(.toURL)(.toString))
          resBase (-> app (.toURI)(.toURL)(.toString)) ]
     ;; static resources are based from resBase, regardless of context
     (doto webapp
-      (.setDescriptor (-> (File. app WEB_XML)(.toURI)(.toURL)(.toString)))
+      (.setDescriptor (-> (File. app "WEB-INF/web.xml")(.toURI)(.toURL)(.toString)))
       (.setParentLoaderPriority true)
       (.setResourceBase resBase )
       (.setContextPath (.getAttr co :contextPath)))
@@ -168,8 +168,8 @@
 
 
 (defmethod ioes-stop :czc.hhh.io/JettyIO
-  [co]
-  (let [ svr (.getAttr co :jetty) ]
+  [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^Server svr (.getAttr co :jetty) ]
     (when-not (nil? svr)
       (CU/TryC
           (.stop svr) ))
@@ -216,7 +216,8 @@
             (.add a v))))
 
       (setHeader [_ nm v]
-        (let [ m (.mm-g impl :hds)  a (ArrayList.) ]
+        (let [ ^NCMap m (.mm-g impl :hds)
+               a (ArrayList.) ]
           (.add a v)
           (.put m nm a)))
 

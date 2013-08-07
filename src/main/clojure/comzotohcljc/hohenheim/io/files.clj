@@ -58,7 +58,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(set! *warn-on-reflection* false)
+;;(set! *warn-on-reflection* false)
 
 
 
@@ -129,8 +129,8 @@
 (defmethod comp-initialize :czc.hhh.io/FilePicker
   [^comzotohcljc.hohenheim.core.sys.Component co]
   (let [ obs (FileAlterationObserver.
-               (.getAttr co :target)
-               (.getAttr co :mask))
+               ^File (.getAttr co :target)
+               ^FileFilter (.getAttr co :mask))
          intv (.getAttr co :intervalMillis)
          mon (FileAlterationMonitor. intv)
          lnr (proxy [FileAlterationListenerAdaptor][]

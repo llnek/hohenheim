@@ -37,6 +37,8 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* false)
+
 
 (def ^:private CMDLINE-INFO [
   ["create web[/jetty]"  "e.g. create app as a webapp."]
@@ -63,7 +65,7 @@
 
 (defn- drawHelpLines [^String fmt ^clojure.lang.IPersistentCollection arr]
   (doseq [ [k v] (seq arr) ]
-    (-> System/out (.format fmt (into-array Object [k v]) ))))
+    (print (String/format fmt (into-array Object [k v]) ))))
 
 (defn- usage []
   (println (SU/make-string \= 78))
@@ -80,12 +82,11 @@
 ;;println("#### sys loader = " + ClassLoader.getSystemClassLoader().getClass().getName())
 ;;mkCZldrs(home)
 (defn- parseArgs [rcb & args]
-  (let [ h (File. (first args)) ]
+  (let [ h (File. ^String (first args)) ]
     (CU/test-cond (str "Cannot access Hohenheim home " h) (FU/dir-read? h))
       (if (not (contains? (CL/get-commands) (keyword (nth args 1))))
         false
         (fn [] (apply CL/eval-command h rcb (drop 1 args))))))
-
 
 (defn -main "Main Entry" [& args]
   ;; for security, don't just eval stuff

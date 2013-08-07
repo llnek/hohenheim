@@ -43,6 +43,9 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* false)
+
+
 
 (defn precondDir "" [d]
   (CU/test-cond (str "Directory " d " must be read-writable.") (FU/dir-readwrite? d)))
@@ -50,7 +53,7 @@
 (defn precondFile "" [f]
   (CU/test-cond (str "File " f " must be readable.") (FU/file-read? f)))
 
-(defn maybeDir "" [m kn]
+(defn maybeDir "" [^comzotohcljc.util.core.MutableObjectAPI m kn]
   (let [ v (.getf m kn) ]
     (cond
       (instance? String v)
@@ -64,7 +67,7 @@
 
 (defn print-mutableObj
   ([ctx] (print-mutableObj ctx false))
-  ([ctx dbg]
+  ([^comzotohcljc.util.core.MutableObjectAPI ctx dbg]
     (let [ b (StringBuilder.) ]
       (doseq [ [k v] (.seq* ctx) ]
         (.append b (str k " = " v "\n")))
@@ -119,7 +122,7 @@
             (let [ cache (.mm-g impl :cache)
                    c (get cache cid) ]
               (if (and (nil? c) (satisfies? Registry parObj))
-                (.lookup parObj cid)
+                (.lookup ^comzotohcljc.hohenheim.core.sys.Registry parObj cid)
                 c)) )
 
           (seq* [_]
@@ -144,10 +147,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn comp-clone-context [co ctx]
+(defn comp-clone-context 
+  [^comzotohcljc.hohenheim.core.sys.Component co
+   ^comzotohcljc.util.core.MutableObjectAPI ctx]
   (do
     (when-not (nil? ctx)
-      (let [ x (make-context) ]
+      (let [ ^comzotohcljc.util.core.MutableObjectAPIi x (make-context) ]
         (doseq [ [k v] (.seq* ctx) ]
           (.setf! x k v))
         (.setCtx! co x)))

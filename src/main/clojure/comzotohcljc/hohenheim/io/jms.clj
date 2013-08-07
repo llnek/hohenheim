@@ -30,6 +30,7 @@
 (import '(javax.jms Connection
   ConnectionFactory
   Destination
+  Connection
   Message
   MessageConsumer
   MessageListener
@@ -48,7 +49,9 @@
 (import '(java.io IOException))
 (import '(com.zotoh.hohenheim.io JMSEvent))
 
+(use '[comzotohcljc.util.core :only (MutableObjectAPI) ])
 (require '[comzotohcljc.crypto.codec :as CR])
+(require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
@@ -58,22 +61,29 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
 
 (defn make-jmsclient "" [container]
   (make-emitter container :czc.hhh.io/JMS))
 
 (defmethod ioes-reify-event :czc.hhh.io/JMS
   [co & args]
-  (let [ e (make-jms-event co (first args)) ]
-    (reify JMSEvent
-      (getMsg [_] (.getf e :msg)))))
+  (let [ msg (first args)  eeid (SN/next-long) ]
+    (with-meta
+      (reify JMSEvent
+        (getSession [_] nil)
+        (getId [_] eeid)
+        (emitter [_] co)
+        (getMsg [_] msg))
+      { :typeid :czc.hhh.io/JMSEvent } )))
 
-(defn- onMessage [co msg]
+(defn- onMessage [^comzotohcljc.hohenheim.io.core.EmitterAPI co msg]
       ;;if (msg!=null) block { () => msg.acknowledge() }
   (.dispatch co (ioes-reify-event co msg)))
 
 (defmethod comp-configure :czc.hhh.io/JMS
-  [co cfg]
+  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
   (do
     (.setAttr! co :contextFactory (:contextfactory cfg))
     (.setAttr! co :connFactory (:connfactory cfg))
@@ -86,12 +96,15 @@
     (.setAttr! co :destination (:destination cfg))
     co))
 
-(defn- inizFac [co ctx ^ConnectionFactory cf]
-  (let [ des (.getAttr co :destination)
+(defn- inizFac ^Connection [^comzotohcljc.hohenheim.core.sys.Component co
+                ^InitialContext ctx
+                ^ConnectionFactory cf]
+
+  (let [ ^String des (.getAttr co :destination)
          c (.lookup ctx des)
          ju (.getAttr co :jmsUser)
          jp (SU/nsb (.getAttr co :jmsPwd))
-         conn (if (SU/hgl? ju)
+         ^Connection conn (if (SU/hgl? ju)
                 (.createConnection cf ju (if (SU/hgl? jp) jp nil))
                 (.createConnection cf)) ]
 
@@ -106,10 +119,13 @@
 
     conn))
 
-(defn- inizTopic [co ctx cf]
-  (let [ jp (SU/nsb (.getAttr co :jmsPwd))
-         des (.getAttr co :destination)
-         ju (.getAttr co :jmsUser)
+(defn- inizTopic ^Connection [^comzotohcljc.hohenheim.core.sys.Component co 
+                  ^InitialContext ctx 
+                  ^TopicConnectionFactory cf]
+
+  (let [ ^String jp (SU/nsb (.getAttr co :jmsPwd))
+         ^String des (.getAttr co :destination)
+         ^String ju (.getAttr co :jmsUser)
          conn (if (SU/hgl? ju)
                 (.createTopicConnection cf ju (if (SU/hgl? jp) jp nil))
                 (.createTopicConnection cf))
@@ -123,35 +139,38 @@
           (.createDurableSubscriber s t (CU/uid))
           (.createSubscriber s t))
       (.setMessageListener (reify MessageListener
-                              (onMessage [_ m] (.onMessage co m))) ))
+                              (onMessage [_ m] (onMessage co m))) ))
     conn))
 
 
-(defn- inizQueue [co ctx cf]
-  (let [ jp (SU/nsb (.getAttr co :jmsPwd))
-         des (.getAttr co :destination)
-         ju (.getAttr co :jmsUser)
+(defn- inizQueue ^Connection [^comzotohcljc.hohenheim.core.sys.Component co 
+                  ^InitialContext ctx 
+                  ^QueueConnectionFactory cf]
+
+  (let [ ^String jp (SU/nsb (.getAttr co :jmsPwd))
+         ^String des (.getAttr co :destination)
+         ^String ju (.getAttr co :jmsUser)
          conn (if (SU/hgl? ju)
                 (.createQueueConnection cf ju (if (SU/hgl? jp) jp nil))
                 (.createQueueConnection cf))
          s (.createQueueSession conn false Session/CLIENT_ACKNOWLEDGE)
          q (.lookup ctx des) ]
 
-    (when-not (instance? QueueConnectionFactory q)
+    (when-not (instance? Queue q)
       (throw (IOException. "Object not of Queue type.")))
 
-    (-> (.createReceivers s q)
+    (-> (.createReceiver s ^Queue q)
         (.setMessageListener (reify MessageListener
               (onMessage [_ m] (onMessage co m)))))
     conn))
 
 
 (defmethod ioes-start :czc.hhh.io/JMS
-  [co]
-  (let [ cf (.getAttr co :contextFactory)
+  [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^String cf (.getAttr co :contextFactory)
          pl (.getAttr co :providerUrl)
-         ju (.getAttr co :jndiUser)
-         jp (SU/nsb (.getAttr co :jndiPwd))
+         ^String ju (.getAttr co :jndiUser)
+         ^String jp (SU/nsb (.getAttr co :jndiPwd))
          vars (Hashtable.) ]
 
     (when (SU/hgl? cf)
@@ -166,7 +185,7 @@
         (.put vars "jndi.password" jp)))
 
     (let [ ctx (InitialContext. vars)
-           obj (.lookup ctx (.getAttr co :connFactory))
+           obj (.lookup ctx ^String (.getAttr co :connFactory))
            c (cond
                (instance? QueueConnectionFactory obj)
                (inizQueue co ctx obj)
@@ -188,8 +207,8 @@
 
 
 (defmethod ioes-stop :czc.hhh.io/JMS
-  [co]
-  (let [ c (.getAttr co :conn) ]
+  [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^Connection c (.getAttr co :conn) ]
     (when-not (nil? c)
       (CU/TryC (.close c)))
     (.setAttr! co :conn nil)

@@ -22,12 +22,20 @@
 
 package com.zotoh.hohenheim.io;
 
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.webapp.WebAppContext;
 
 /**
  * @author kenl
  */
 public class JettyUtils {
+
+  public static ServerConnector makeConnector(Server svr, HttpConfiguration conf) {
+    return new ServerConnector( svr , new HttpConnectionFactory(conf)) ;
+  }
 
   public static WebAppContext newWebAppContext(final String attr, final Object obj) {
     return new WebAppContext()  {

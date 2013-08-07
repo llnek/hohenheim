@@ -24,8 +24,9 @@
   comzotohcljc.hohenheim.io.mails )
 
 (import '(java.util Properties))
-(import '(javax.mail 
-  Flags Flags$Flag Folder
+(import '(javax.mail.internet MimeMessage))
+(import '(javax.mail
+  Flags Flags$Flag Store Folder
   Session Provider Provider$Type))
 (import '(java.io IOException))
 (import '(com.zotoh.hohenheim.io EmailEvent))
@@ -34,12 +35,12 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 
 (require '[comzotohcljc.crypto.codec :as CR])
+(require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
 (use '[comzotohcljc.hohenheim.core.sys])
 
-(use '[comzotohcljc.hohenheim.io.events :only (make-email-event) ])
 (use '[comzotohcljc.hohenheim.io.loops ])
 (use '[comzotohcljc.hohenheim.io.core ])
 
@@ -47,16 +48,15 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
-
-
-(defn- closeFolder [fd]
+(defn- closeFolder [^Folder fd]
   (CU/TryC
     (when-not (nil? fd)
       (when (.isOpen fd) (.close fd true))) ))
 
-(defn- closeStore [co]
-  (let [ conn (.getAttr co :store)
+(defn- closeStore [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^Store conn (.getAttr co :store)
          fd (.getAttr co :folder) ]
     (closeFolder fd)
     (CU/TryC
@@ -64,14 +64,16 @@
     (.setAttr! co :store nil)
     (.setAttr! co :folder nil)) )
 
-(defn- resolve-provider [co ssl2 std2 demo mock]
-  (let [ [pkey sn] (if (.getAttr co :ssl) ssl2 std2)
+(defn- resolve-provider
+  [^comzotohcljc.hohenheim.core.sys.Component co protos ^String demo ^String mock]
+
+  (let [ [^String pkey ^String sn] (if (.getAttr co :ssl) (first protos) (last protos))
          props (doto (Properties.)
                      (.put  "mail.store.protocol" sn) )
          session (Session/getInstance props nil)
          ps (.getProviders session) ]
     (with-local-vars [proto sn sun nil]
-      (var-set sun (some (fn [x] (if (= pkey (.getClassName x)) x nil)) (seq ps)))
+      (var-set sun (some (fn [^Provider x] (if (= pkey (.getClassName x)) x nil)) (seq ps)))
       (when (nil? @sun)
         (throw (IOException. (str "Failed to find store: " pkey) )))
       (when (SU/hgl? demo)
@@ -84,6 +86,16 @@
       (.setAttr! co :session session))))
 
 
+
+(defn- make-email-event [co msg]
+  (let [ eeid (SN/next-long) ]
+    (with-meta
+      (reify EmailEvent
+        (getSession [_] nil)
+        (getId [_] eeid)
+        (emitter [_] co)
+        (getMsg [_] msg))
+      { :typeid :czc.hhh.io/EmailEvent } )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; POP3
@@ -99,42 +111,48 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/POP3
   [co args]
-  (let [ e (make-email-event co (first args)) ]
-    (reify EmailEvent
-      (getMsg [_] (.getf e :msg)))))
+  (let [ msg (first args) eeid (SN/next-long) ]
+    (with-meta
+      (reify EmailEvent
+        (getSession [_] nil)
+        (getId [_] eeid)
+        (emitter [_] co)
+        (getMsg [_] msg))
+      { :typeid :czc.hhh.io/EmailEvent } )))
 
 
-(defn- connect-pop3 [co]
+(defn- connect-pop3 [^comzotohcljc.hohenheim.core.sys.Component co]
   (let [ pwd (SU/nsb (.getAttr co :pwd))
-         session (.getAttr co :session)
+         ^Session session (.getAttr co :session)
          user (.getAttr co :user)
-         host (.getAttr co :host)
-         port (.getAttr co :port)
-         proto (.getAttr co :proto)
+         ^String host (.getAttr co :host)
+         ^long port (.getAttr co :port)
+         ^String proto (.getAttr co :proto)
          s (.getStore session proto) ]
     (when-not (nil? s)
       (.connect s host port user (if (SU/hgl? pwd) pwd nil))
       (.setAttr! co :store s)
       (.setAttr! co :folder (.getDefaultFolder s)))
-    (if-let [ fd (.getAttr co :folder) ]
+    (if-let [ ^Folder fd (.getAttr co :folder) ]
       (.setAttr! co :folder (.getFolder fd "INBOX")))
-    (let [ fd (.getAttr co :folder) ]
+    (let [ ^Folder fd (.getAttr co :folder) ]
       (when (or (nil? fd) (not (.exists fd)))
         (throw (IOException. "cannot find inbox.")) ))))
 
 
-(defn- read-pop3 [co msgs]
-  (doseq [ mm (seq msgs) ]
-    (try
-        (doto mm (.getAllHeaders)(.getContent))
-        (.dispatch co (ioes-reify-event co mm))
-      (finally
-        (when (.getAttr co :deleteMsg)
-          (.setFlag mm Flags$Flag/DELETED true))))))
+(defn- read-pop3 [^comzotohcljc.hohenheim.io.core.EmitterAPI co msgs]
+  (let [^comzotohcljc.hohenheim.core.sys.Component src co]
+    (doseq [ ^MimeMessage mm (seq msgs) ]
+      (try
+          (doto mm (.getAllHeaders)(.getContent))
+          (.dispatch co (ioes-reify-event co mm))
+        (finally
+          (when (.getAttr src :deleteMsg)
+            (.setFlag mm Flags$Flag/DELETED true)))))) )
 
-(defn- scan-pop3 [co]
-  (let [ s (.getAttr co :store)
-         fd (.getAttr co :folder) ]
+(defn- scan-pop3 [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^Store s (.getAttr co :store)
+         ^Folder fd (.getAttr co :folder) ]
     (when (and (CU/notnil? fd) (not (.isOpen fd)))
       (.open fd Folder/READ_WRITE) )
     (when (.isOpen fd)
@@ -155,7 +173,7 @@
       (closeStore co))) )
 
 
-(defn- std-config [co cfg]
+(defn- std-config [^comzotohcljc.hohenheim.core.sys.Component co cfg]
   (let [ port (:port cfg)
          pwd (:passwd cfg) ]
     (.setAttr! co :ssl (if (false? (:ssl cfg)) false true))
@@ -167,7 +185,7 @@
     co))
 
 (defmethod comp-configure :czc.hhh.io/POP3
-  [co cfg]
+  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
   (let [ demo (System/getProperty "hohenheim.demo.pop3" "") ]
     (std-config co cfg)
     (resolve-provider co
@@ -191,9 +209,7 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/IMAP
   [co & args]
-  (let [ e (make-email-event co (first args)) ]
-    (reify EmailEvent
-      (getMsg [_] (.getf e :msg)))))
+  (make-email-event co (first args)))
 
 (defn- connect-imap [co] (connect-pop3 co))
 
@@ -213,7 +229,7 @@
 
 
 (defmethod comp-configure :czc.hhh.io/IMAP
-  [co cfg]
+  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
   (let [ demo (System/getProperty "hohenheim.demo.imap" "") ]
     (std-config co cfg)
     (resolve-provider co

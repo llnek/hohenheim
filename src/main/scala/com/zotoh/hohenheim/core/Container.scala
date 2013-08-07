@@ -23,10 +23,10 @@ package com.zotoh.hohenheim.core
 
 import com.zotoh.frwk.util.Schedulable
 import com.zotoh.hohenheim.io.IOEvent
+import com.zotoh.wflow.IContainer
 
-trait Container {
+trait Container extends IContainer {
   def notifyObservers(evt:IOEvent ) : Unit
-  def core() : Schedulable
   def dispose() : Unit
 }
 

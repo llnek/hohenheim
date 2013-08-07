@@ -25,7 +25,8 @@
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
 (import '(java.io File))
-(import '(com.zotoh.hohenheim.core ServiceError Job))
+(import '(com.zotoh.hohenheim.core ServiceError ))
+(import '(com.zotoh.wflow.core Job))
 
 
 (use '[clojure.tools.logging :only (info warn error debug)])
@@ -36,8 +37,6 @@
 (use '[comzotohcljc.hohenheim.core.sys])
 
 (use '[comzotohcljc.util.core :only (MutableObjectAPI) ] )
-(use '[comzotohcljc.wflow.core])
-(use '[comzotohcljc.wflow.user])
 
 (require '[ comzotohcljc.util.scheduler :as SC])
 (require '[ comzotohcljc.util.process :as PU ] )
@@ -50,7 +49,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Job-Creator
+;;(set! *warn-on-reflection* false)
 
 (defprotocol AppMainAPI
   (contextualize [_ container] )
@@ -59,7 +58,7 @@
   (dispose [_] ))
 
 
-(defn- make-job "" [container evt]
+(defn- make-job "" [_container evt]
   (let [ impl (CU/make-mmap)
          jid (SN/next-long) ]
     (with-meta
@@ -75,7 +74,7 @@
 
         Job
 
-          (parent [_] container)
+          (container [_] _container)
           (event [_] evt)
           (id [_] jid))
 

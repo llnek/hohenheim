@@ -19,7 +19,7 @@
  *
  ??*/
 
-package com.zotoh.wflow
+package com.zotoh.wflow.core
 
 class FlowError(msg:String,e:Throwable) extends Exception(msg,e) {
   def this(e:Throwable) {

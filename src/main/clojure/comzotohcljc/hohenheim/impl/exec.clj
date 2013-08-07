@@ -44,6 +44,9 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* false)
+
+
 
 (def ^:private START-TIME (.getTime (Date.)))
 
@@ -72,10 +75,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- chkManifest [execv app des mf]
-  (let [ ctx (.getCtx execv)
-         root (.getf ctx K_COMPS)
-         apps (.lookup root K_APPS)
+(defn- chkManifest 
+  [^comzotohcljc.hohenheim.core.sys.Component execv app des mf]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (.getCtx execv)
+         ^comzotohcljc.hohenheim.core.sys.Registry root (.getf ctx K_COMPS)
+         ^comzotohcljc.hohenheim.core.sys.Registry apps (.lookup root K_APPS)
          ps (CU/load-javaprops mf)
          ver (.getProperty ps "Implementation-Version" "")
          cz (.getProperty ps "Main-Class" "") ]
@@ -91,13 +95,13 @@
     ;;.gets("Implementation-Vendor")
     ;;.gets("Implementation-Vendor-Id")
 
-    (let [ m (-> (make-podmeta app ver nil cz (-> des (.toURI) (.toURL)))
+    (let [ ^comzotohcljc.hohenheim.core.sys.Component m (-> (make-podmeta app ver nil cz (-> des (.toURI) (.toURL)))
                  (synthesize-component { :ctx ctx })) ]
       (.setf! (.getCtx m) K_EXECV execv)
       (.reg apps m)
       m)))
 
-(defn- inspect-pod [execv des]
+(defn- inspect-pod [execv ^File des]
   (let [ app (FilenameUtils/getBaseName (CU/nice-fpath des))
          mf (File. des MN_FILE) ]
     (info "About to inspect dir: " des)
@@ -114,10 +118,11 @@
       (catch Throwable e#
         (error e# "")))) )
 
-(defn- inspect-pods [co]
-  (let [ fs (-> (.getf (.getCtx co) K_PLAYDIR)
-                (.listFiles (cast FileFilter DirectoryFileFilter/DIRECTORY))) ]
-    (doseq [ f (seq fs) ]
+(defn- inspect-pods [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (.getCtx co)
+         ^FileFilter ff DirectoryFileFilter/DIRECTORY
+         ^File pd (.getf ctx K_PLAYDIR) ]
+    (doseq [ f (seq (.listFiles pd ff)) ]
       (inspect-pod co f)) ))
 
 
@@ -153,15 +158,17 @@
           (tmpDir [this] (maybeDir (getCtx this) K_TMPDIR))
           (dbDir [this] (maybeDir (getCtx this) K_DBSDIR))
           (blocksDir [this] (maybeDir (getCtx this) K_BKSDIR))
-          (kill9 [this] (.stop parObj))
+          (kill9 [this] (.stop ^Startable parObj))
           (start [this]
-            (let [ root (.getf (getCtx this) K_COMPS)
-                   k (.lookup root K_KERNEL) ]
+            (let [ ^comzotohcljc.hohenheim.core.sys.Registry 
+                   root (.getf ^comzotohcljc.util.core.MutableObjectAPI (getCtx this) K_COMPS)
+                   ^Startable k (.lookup root K_KERNEL) ]
               (inspect-pods this)
               (.start k)))
           (stop [this]
-            (let [ root (.getf (getCtx this) K_COMPS)
-                   k (.lookup root K_KERNEL) ]
+            (let [ ^comzotohcljc.hohenheim.core.sys.Registry
+                   root (.getf ^comzotohcljc.util.core.MutableObjectAPI (getCtx this) K_COMPS)
+                   ^Startable k (.lookup root K_KERNEL) ]
               (.stop k)))  )
 
        { :typeid (keyword "czc.hhh.impl/Execvisor") } )))
@@ -170,8 +177,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod comp-initialize :czc.hhh.impl/Execvisor
-  [co]
-  (let [ cf (.getf (.getCtx co) K_PROPS)
+  [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^comzotohcljc.util.ini.IWin32Conf cf (.getf (.getCtx co) K_PROPS)
          comps (.getSection cf K_COMPS)
          regs (.getSection cf K_REGS)
          jmx  (.getSection cf K_JMXMGM) ]
@@ -182,7 +189,7 @@
     (CU/test-nonil "conf file: jmx mgmt" jmx)
     (System/setProperty "file.encoding" "utf-8")
 
-    (let [ home (.homeDir co)
+    (let [ ^File home (.homeDir ^comzotohcljc.hohenheim.impl.exec.ExecvisorAPI co)
            sb (doto (File. home DN_BOXX)
                   (.mkdir))
            bks (doto (File. home DN_BLOCKS)
@@ -201,7 +208,7 @@
       (precondDir tmp)
       (precondDir db)
       (precondDir bks)
-      (doto (.getCtx co)
+      (doto ^comzotohcljc.util.core.MutableObjectAPI (.getCtx co)
           (.setf! K_PODSDIR pods)
           (.setf! K_PLAYDIR sb)
           (.setf! K_LOGDIR log)
@@ -209,18 +216,19 @@
           (.setf! K_TMPDIR tmp)
           (.setf! K_BKSDIR bks)) )
     ;;(start-jmx)
-    (let [ root (make-component-registry :SystemRegistry K_COMPS "1.0" co)
+    (let [ ^comzotohcljc.hohenheim.core.sys.Registry
+           root (make-component-registry :SystemRegistry K_COMPS "1.0" co)
            bks (make-component-registry :BlocksRegistry K_BLOCKS "1.0" nil)
            apps (make-component-registry :AppsRegistry K_APPS "1.0" nil)
            deployer (make-deployer)
            knl (make-kernel) ]
 
-      (.setf! (.getCtx co) K_COMPS root)
+      (.setf! ^comzotohcljc.util.core.MutableObjectAPI (.getCtx co) K_COMPS root)
       (.reg root deployer)
       (.reg root knl)
       (.reg root apps)
       (.reg root bks)
-      (.setf! (.getCtx co) K_EXECV co)
+      (.setf! ^comzotohcljc.util.core.MutableObjectAPI (.getCtx co) K_EXECV co)
       (let [ options { :ctx (.getCtx co) } ]
         (synthesize-component root options)
         (synthesize-component bks options)
@@ -231,7 +239,7 @@
     ))
 
 
-(defn- make-blockmeta "" [url]
+(defn- make-blockmeta "" [^URL url]
   (let [ impl (CU/make-mmap) ]
     (.mm-s impl :id (keyword (CU/uid)))
     (.mm-s impl K_META url)
@@ -259,8 +267,9 @@
 
 
 (defmethod comp-initialize :czc.hhh.impl/BlockMeta
-  [co]
-  (let [ url (.metaUrl co) cfg (WI/parse-inifile url)
+  [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^URL url (.metaUrl co)
+         ^comzotohcljc.util.ini.IWin32Conf cfg (WI/parse-inifile url)
          inf (.getSection cfg "info") ]
     (CU/test-nonil "Invalid block-meta file, no info section." inf)
     (info "Initializing BlockMeta: " url)
@@ -275,14 +284,15 @@
       co)))
 
 (defmethod comp-initialize :czc.hhh.impl/BlocksRegistry
-  [co]
-  (let [ ctx (.getCtx co)
+  [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (.getCtx co)
          bDir (.getf ctx K_BKSDIR)
          fs (FileUtils/listFiles bDir (into-array String ["meta"]) false) ]
     (doseq [ f (seq fs) ]
-      (let [ b (-> (make-blockmeta (-> f (.toURI)(.toURL)))
+      (let [ ^comzotohcljc.hohenheim.core.sys.Component 
+             b (-> (make-blockmeta (-> f (.toURI)(.toURL)))
                    (synthesize-component {}) ) ]
-        (.reg co b)
+        (.reg ^comzotohcljc.hohenheim.core.sys.Registry co b)
         (info "Added one block: " (.id b)) ))))
 
 

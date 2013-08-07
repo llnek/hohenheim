@@ -23,6 +23,7 @@ package com.zotoh.hohenheim.io;
 
 
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.net.HttpCookie;
 
@@ -48,11 +49,11 @@ public interface HTTPEvent  extends IOEvent {
   public String contextPath();
 
   public List<String> getHeaderValues(String nm);
-  public List<String> getHeaders();
+  public Set<String> getHeaders();
   public String getHeaderValue(String nm);
 
   public List<String> getParameterValues(String nm);
-  public List<String> getParameters();
+  public Set<String> getParameters();
   public String getParameterValue(String nm);
 
   public String localAddr();

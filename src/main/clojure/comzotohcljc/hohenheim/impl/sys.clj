@@ -25,6 +25,7 @@
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
 (import '(com.zotoh.hohenheim.loaders AppClassLoader))
+(import '(com.zotoh.hohenheim.core Startable))
 (import '(java.io File))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
@@ -42,6 +43,9 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* false)
+
+
 
 (defprotocol DeployerAPI ""
   (undeploy [_ app] )
@@ -79,14 +83,14 @@
         DeployerAPI
 
           (undeploy [this app]
-            (let [ ctx (getCtx this)
+            (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (getCtx this)
                    dir (File. (.getf ctx K_PLAYDIR) app) ]
               (when (.exists dir)
                   (FileUtils/deleteDirectory dir))))
 
           (deploy [this src]
             (let [ app (FilenameUtils/getBaseName (CU/nice-fpath src))
-                   ctx (getCtx this)
+                   ^comzotohcljc.util.core.MutableObjectAPI ctx (getCtx this)
                    des (File. (.getf ctx K_PLAYDIR) app)
                    pod (File. (.toURI src)) ]
               (when-not (.exists des)
@@ -105,19 +109,23 @@
     (comp-clone-context co ctx)))
 
 (defmethod comp-initialize :czc.hhh.impl/Deployer
-  [co]
-  (let [ ctx (.getCtx co)
+  [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (.getCtx co)
          py (.getf ctx K_PLAYDIR)
-         pd (.getf ctx K_PODSDIR)
+         ^File pd (.getf ctx K_PODSDIR)
          fs (FileUtils/listFiles pd (into-array String ["pod"]) false) ]
-    (doseq [f (seq fs)]
-      (.deploy co (-> f (.toURI)(.toURL))))))
+    (doseq [ ^File f (seq fs)]
+      (.deploy ^comzotohcljc.hohenheim.impl.sys.DeployerAPI co (-> f (.toURI)(.toURL))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Kernel
 
-(defn- maybe-start-pod [knl pod]
+(defn- maybe-start-pod 
+  
+  [^comzotohcljc.hohenheim.core.sys.Component knl 
+   ^comzotohcljc.hohenheim.core.sys.Component pod]
+
   (CU/TryC
     (let [ cache (.getAttr knl K_CONTAINERS)
            cid (.id pod)
@@ -151,9 +159,9 @@
         KernelAPI
 
           (start [this]
-            (let [ ctx (getCtx this)
-                   root (.getf ctx K_COMPS)
-                   apps (.lookup root K_APPS) ]
+            (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (getCtx this)
+                   ^comzotohcljc.hohenheim.core.sys.Registry root (.getf ctx K_COMPS)
+                   ^comzotohcljc.util.core.MutableObjectAPI apps (.lookup root K_APPS) ]
               ;; need this to prevent deadlocks amongst pods
               ;; when there are dependencies
               ;; TODO: need to handle this better
@@ -165,7 +173,7 @@
           (stop [this]
             (let [ cs (.mm-g impl K_CONTAINERS) ]
               (doseq [ [k v] (seq cs) ]
-                (.stop v))
+                (.stop ^Startable v))
               (.mm-s impl K_CONTAINERS {}))) )
 
       { :typeid (keyword "czc.hhh.impl/Kernel") } )))
@@ -201,8 +209,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod comp-initialize :czc.hhh.impl/PODMeta
-  [co]
-  (let [ ctx (.getCtx co)
+  [^comzotohcljc.hohenheim.core.sys.Component co]
+  (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (.getCtx co)
          rcl (.getf ctx K_ROOT_CZLR)
          cl  (AppClassLoader. rcl) ]
     (.configure cl (CU/nice-fpath (File. (.toURI (.srcUrl co)))) )
