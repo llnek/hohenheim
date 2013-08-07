@@ -77,14 +77,14 @@
         Deployer
 
           (undeploy [this app]
-            (let [ ^comzotohcljc.util.core.MutableObj ctx (getCtx this)
+            (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
                    dir (File. ^File (.getf ctx K_PLAYDIR) ^String app) ]
               (when (.exists dir)
                   (FileUtils/deleteDirectory dir))))
 
           (deploy [this src]
             (let [ app (FilenameUtils/getBaseName (CU/nice-fpath src))
-                   ^comzotohcljc.util.core.MutableObj ctx (getCtx this)
+                   ^comzotohcljc.util.core.MuObj ctx (getCtx this)
                    des (File. ^File (.getf ctx K_PLAYDIR) ^String app) ]
               (when-not (.exists des)
                 (FU/unzip src des)))) )
@@ -103,7 +103,7 @@
 
 (defmethod comp-initialize :czc.hhh.impl/Deployer
   [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx co)
+  (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          py (.getf ctx K_PLAYDIR)
          pd (.getf ctx K_PODSDIR)
          fs (FileUtils/listFiles ^File pd (into-array String ["pod"]) false) ]
@@ -159,9 +159,9 @@
         Kernel
 
           (start [this]
-            (let [ ^comzotohcljc.util.core.MutableObj ctx (getCtx this)
+            (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
                    ^comzotohcljc.hhh.core.sys.Registry root (.getf ctx K_COMPS)
-                   ^comzotohcljc.util.core.MutableObj apps (.lookup root K_APPS) ]
+                   ^comzotohcljc.util.core.MuObj apps (.lookup root K_APPS) ]
               ;; need this to prevent deadlocks amongst pods
               ;; when there are dependencies
               ;; TODO: need to handle this better
@@ -216,7 +216,7 @@
 
 (defmethod comp-initialize :czc.hhh.impl/PODMeta
   [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx co)
+  (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          rcl (.getf ctx K_ROOT_CZLR)
          ^URL url (.srcUrl ^comzotohcljc.hhh.impl.defaults.PODMeta co)
          cl  (AppClassLoader. rcl) ]

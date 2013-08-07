@@ -437,7 +437,7 @@
                        (seq (.keySet props)))) )
 
 
-(defprotocol MutableObj
+(defprotocol MuObj
   (setf! [_ k v] )
   (seq* [_] )
   (getf [_ k] )

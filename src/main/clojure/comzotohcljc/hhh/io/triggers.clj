@@ -66,7 +66,7 @@
       (.setSecure (.getSecure c))
       (.setVersion (.getVersion c))) )
 
-(defn- replyServlet [ ^comzotohcljc.util.core.MutableObj res
+(defn- replyServlet [ ^comzotohcljc.util.core.MuObj res
                      ^HttpServletRequest req
                      ^HttpServletResponse rsp
                     src]
@@ -138,7 +138,7 @@
       (.addCookie cke (.getName c)(.getValue c)))
     (.encode cke)))
 
-(defn- netty-reply [^comzotohcljc.util.core.MutableObj res
+(defn- netty-reply [^comzotohcljc.util.core.MuObj res
                     ^Channel ch
                     ^HTTPEvent evt
                     src]

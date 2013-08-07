@@ -44,7 +44,7 @@
 (use '[comzotohcljc.hhh.etc.misc])
 (use '[comzotohcljc.hhh.core.sys])
 
-(use '[comzotohcljc.util.core :only (MutableObj) ] )
+(use '[comzotohcljc.util.core :only (MuObj) ] )
 
 (require '[ comzotohcljc.util.scheduler :as SC])
 (require '[ comzotohcljc.util.process :as PU ] )
@@ -65,7 +65,7 @@
     (with-meta
       (reify
 
-        MutableObj
+        MuObj
 
           (setf! [_ k v] (.mm-s impl k v))
           (clear! [_] (.mm-c impl))
@@ -182,7 +182,7 @@
 
           (reifyService [this svc cfg]
             (let [ ^comzotohcljc.hhh.core.sys.Registry 
-                   root (.getf ^comzotohcljc.util.core.MutableObj (.getCtx this) K_COMPS)
+                   root (.getf ^comzotohcljc.util.core.MuObj (.getCtx this) K_COMPS)
                    ^comzotohcljc.hhh.core.sys.Registry 
                    bks (.lookup root K_BLOCKS)
                    bk (.lookup bks (keyword svc)) ]
@@ -194,7 +194,7 @@
 
 (defn make-container [^comzotohcljc.hhh.core.sys.Thingy pod]
   (let [ c (make-app-container pod)
-         ^comzotohcljc.util.core.MutableObj ctx (.getCtx pod)
+         ^comzotohcljc.util.core.MuObj ctx (.getCtx pod)
          cl (.getf ctx K_APP_CZLR)
          ^comzotohcljc.hhh.core.sys.Registry
          root (.getf ctx K_COMPS)

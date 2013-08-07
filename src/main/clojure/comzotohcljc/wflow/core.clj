@@ -29,7 +29,7 @@
 (import '(com.zotoh.frwk.util Schedulable RunnableWithId))
 (import '(com.zotoh.wflow.core Job))
 
-(use '[comzotohcljc.util.core :only (MutableObj) ])
+(use '[comzotohcljc.util.core :only (MuObj) ])
 (require '[comzotohcljc.wflow.activity :as ACT ])
 (require '[comzotohcljc.wflow.point :as POI ])
 
@@ -90,7 +90,7 @@
 
 (defn fw-runafter
 
-  [^comzotohcljc.util.core.MutableObj fw]
+  [^comzotohcljc.util.core.MuObj fw]
 
   (let [ ^comzotohcljc.wflow.core.PipelineAPI
          pipe (fw-pipe* fw)
@@ -115,7 +115,7 @@
     fw))
 
 
-(defn fw-rerun "" [^comzotohcljc.util.core.MutableObj fw]
+(defn fw-rerun "" [^comzotohcljc.util.core.MuObj fw]
   (let [ ^comzotohcljc.wflow.core.PipelineAPI
          pipe (fw-pipe* fw)
          ^comzotohcljc.wflow.core.ContainerAPI
@@ -126,7 +126,7 @@
     fw))
 
 
-(defn fw-run "" [^comzotohcljc.util.core.MutableObj fw]
+(defn fw-run "" [^comzotohcljc.util.core.MuObj fw]
 
   (let [ ^comzotohcljc.wflow.core.PipelineAPI pipe (fw-pipe* fw)
          ^Job job (.job pipe)
@@ -150,19 +150,19 @@
         (fw-runafter @rc)))))
 
 ;; attmt is data passed back from previous async call, if any
-(defn fw-popattmt! "" [^comzotohcljc.util.core.MutableObj fw]
+(defn fw-popattmt! "" [^comzotohcljc.util.core.MuObj fw]
   (let [ c (.getf fw :attmt) ]
     (.setf! fw :attmt nil)
     c))
 
-(defn fw-setattmt! "" [^comzotohcljc.util.core.MutableObj fw c]
+(defn fw-setattmt! "" [^comzotohcljc.util.core.MuObj fw c]
   (do
     (when-not (nil? fw) (.setf! fw :attmt c))
     fw))
 
-(defmethod fw-configure! :default [^comzotohcljc.util.core.MutableObj fw
+(defmethod fw-configure! :default [^comzotohcljc.util.core.MuObj fw
                                    ac 
-                                   ^comzotohcljc.util.core.MutableObj cur]
+                                   ^comzotohcljc.util.core.MuObj cur]
   (do
     (.setf! fw :pipeline (fw-pipe* cur))
     (.setf! fw :pid (SN/next-long))
@@ -170,7 +170,7 @@
     (.setf! fw :next cur)
     fw))
 
-(defmethod fw-realize! :default [^comzotohcljc.util.core.MutableObj fw]
+(defmethod fw-realize! :default [^comzotohcljc.util.core.MuObj fw]
   (let [ a (.getf fw :template) ]
     (ac-realize! a fw)
     fw))
@@ -190,7 +190,7 @@
     (with-meta
       (reify
 
-        MutableObj
+        MuObj
 
           (seq* [_] (CU/test-cond "not implemented" false))
           (setf! [_ k v] (.mm-s impl k v))
@@ -218,7 +218,7 @@
      (with-meta
        (reify
 
-          MutableObj
+          MuObj
 
           (seq* [_] (CU/test-cond "not implemented" false))
           (setf! [_ k v] (.mm-s impl k v))
@@ -241,7 +241,7 @@
 (defn make-nihil "" [] (make-activity :czc.wflow/Nihil) )
 
 (defn ac-reify-nihil "" [pipe]
-  (let [ ^comzotohcljc.util.core.MutableObj
+  (let [ ^comzotohcljc.util.core.MuObj
          f (make-flowpoint :czc.wflow/NihilPoint) ]
     (.setf! f :pipeline pipe)
     (fw-configure! f (make-nihil) f)

@@ -30,7 +30,7 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(use '[comzotohcljc.util.core :only (MutableObj) ])
+(use '[comzotohcljc.util.core :only (MuObj) ])
 
 (require '[comzotohcljc.util.process :as PU])
 (require '[comzotohcljc.util.dates :as DU])

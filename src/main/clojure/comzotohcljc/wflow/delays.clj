@@ -37,7 +37,7 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(defn async-resume-token [^comzotohcljc.util.core.MutableObj fw]
+(defn async-resume-token [^comzotohcljc.util.core.MuObj fw]
   (reify
     FAsyncResumeToken
       (resume [_ resArg]
@@ -51,7 +51,7 @@
 
 (defn make-delay "Create a Delay Activity."
   [delayMillis]
-  (let [ ^comzotohcljc.util.core.MutableObj b (make-activity :czc.wflow/Delay) ]
+  (let [ ^comzotohcljc.util.core.MuObj b (make-activity :czc.wflow/Delay) ]
     (.setf! b :delayMillis delayMillis)
     b))
 
@@ -60,7 +60,7 @@
   (ac-spawnpoint ac cur :czc.wflow/DelayPoint))
 
 (defmethod ac-realize! :czc.wflow/Delay
-  [^comzotohcljc.util.core.MutableObj ac ^comzotohcljc.util.core.MutableObj fw]
+  [^comzotohcljc.util.core.MuObj ac ^comzotohcljc.util.core.MuObj fw]
   (let [ d (.getf ac :delayMillis) ]
     (.setf! fw :delayMillis d)
     fw))

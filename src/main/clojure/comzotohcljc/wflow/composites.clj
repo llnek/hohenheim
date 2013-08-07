@@ -77,7 +77,7 @@
 ;; Composite
 
 
-(defn- composite-add! [^comzotohcljc.util.core.MutableObj b a]
+(defn- composite-add! [^comzotohcljc.util.core.MuObj b a]
   (when-not (nil? a)
     (let [ c (.getf b :children) ]
       (.setf! b :children (conj c a))))
@@ -89,7 +89,7 @@
 
 (defn make-block "Create a new Block Activity."
   [ & args ]
-  (let [ ^comzotohcljc.util.core.MutableObj
+  (let [ ^comzotohcljc.util.core.MuObj
          b (make-activity :czc.wflow/Block)
          v (if (empty? args)
              []
@@ -103,15 +103,15 @@
 
 (defmethod ac-realize! :czc.wflow/Block
 
-  [^comzotohcljc.util.core.MutableObj ac
-   ^comzotohcljc.util.core.MutableObj fw]
+  [^comzotohcljc.util.core.MuObj ac
+   ^comzotohcljc.util.core.MuObj fw]
 
   (let [ w (make-innerPoints fw (.getf ac :children)) ]
     (.setf! fw :inner-points w)
     fw))
 
 (defmethod fw-evaluate! :czc.wflow/BlockPoint
-  [^comzotohcljc.util.core.MutableObj fw  job]
+  [^comzotohcljc.util.core.MuObj fw  job]
   (let [ ^comzotohcljc.wflow.composites.InnerPointsAPI w (.getf fw :inner-points)
          c (fw-popattmt! fw)
          np (fw-next* fw) ]
@@ -133,7 +133,7 @@
 
 (defn- make-nulljoin "Create a NULL Join Activity."
   []
-  (let [ ^comzotohcljc.util.core.MutableObj a (make-activity :czc.wflow/NullJoin) ]
+  (let [ ^comzotohcljc.util.core.MuObj a (make-activity :czc.wflow/NullJoin) ]
     (.setf! a :branches 0)
     (.setf! a :body nil)
     a))
@@ -151,7 +151,7 @@
 
 (defn make-andjoin "Create an And Join Activity."
   [body]
-  (let [ ^comzotohcljc.util.core.MutableObj a (make-activity :czc.wflow/AndJoin) ]
+  (let [ ^comzotohcljc.util.core.MuObj a (make-activity :czc.wflow/AndJoin) ]
     (.setf! a :body body)
     (.setf! a :branches 0)
     a))
@@ -161,7 +161,7 @@
   (ac-spawnpoint ac cur :czc.wflow/AndJoinPoint))
 
 (defmethod ac-realize! :czc.wflow/AndJoin
-  [^comzotohcljc.util.core.MutableObj ac ^comzotohcljc.util.core.MutableObj fw]
+  [^comzotohcljc.util.core.MuObj ac ^comzotohcljc.util.core.MuObj fw]
   (let [ n (.getf ac :branches)
          b (.getf ac :body)
          np (fw-next* fw) ]
@@ -172,7 +172,7 @@
     fw))
 
 (defmethod fw-evaluate! :czc.wflow/AndJoinPoint
-  [^comzotohcljc.util.core.MutableObj fw job]
+  [^comzotohcljc.util.core.MuObj fw job]
   (let [ b (.getf fw :branches)
          body (.getf fw :body)
          c (fw-popattmt! fw)
@@ -191,7 +191,7 @@
 
 (defn make-orjoin "Create a Or Join Activity."
   [body]
-  (let [ ^comzotohcljc.util.core.MutableObj a (make-activity :czc.wflow/OrJoin) ]
+  (let [ ^comzotohcljc.util.core.MuObj a (make-activity :czc.wflow/OrJoin) ]
     (.setf! a :body body)
     (.setf! a :branches 0)
     a))
@@ -201,7 +201,7 @@
   (ac-spawnpoint ac cur :czc.wflow/OrJoinPoint))
 
 (defmethod ac-realize! :czc.wflow/OrJoin
-  [^comzotohcljc.util.core.MutableObj ac ^comzotohcljc.util.core.MutableObj fw]
+  [^comzotohcljc.util.core.MuObj ac ^comzotohcljc.util.core.MuObj fw]
   (let [ n (.getf ac :branches)
          b (.getf ac :body)
          np (fw-next* fw) ]
@@ -213,7 +213,7 @@
     fw))
 
 (defmethod fw-evaluate! :czc.wflow/OrJoinPoint
-  [^comzotohcljc.util.core.MutableObj fw job]
+  [^comzotohcljc.util.core.MuObj fw job]
   (let [ b (.getf fw :branches)
          c (fw-popattmt! fw)
          np (fw-next* fw)
@@ -235,7 +235,7 @@
 
 
 (defn make-split [joiner]
-  (let [ ^comzotohcljc.util.core.MutableObj s (make-activity :czc.wflow/Split) ]
+  (let [ ^comzotohcljc.util.core.MuObj s (make-activity :czc.wflow/Split) ]
     (.setf! s :children [])
     (.setf! s :join joiner)
     s))
@@ -245,9 +245,9 @@
   (ac-spawnpoint ac cur :czc.wflow/SplitPoint))
 
 (defmethod ac-realize! :czc.wflow/Split
-  [^comzotohcljc.util.core.MutableObj ac ^comzotohcljc.util.core.MutableObj fw]
+  [^comzotohcljc.util.core.MuObj ac ^comzotohcljc.util.core.MuObj fw]
   (let [ cs (.getf ac :children)
-         ^comzotohcljc.util.core.MutableObj
+         ^comzotohcljc.util.core.MuObj
          j (.getf ac :join)
          np (fw-next* fw)
          n (count cs)
@@ -262,7 +262,7 @@
     fw))
 
 (defmethod fw-evaluate! :czc.wflow/SplitPoint
-  [^comzotohcljc.util.core.MutableObj fw job]
+  [^comzotohcljc.util.core.MuObj fw job]
   (let [ ^comzotohcljc.wflow.composites.InnerPointsAPI
          w (:getf fw :inner-points)
          ^comzotohcljc.wflow.core.PipelineAPI

@@ -50,7 +50,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- inizContext ^comzotohcljc.util.core.MutableObj [^File baseDir]
+(defn- inizContext ^comzotohcljc.util.core.MuObj [^File baseDir]
   (let [ cfg (File. baseDir ^String DN_CFG)
          f (File. cfg (str "app/" (name K_PROPS)))
          home (.getParentFile cfg) ]
@@ -61,19 +61,19 @@
       (.setf! K_BASEDIR home)
       (.setf! K_CFGDIR cfg))))
 
-(defn- setupClassLoader [^comzotohcljc.util.core.MutableObj ctx]
+(defn- setupClassLoader [^comzotohcljc.util.core.MuObj ctx]
   (let [ root (.getf ctx K_ROOT_CZLR)
          cl (ExecClassLoader. root) ]
     (MU/set-cldr cl)
     (.setf! ctx K_EXEC_CZLR cl)
     ctx))
 
-(defn- setupClassLoaderAsRoot [^comzotohcljc.util.core.MutableObj ctx]
+(defn- setupClassLoaderAsRoot [^comzotohcljc.util.core.MuObj ctx]
   (let [ root (RootClassLoader. (MU/get-cldr)) ]
     (.setf! ctx K_ROOT_CZLR root)
     ctx))
 
-(defn- maybeInizLoaders [^comzotohcljc.util.core.MutableObj ctx]
+(defn- maybeInizLoaders [^comzotohcljc.util.core.MuObj ctx]
   (let [ cz (MU/get-cldr) ]
     (if (instance? ExecClassLoader cz)
       (do
@@ -82,7 +82,7 @@
       (setupClassLoader (setupClassLoaderAsRoot ctx)))
     ctx))
 
-(defn- loadConf [^comzotohcljc.util.core.MutableObj ctx]
+(defn- loadConf [^comzotohcljc.util.core.MuObj ctx]
   (let [ ^File home (.getf ctx K_BASEDIR)
          cf (File. home  (str DN_CFG "/app/" (name K_PROPS) ))
         ^comzotohcljc.util.ini.IWin32Conf
@@ -94,7 +94,7 @@
       (.setf! K_PROPS w)
       (.setf! K_L10N loc))) )
 
-(defn- setupResources [^comzotohcljc.util.core.MutableObj ctx]
+(defn- setupResources [^comzotohcljc.util.core.MuObj ctx]
   (let [ rc (LN/get-resource "comzotohcljc.hhh.etc.Resources"
                              (.getf ctx K_LOCALE)) ]
     (.setf! ctx K_RCBUNDLE rc)
@@ -111,7 +111,7 @@
     (.setCtx! cli ctx)
     ctx))
 
-(defn- start-exec [^comzotohcljc.util.core.MutableObj ctx]
+(defn- start-exec [^comzotohcljc.util.core.MuObj ctx]
   (do
     (info "About to start Hohenheim...")
     (let [ ^Startable exec (.getf ctx K_EXECV) ]
@@ -119,7 +119,7 @@
     (info "Hohenheim started.")
     ctx))
 
-(defn- primodial [^comzotohcljc.util.core.MutableObj ctx]
+(defn- primodial [^comzotohcljc.util.core.MuObj ctx]
   (let [ cl (.getf ctx K_EXEC_CZLR)
          cli (.getf ctx K_CLISH)
         ^comzotohcljc.util.ini.IWin32Conf
@@ -128,7 +128,7 @@
     (CU/test-cond "conf file:exec-visor"
                   (= cz "comzotohcljc.hhh.impl.Execvisor"))
     (info "inside primodial()")
-    (let [ ^comzotohcljc.util.core.MutableObj execv (make-execvisor cli) ]
+    (let [ ^comzotohcljc.util.core.MuObj execv (make-execvisor cli) ]
       (.setf! ctx K_EXECV execv)
       (synthesize-component execv { :ctx ctx } )
       ctx)))
@@ -138,7 +138,7 @@
     (info "Enabling remote shutdown...")
     nil))
 
-(defn- stop-cli [^comzotohcljc.util.core.MutableObj ctx trigger]
+(defn- stop-cli [^comzotohcljc.util.core.MuObj ctx trigger]
   (let [ ^File pid (.getf ctx K_PIDFILE)
          execv (.getf ctx K_EXECV) ]
     (when-not (nil? pid) (FileUtils/deleteQuietly pid))
@@ -148,7 +148,7 @@
     (info "Hohenheim stopped.")
     (deliver trigger 911)))
 
-(defn- hookShutdown [^comzotohcljc.util.core.MutableObj ctx]
+(defn- hookShutdown [^comzotohcljc.util.core.MuObj ctx]
   (let [ cli (.getf ctx K_CLISH)
          trigger (promise) ]
     (.addShutdownHook (Runtime/getRuntime)
@@ -158,13 +158,13 @@
     (debug "Added shutdown hook.")
     [ctx trigger] ))
 
-(defn- writePID [^comzotohcljc.util.core.MutableObj ctx]
+(defn- writePID [^comzotohcljc.util.core.MuObj ctx]
   (let [ fp (File. ^File (.getf ctx K_BASEDIR) "hohenheim.pid") ]
     (FileUtils/writeStringToFile fp (PU/pid) "utf-8")
     (.setf! ctx K_PIDFILE fp)
     ctx))
 
-(defn- pause-cli [[ ^comzotohcljc.util.core.MutableObj ctx trigger]]
+(defn- pause-cli [[ ^comzotohcljc.util.core.MuObj ctx trigger]]
   (do
     (print-mutableObj ctx)
     (info "Applications are now running...")

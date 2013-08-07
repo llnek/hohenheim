@@ -53,7 +53,7 @@
 
   ;; function signature (fw job arg)
   [cb]
-  (let [ ^comzotohcljc.util.core.MutableObj b (make-activity :czc.wflow/PTask) ]
+  (let [ ^comzotohcljc.util.core.MuObj b (make-activity :czc.wflow/PTask) ]
     (.setf! b :task (make-ptask-work cb))
     b))
 
@@ -62,13 +62,13 @@
   (ac-spawnpoint ac cur :czc.wflow/PTaskPoint))
 
 (defmethod ac-realize! :czc.wflow/PTask
-  [^comzotohcljc.util.core.MutableObj ac ^comzotohcljc.util.core.MutableObj fw]
+  [^comzotohcljc.util.core.MuObj ac ^comzotohcljc.util.core.MuObj fw]
   (let [ w (.getf ac :task) ]
     (.setf! fw :task w)
     fw))
 
 (defmethod fw-evaluate! :czc.wflow/PTaskPoint
-  [^comzotohcljc.util.core.MutableObj fw job]
+  [^comzotohcljc.util.core.MuObj fw job]
   (do
     (debug "[" (.getf fw :pid) "] about to perform work.")
     (let [ ^comzotohcljc.wflow.core.PipelineAPI pipe (fw-pipe* fw)

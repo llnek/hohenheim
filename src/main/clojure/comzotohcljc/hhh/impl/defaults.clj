@@ -31,7 +31,7 @@
 (import '(java.io File))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(use '[ comzotohcljc.util.core :only (MutableObj) ] )
+(use '[ comzotohcljc.util.core :only (MuObj) ] )
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
 
@@ -51,7 +51,7 @@
   (CU/test-cond (str "File " f " must be readable.") 
                 (FU/file-read? f)))
 
-(defn maybeDir "" ^File [^comzotohcljc.util.core.MutableObj m kn]
+(defn maybeDir "" ^File [^comzotohcljc.util.core.MuObj m kn]
   (let [ v (.getf m kn) ]
     (cond
       (instance? String v)
@@ -65,7 +65,7 @@
 
 (defn print-mutableObj
   ([ctx] (print-mutableObj ctx false))
-  ([^comzotohcljc.util.core.MutableObj ctx dbg]
+  ([^comzotohcljc.util.core.MuObj ctx dbg]
     (let [ b (StringBuilder.) ]
       (doseq [ [k v] (.seq* ctx) ]
         (.append b (str k " = " v "\n")))
@@ -97,9 +97,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-context "" ^comzotohcljc.util.core.MutableObj []
+(defn make-context "" ^comzotohcljc.util.core.MuObj []
   (let [ impl (CU/make-mmap) ]
-    (reify MutableObj
+    (reify MuObj
       (setf! [_ k v] (.mm-s impl k v) )
       (seq* [_] (seq (.mm-m* impl)))
       (getf [_ k] (.mm-g impl k) )
@@ -173,7 +173,7 @@
 
 (defn comp-clone-context 
   [^comzotohcljc.hhh.core.sys.Thingy co
-   ^comzotohcljc.util.core.MutableObj ctx]
+   ^comzotohcljc.util.core.MuObj ctx]
   (do
     (when-not (nil? ctx)
       (let [ x (make-context) ]

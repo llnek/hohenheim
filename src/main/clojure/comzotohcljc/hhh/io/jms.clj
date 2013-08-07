@@ -49,7 +49,7 @@
 (import '(java.io IOException))
 (import '(com.zotoh.hohenheim.io JMSEvent))
 
-(use '[comzotohcljc.util.core :only (MutableObj) ])
+(use '[comzotohcljc.util.core :only (MuObj) ])
 (require '[comzotohcljc.crypto.codec :as CR])
 (require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])

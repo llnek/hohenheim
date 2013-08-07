@@ -72,7 +72,7 @@
 
 (defn- chkManifest 
   [^comzotohcljc.hhh.core.sys.Thingy execv app ^File des mf]
-  (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx execv)
+  (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx execv)
          ^comzotohcljc.hhh.core.sys.Registry root (.getf ctx K_COMPS)
          ^comzotohcljc.hhh.core.sys.Registry apps (.lookup root K_APPS)
          ps (CU/load-javaprops mf)
@@ -92,7 +92,7 @@
 
     (let [ ^comzotohcljc.hhh.core.sys.Thingy m (-> (make-podmeta app ver nil cz (-> des (.toURI) (.toURL)))
                  (synthesize-component { :ctx ctx })) ]
-      (.setf! ^comzotohcljc.util.core.MutableObj (.getCtx m) K_EXECV execv)
+      (.setf! ^comzotohcljc.util.core.MuObj (.getCtx m) K_EXECV execv)
       (.reg apps m)
       m)))
 
@@ -114,7 +114,7 @@
         (error e# "")))) )
 
 (defn- inspect-pods [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx co)
+  (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          ^FileFilter ff DirectoryFileFilter/DIRECTORY
          ^File pd (.getf ctx K_PLAYDIR) ]
     (doseq [ f (seq (.listFiles pd ff)) ]
@@ -163,13 +163,13 @@
         Startable
           (start [this]
             (let [ ^comzotohcljc.hhh.core.sys.Registry
-                   root (.getf ^comzotohcljc.util.core.MutableObj (getCtx this) K_COMPS)
+                   root (.getf ^comzotohcljc.util.core.MuObj (getCtx this) K_COMPS)
                    ^Startable k (.lookup root K_KERNEL) ]
               (inspect-pods this)
               (.start k)))
           (stop [this]
             (let [ ^comzotohcljc.hhh.core.sys.Registry
-                   root (.getf ^comzotohcljc.util.core.MutableObj (getCtx this) K_COMPS)
+                   root (.getf ^comzotohcljc.util.core.MuObj (getCtx this) K_COMPS)
                    ^Startable k (.lookup root K_KERNEL) ]
               (.stop k)))  )
 
@@ -180,7 +180,7 @@
 
 (defmethod comp-initialize :czc.hhh.impl/Execvisor
   [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx co)
+  (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
         ^comzotohcljc.util.ini.IWin32Conf cf (.getf ctx K_PROPS)
          comps (.getSection cf K_COMPS)
          regs (.getSection cf K_REGS)
@@ -211,7 +211,7 @@
       (precondDir tmp)
       (precondDir db)
       (precondDir bks)
-      (doto ^comzotohcljc.util.core.MutableObj (.getCtx co)
+      (doto ^comzotohcljc.util.core.MuObj (.getCtx co)
           (.setf! K_PODSDIR pods)
           (.setf! K_PLAYDIR sb)
           (.setf! K_LOGDIR log)
@@ -226,12 +226,12 @@
            deployer (make-deployer)
            knl (make-kernel) ]
 
-      (.setf! ^comzotohcljc.util.core.MutableObj (.getCtx co) K_COMPS root)
+      (.setf! ^comzotohcljc.util.core.MuObj (.getCtx co) K_COMPS root)
       (.reg root deployer)
       (.reg root knl)
       (.reg root apps)
       (.reg root bks)
-      (.setf! ^comzotohcljc.util.core.MutableObj (.getCtx co) K_EXECV co)
+      (.setf! ^comzotohcljc.util.core.MuObj (.getCtx co) K_EXECV co)
       (let [ options { :ctx (.getCtx co) } ]
         (synthesize-component root options)
         (synthesize-component bks options)
@@ -295,7 +295,7 @@
 
 (defmethod comp-initialize :czc.hhh.impl/BlocksRegistry
   [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx co)
+  (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          bDir (.getf ctx K_BKSDIR)
          fs (FileUtils/listFiles ^File bDir (into-array String ["meta"]) false) ]
     (doseq [ ^File f (seq fs) ]
