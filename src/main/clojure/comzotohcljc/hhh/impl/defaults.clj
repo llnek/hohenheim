@@ -80,6 +80,10 @@
   (undeploy [_ app] )
   (deploy [_ src] ))
 
+(defprotocol BlockMeta ""
+  (enabled? [_] )
+  (metaUrl [_] ))
+
 (defprotocol PODMeta 
   ""
   (typeof [_ ])

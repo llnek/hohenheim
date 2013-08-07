@@ -68,11 +68,6 @@
   (kill9 [_] )
   (getUpTimeInMillis [_] ) )
 
-
-(defprotocol BlockMetaAPI ""
-  (enabled? [_] )
-  (metaUrl [_] ))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- chkManifest 
@@ -97,22 +92,22 @@
 
     (let [ ^comzotohcljc.hhh.core.sys.Thingy m (-> (make-podmeta app ver nil cz (-> des (.toURI) (.toURL)))
                  (synthesize-component { :ctx ctx })) ]
-      (.setf! (.getCtx m) K_EXECV execv)
+      (.setf! ^comzotohcljc.util.core.MutableObj (.getCtx m) K_EXECV execv)
       (.reg apps m)
       m)))
 
 (defn- inspect-pod [execv ^File des]
   (let [ app (FilenameUtils/getBaseName (CU/nice-fpath des))
-         mf (File. des MN_FILE) ]
+         mf (File. des ^String MN_FILE) ]
     (info "About to inspect dir: " des)
     (try
-        (precondDir (File. des POD_INF))
-        (precondDir (File. des POD_CLASSES))
-        (precondDir (File. des POD_LIB))
-        (precondDir (File. des META_INF))
-        (precondFile (File. des CFG_APP_CF))
-        (precondFile (File. des CFG_ENV_CF))
-        (precondDir (File. des DN_CONF))
+        (precondDir (File. des ^String POD_INF))
+        (precondDir (File. des ^String POD_CLASSES))
+        (precondDir (File. des ^String POD_LIB))
+        (precondDir (File. des ^String META_INF))
+        (precondFile (File. des ^String CFG_APP_CF))
+        (precondFile (File. des ^String CFG_ENV_CF))
+        (precondDir (File. des ^String DN_CONF))
         (precondFile mf)
         (chkManifest execv app des mf)
       (catch Throwable e#
@@ -185,7 +180,8 @@
 
 (defmethod comp-initialize :czc.hhh.impl/Execvisor
   [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ ^comzotohcljc.util.ini.IWin32Conf cf (.getf (.getCtx co) K_PROPS)
+  (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx co)
+        ^comzotohcljc.util.ini.IWin32Conf cf (.getf ctx K_PROPS)
          comps (.getSection cf K_COMPS)
          regs (.getSection cf K_REGS)
          jmx  (.getSection cf K_JMXMGM) ]
@@ -197,17 +193,17 @@
     (System/setProperty "file.encoding" "utf-8")
 
     (let [ ^File home (.homeDir ^comzotohcljc.hhh.impl.exec.ExecvisorAPI co)
-           sb (doto (File. home DN_BOXX)
+           sb (doto (File. home ^String DN_BOXX)
                   (.mkdir))
-           bks (doto (File. home DN_BLOCKS)
+           bks (doto (File. home ^String DN_BLOCKS)
                   (.mkdir))
-           tmp (doto (File. home DN_TMP)
+           tmp (doto (File. home ^String DN_TMP)
                   (.mkdir))
-           db (doto (File. home DN_DBS)
+           db (doto (File. home ^String DN_DBS)
                   (.mkdir))
-           log (doto (File. home DN_LOGS)
+           log (doto (File. home ^String DN_LOGS)
                   (.mkdir))
-           pods (doto (File. home DN_PODS)
+           pods (doto (File. home ^String DN_PODS)
                   (.mkdir)) ]
       (precondDir pods)
       (precondDir sb)
@@ -271,7 +267,7 @@
         Identifiable
           (id [_] (.mm-g impl :id))
 
-        BlockMetaAPI
+        BlockMeta
 
           (enabled? [_] (true? (.mm-g impl :active)))
           (metaUrl [_] (.mm-g impl K_META)) )
@@ -280,33 +276,34 @@
 
 
 (defmethod comp-initialize :czc.hhh.impl/BlockMeta
-  [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ ^URL url (.metaUrl co)
+  [^comzotohcljc.hhh.impl.defaults.BlockMeta bk]
+  (let [ ^URL url (.metaUrl bk)
          ^comzotohcljc.util.ini.IWin32Conf cfg (WI/parse-inifile url)
          inf (.getSection cfg "info") ]
     (CU/test-nonil "Invalid block-meta file, no info section." inf)
     (info "Initializing BlockMeta: " url)
-    (let [ cz (SU/strim (.optString "info" "block-type" "")) ]
+    (let [ cz (SU/strim (.optString cfg "info" "block-type" "")) 
+           ^comzotohcljc.hhh.core.sys.Thingy co bk  ]
       (when (SU/hgl? cz)
         (.setAttr! co :id (keyword cz))
         (CU/TryC
           (MU/load-class cz)
           (.setAttr! co :active true) ))
-      (.setAttr! co :version (SU/strim (.optString "info" "version" "")))
-      (.setAttr! co :name (SU/strim (.optString "info" "name" "")))
+      (.setAttr! co :version (SU/strim (.optString cfg "info" "version" "")))
+      (.setAttr! co :name (SU/strim (.optString cfg "info" "name" "")))
       co)))
 
 (defmethod comp-initialize :czc.hhh.impl/BlocksRegistry
   [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx co)
          bDir (.getf ctx K_BKSDIR)
-         fs (FileUtils/listFiles bDir (into-array String ["meta"]) false) ]
-    (doseq [ f (seq fs) ]
+         fs (FileUtils/listFiles ^File bDir (into-array String ["meta"]) false) ]
+    (doseq [ ^File f (seq fs) ]
       (let [ ^comzotohcljc.hhh.core.sys.Thingy
              b (-> (make-blockmeta (-> f (.toURI)(.toURL)))
                    (synthesize-component {}) ) ]
         (.reg ^comzotohcljc.hhh.core.sys.Registry co b)
-        (info "Added one block: " (.id b)) ))))
+        (info "Added one block: " (.id ^Identifiable b)) ))))
 
 
 

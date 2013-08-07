@@ -60,7 +60,7 @@
     ))
 
 (defn pid "Get the current process pid."
-  []
+  ^String []
   (let [ ss (.split (SU/nsb (.getName (ManagementFactory/getRuntimeMXBean))) "@") ]
     (if (or (nil? ss) (empty ss)) "" (first ss))) )
 

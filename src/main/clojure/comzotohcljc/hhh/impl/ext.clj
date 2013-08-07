@@ -24,6 +24,7 @@
   comzotohcljc.hhh.impl.ext )
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
+(import '(java.util Properties))
 (import '(java.net URL))
 (import '(java.io File))
 (import '(com.zotoh.hohenheim.runtime AppMain))
@@ -39,7 +40,7 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 
 (use '[comzotohcljc.hhh.core.constants])
-(use '[comzotohcljc.hhh.impl.defaults])
+(use '[comzotohcljc.hhh.impl.defaults :rename {enabled? blockmeta-enabled? } ])
 (use '[comzotohcljc.hhh.etc.misc])
 (use '[comzotohcljc.hhh.core.sys])
 
@@ -198,12 +199,12 @@
          ^comzotohcljc.hhh.core.sys.Registry
          root (.getf ctx K_COMPS)
          apps (.lookup root K_APPS)
-         ^URL url (.srcUrl pod) 
+         ^URL url (.srcUrl ^comzotohcljc.hhh.impl.defaults.PODMeta pod) 
          ps { K_APPDIR (File. (.toURI  url)) } ]
     (comp-compose c apps)
     (comp-contextualize c ctx)
     (comp-configure c ps)
-    (if (.enabled? c)
+    (if (.enabled? ^comzotohcljc.hhh.impl.ext.ContainerAPI c)
       (do (PU/coroutine (fn []
                           (do
                             (comp-initialize c)
@@ -215,9 +216,9 @@
 (defmethod comp-configure :czc.hhh.ext/Container
   [^comzotohcljc.hhh.core.sys.Thingy co props]
   (let [ ^File appDir (K_APPDIR props)
-         cfgDir (File. appDir DN_CONF)
+         cfgDir (File. appDir ^String DN_CONF)
          srg (make-component-registry :EventSources K_SVCS "1.0" co)
-         mf (CU/load-javaprops (File. appDir MN_FILE))
+         mf (CU/load-javaprops (File. appDir ^String MN_FILE))
          envConf (JS/read-str (FileUtils/readFileToString 
                                 (File. cfgDir "env.conf"))
                               :key-fn keyword)
@@ -242,7 +243,7 @@
   [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ env (.getAttr co K_ENVCONF)
          app (.getAttr co K_APPCONF)
-         mf (.getAttr co K_MFPROPS)
+         ^Properties mf (.getAttr co K_MFPROPS)
          mCZ (SU/strim (.get mf "Main-Class"))
          reg (.getAttr co K_SVCS)
          jc (make-jobcreator co)
@@ -268,7 +269,7 @@
           (.reifyServices ^comzotohcljc.hhh.impl.ext.ContainerAPI  co)))
 
     ;; start the scheduler
-    (.start sc cfg)
+    (.activate sc cfg)
 
     (info "Initialized app: " (.id ^Identifiable co))))
 

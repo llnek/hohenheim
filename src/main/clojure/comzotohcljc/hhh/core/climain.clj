@@ -50,8 +50,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- inizContext [^File baseDir]
-  (let [ cfg (File. baseDir DN_CFG)
+(defn- inizContext ^comzotohcljc.util.core.MutableObj [^File baseDir]
+  (let [ cfg (File. baseDir ^String DN_CFG)
          f (File. cfg (str "app/" (name K_PROPS)))
          home (.getParentFile cfg) ]
     (precondDir home)
@@ -76,18 +76,19 @@
 (defn- maybeInizLoaders [^comzotohcljc.util.core.MutableObj ctx]
   (let [ cz (MU/get-cldr) ]
     (if (instance? ExecClassLoader cz)
-      (-> ctx
-        (.setf! K_ROOT_CZLR (.getParent cz))
-        (.setf! K_EXEC_CZLR cz))
+      (do
+        (.setf! ctx K_ROOT_CZLR (.getParent cz))
+        (.setf! ctx K_EXEC_CZLR cz) )
       (setupClassLoader (setupClassLoaderAsRoot ctx)))
     ctx))
 
 (defn- loadConf [^comzotohcljc.util.core.MutableObj ctx]
-  (let [ home (.getf ctx K_BASEDIR)
+  (let [ ^File home (.getf ctx K_BASEDIR)
          cf (File. home  (str DN_CFG "/app/" (name K_PROPS) ))
+        ^comzotohcljc.util.ini.IWin32Conf
          w (WI/parse-inifile cf)
-         lg (.toLowerCase (.optString w K_LOCALE K_LANG "en"))
-         cn (.toUpperCase (.optString w K_LOCALE K_COUNTRY ""))
+         lg (.toLowerCase ^String (.optString w K_LOCALE K_LANG "en"))
+         cn (.toUpperCase ^String (.optString w K_LOCALE K_COUNTRY ""))
          loc (if (SU/hgl? cn) (Locale. lg cn) (Locale. lg)) ]
     (doto ctx
       (.setf! K_PROPS w)
@@ -99,13 +100,13 @@
     (.setf! ctx K_RCBUNDLE rc)
     ctx))
 
-(defn- pre-parse [cli args]
-  (let [ bh (File. (first args))
+(defn- pre-parse [^comzotohcljc.hhh.core.sys.Thingy cli args]
+  (let [ bh (File. ^String (first args))
          ctx (inizContext bh) ]
     (info "inside pre-parse()")
-    (precondDir (File. bh DN_PATCH))
-    (precondDir (File. bh DN_CORE))
-    (precondDir (File. bh DN_LIB))
+    (precondDir (File. bh ^String DN_PATCH))
+    (precondDir (File. bh ^String DN_CORE))
+    (precondDir (File. bh ^String DN_LIB))
     (.setf! ctx K_CLISH cli)
     (.setCtx! cli ctx)
     ctx))
@@ -113,7 +114,8 @@
 (defn- start-exec [^comzotohcljc.util.core.MutableObj ctx]
   (do
     (info "About to start Hohenheim...")
-    (-> (.getf ctx K_EXECV) (.start))
+    (let [ ^Startable exec (.getf ctx K_EXECV) ]
+      (.start exec))
     (info "Hohenheim started.")
     ctx))
 

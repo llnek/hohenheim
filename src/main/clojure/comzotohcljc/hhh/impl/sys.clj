@@ -29,12 +29,13 @@
 (import '(java.net URL))
 (import '(java.io File))
 (import '(java.security SecureRandom))
+(import '(java.util.zip ZipFile))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
-(use '[comzotohcljc.hhh.impl.defaults])
 (use '[comzotohcljc.hhh.impl.ext])
+(use '[comzotohcljc.hhh.impl.defaults :rename {enabled? blockmeta-enabled? } ])
 
 (require '[ comzotohcljc.util.core :as CU ] )
 (require '[ comzotohcljc.util.str :as SU ] )
@@ -77,17 +78,16 @@
 
           (undeploy [this app]
             (let [ ^comzotohcljc.util.core.MutableObj ctx (getCtx this)
-                   dir (File. (.getf ctx K_PLAYDIR) app) ]
+                   dir (File. ^File (.getf ctx K_PLAYDIR) ^String app) ]
               (when (.exists dir)
                   (FileUtils/deleteDirectory dir))))
 
           (deploy [this src]
             (let [ app (FilenameUtils/getBaseName (CU/nice-fpath src))
                    ^comzotohcljc.util.core.MutableObj ctx (getCtx this)
-                   des (File. (.getf ctx K_PLAYDIR) app)
-                   pod (File. (.toURI src)) ]
+                   des (File. ^File (.getf ctx K_PLAYDIR) ^String app) ]
               (when-not (.exists des)
-                (FU/unzip pod des)))) )
+                (FU/unzip src des)))) )
 
       { :typeid (keyword "czc.hhh.impl/Deployer") } )))
 
@@ -105,10 +105,11 @@
   [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx co)
          py (.getf ctx K_PLAYDIR)
-         ^File pd (.getf ctx K_PODSDIR)
-         fs (FileUtils/listFiles pd (into-array String ["pod"]) false) ]
+         pd (.getf ctx K_PODSDIR)
+         fs (FileUtils/listFiles ^File pd (into-array String ["pod"]) false) ]
     (doseq [ ^File f (seq fs)]
-      (.deploy ^comzotohcljc.hhh.impl.defaults.Deployer co (-> f (.toURI)(.toURL))))))
+      (.deploy ^comzotohcljc.hhh.impl.defaults.Deployer co 
+               (-> f (.toURI)(.toURL))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

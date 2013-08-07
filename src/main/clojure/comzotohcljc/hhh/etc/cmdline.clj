@@ -147,7 +147,7 @@
     (throw (CmdHelpError.))))
 
 (defn- generatePassword [len]
-  (println (.text (CE/create-strong-pwd len))))
+  (println (SU/nsb (CE/create-strong-pwd len))))
 
 (defn- make-csr-qs [^ResourceBundle rcb]
   { "fname"
@@ -227,7 +227,7 @@
                                       (str (.toUpperCase (name k)) "=" v)
                                      nil)))
                                    [ :c :st :l :o :ou :cn ])) )
-             ff (File. (:fn rc))
+             ff (File. ^String (:fn rc))
              now (Date.) ]
         (println (str "DN entered: " dn))
         (CC/make-ssv1PKCS12
@@ -274,7 +274,7 @@
       (throw (CmdHelpError.)))))
 
 (defn- genHash [text]
-  (let [ p (CE/pwdify text) ]
+  (let [ ^comzotohcljc.crypto.codec.PasswordAPI p (CE/pwdify text) ]
     (println (.hashed p))))
 
 (defn- onHash [ & args]
@@ -283,7 +283,7 @@
     (throw (CmdHelpError.))))
 
 (defn- encrypt [pkey text]
-  (let [ p (CE/pwdify text pkey) ]
+  (let [ ^comzotohcljc.crypto.codec.PasswordAPI p (CE/pwdify text pkey) ]
     (println (.encoded p))))
 
 (defn- onEncrypt [ & args]
@@ -292,7 +292,7 @@
     (throw (CmdHelpError.))))
 
 (defn- decrypt [pkey secret]
-  (let [ p (CE/pwdify secret pkey) ]
+  (let [ ^comzotohcljc.crypto.codec.PasswordAPI p (CE/pwdify secret pkey) ]
     (println (.text p))))
 
 (defn- onDecrypt [ & args]
@@ -314,7 +314,7 @@
 (defn- onHelp [ & args]
   (throw (CmdHelpError.)))
 
-(defn- scanJars [dir out]
+(defn- scanJars [^File dir ^StringBuilder out]
   (let [ sep (System/getProperty "line.separator")
          fs (FileUtils/listFiles dir (into-array String ["jar"]) false) ]
     (doseq [ f (seq fs) ]
@@ -339,10 +339,10 @@
           (StringUtils/replace "${TEST.SRC}"
                (CU/nice-fpath (File. cwd (str "src/test/" lang)))))
       "utf-8")
-    (scanJars (File. (getHomeDir) DN_DIST) sb)
-    (scanJars (File. (getHomeDir) DN_LIB) sb)
-    (scanJars (File. cwd POD_CLASSES) sb)
-    (scanJars (File. cwd POD_LIB) sb)
+    (scanJars (File. (getHomeDir) ^String DN_DIST) sb)
+    (scanJars (File. (getHomeDir) ^String DN_LIB) sb)
+    (scanJars (File. cwd ^String POD_CLASSES) sb)
+    (scanJars (File. cwd ^String POD_LIB) sb)
     (FileUtils/writeStringToFile (File. ec ".classpath")
       (-> (CU/rc-str (str "com/zotoh/hohenheim/eclipse/" lang "/classpath.txt") "utf-8")
           (StringUtils/replace "${CLASS.PATH.ENTRIES}" (.toString sb)))

@@ -158,15 +158,15 @@
   (System/getProperty (nsb prop) ""))
 
 (defn homedir "Get the user's home directory."
-  []
+  ^File []
   (File. (sysprop "user.home")) )
 
 (defn getuser "Get the current user login name."
-  []
+  ^String []
   (sysprop "user.name"))
 
 (defn getcwd "Get the current dir."
-  []
+  ^String []
   (sysprop "user.dir"))
 
 (defn trim-lastPathSep "Get rid of trailing dir paths."
