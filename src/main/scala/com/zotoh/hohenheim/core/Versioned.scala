@@ -25,5 +25,5 @@ package com.zotoh.hohenheim.core
  * @author kenl
  */
 trait Versioned {
-  def getVersion(): String
+  def version(): String
 }

@@ -21,7 +21,7 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.http )
+  comzotohcljc.hhh.io.http )
 
 (import '(org.eclipse.jetty.server Server Connector))
 (import '(java.net URL))
@@ -50,16 +50,16 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
-(use '[comzotohcljc.hohenheim.core.constants])
-(use '[comzotohcljc.hohenheim.core.sys])
-(use '[comzotohcljc.hohenheim.io.core])
+(use '[comzotohcljc.hhh.core.constants])
+(use '[comzotohcljc.hhh.core.sys])
+(use '[comzotohcljc.hhh.io.core])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 
 
-(defn http-basic-config [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+(defn http-basic-config [^comzotohcljc.hhh.core.sys.Thingy co cfg]
   (let [ ^String file (:server-key cfg)
          port (:port cfg)
          ^String fv (:flavor cfg)
@@ -98,7 +98,7 @@
   (http-basic-config co cfg))
 
 (defmethod comp-configure :czc.hhh.io/JettyIO
-  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
   (let [ c (SU/nsb (:context cfg)) ]
     (.setAttr! co :contextPath (SU/strim c))
     (http-basic-config co cfg) ))
@@ -119,7 +119,7 @@
       (.setIdleTimeout (int 500000)))))
 
 (defmethod comp-initialize :czc.hhh.io/JettyIO
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ conf (doto (HttpConfiguration.)
                 (.setRequestHeaderSize 8192)  ;; from jetty examples
                 (.setOutputBufferSize (int 32768)))
@@ -149,7 +149,7 @@
 
 
 (defmethod ioes-start :czc.hhh.io/JettyIO
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^WebAppContext webapp (JettyUtils/newWebAppContext "czchhhiojetty" co)
          ^Server jetty (.getAttr co :jetty)
          ^File app (.getAttr co :app-dir)
@@ -168,7 +168,7 @@
 
 
 (defmethod ioes-stop :czc.hhh.io/JettyIO
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^Server svr (.getAttr co :jetty) ]
     (when-not (nil? svr)
       (CU/TryC

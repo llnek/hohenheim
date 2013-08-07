@@ -21,7 +21,7 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.netty)
+  comzotohcljc.hhh.io.netty)
 
 (import '(java.net HttpCookie URI URL InetSocketAddress))
 (import '(java.net SocketAddress InetAddress))
@@ -38,10 +38,10 @@
   ChannelGroup))
 (import '(org.jboss.netty.bootstrap ServerBootstrap))
 
-(use '[comzotohcljc.hohenheim.core.sys])
-(use '[comzotohcljc.hohenheim.io.core])
-(use '[comzotohcljc.hohenheim.io.http])
-(use '[comzotohcljc.hohenheim.io.triggers])
+(use '[comzotohcljc.hhh.core.sys])
+(use '[comzotohcljc.hhh.io.core])
+(use '[comzotohcljc.hhh.io.http])
+(use '[comzotohcljc.hhh.io.triggers])
 
 (require '[comzotohcljc.crypto.ssl :as SS])
 (require '[comzotohcljc.netty.comms :as NE])
@@ -157,28 +157,28 @@
 
         (getRequestURL [_] (throw (IOException. "not implemented")))
 
-        (getResultObject [_] (make-http-result))
+        (getResultObj [_] (make-http-result))
         (replyResult [_] )
 
       )
       { :typeid :czc.hhh.io/HTTPEvent } )) )
 
 (defmethod comp-configure :czc.hhh.io/NettyIO
-  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
   (let [ c (SU/nsb (:context cfg)) ]
     (.setAttr! co :contextPath (SU/strim c))
     (http-basic-config co cfg) ))
 
-(defn- make-service-io [^comzotohcljc.hohenheim.io.core.EmitterAPI co]
+(defn- make-service-io [^comzotohcljc.hhh.io.core.EmitterAPI co]
   (reify comzotohcljc.netty.comms.NettyServiceIO
     (before-send [_ ch msg] nil)
     (onerror [_ ch msginfo exp] )
     (onreq [_ ch req msginfo xdata]
       (let [ evt (ioes-reify-event co ch req xdata)
-             ^comzotohcljc.hohenheim.io.core.WaitEventHolder
+             ^comzotohcljc.hhh.io.core.WaitEventHolder
              w (make-async-wait-holder evt
                  (make-netty-trigger ch evt co)) ]
-        (.timeoutMillis w (.getAttr ^comzotohcljc.hohenheim.core.sys.Component co :waitMillis))
+        (.timeoutMillis w (.getAttr ^comzotohcljc.hhh.core.sys.Thingy co :waitMillis))
         (.hold co w)
         (.dispatch co evt)))
     (onres [_ ch rsp msginfo xdata] nil)) )
@@ -187,7 +187,7 @@
     (NE/netty-pipe-handler (make-service-io co)))
 
 (defmethod comp-initialize :czc.hhh.io/NettyIO
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ [^ServerBootstrap bs opts] (NE/server-bootstrap)
          file (.getAttr co :serverKey)
          ssl (CU/notnil? file)
@@ -201,7 +201,7 @@
     co))
 
 (defmethod ioes-start :czc.hhh.io/NettyIO
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ host (SU/nsb (.getAttr co :host))
          ^long port (.getAttr co :port)
          ^comzotohcljc.netty.comms.NettyServer
@@ -221,7 +221,7 @@
     (ioes-started co)))
 
 (defmethod ioes-stop :czc.hhh.io/NettyIO
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ nes (.getAttr co :netty) ]
     (NE/finz-server nes)
     (ioes-stopped co)))

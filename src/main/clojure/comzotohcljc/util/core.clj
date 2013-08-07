@@ -42,7 +42,7 @@
 ;;(set! *warn-on-reflection* true)
 
 (defmulti nice-fpath "Convert the path into nice format (no) backslashes." class)
-(defmulti load-javaprops "Load java properties from input-stream." class)
+(defmulti ^Properties load-javaprops "Load java properties from input-stream." class)
 
 (def ^:private _BOOLS #{ "true" "yes"  "on"  "ok"  "active"  "1"} )
 (def ^:private _PUNCS #{ \_ \- \. \( \) \space } )
@@ -437,7 +437,7 @@
                        (seq (.keySet props)))) )
 
 
-(defprotocol MutableObjectAPI
+(defprotocol MutableObj
   (setf! [_ k v] )
   (seq* [_] )
   (getf [_ k] )

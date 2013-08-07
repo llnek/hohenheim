@@ -21,7 +21,7 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.triggers )
+  comzotohcljc.hhh.io.triggers )
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
@@ -49,9 +49,9 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
-(use '[comzotohcljc.hohenheim.io.events :rename { emitter evt-emitter } ])
-(use '[comzotohcljc.hohenheim.io.core])
-(use '[comzotohcljc.hohenheim.io.http :only (isServletKeepAlive) ])
+(use '[comzotohcljc.hhh.io.events :rename { emitter evt-emitter } ])
+(use '[comzotohcljc.hhh.io.core])
+(use '[comzotohcljc.hhh.io.http :only (isServletKeepAlive) ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -66,7 +66,7 @@
       (.setSecure (.getSecure c))
       (.setVersion (.getVersion c))) )
 
-(defn- replyServlet [ ^comzotohcljc.util.core.MutableObjectAPI res
+(defn- replyServlet [ ^comzotohcljc.util.core.MutableObj res
                      ^HttpServletRequest req
                      ^HttpServletResponse rsp
                     src]
@@ -138,7 +138,7 @@
       (.addCookie cke (.getName c)(.getValue c)))
     (.encode cke)))
 
-(defn- netty-reply [^comzotohcljc.util.core.MutableObjectAPI res
+(defn- netty-reply [^comzotohcljc.util.core.MutableObj res
                     ^Channel ch
                     ^HTTPEvent evt
                     src]
@@ -202,7 +202,7 @@
 
 (defn make-async-wait-holder 
   
-  [ ^comzotohcljc.hohenheim.io.core.AsyncWaitTrigger trigger
+  [ ^comzotohcljc.hhh.io.core.AsyncWaitTrigger trigger
     ^HTTPEvent event ]
 
   (let [ impl (CU/make-mmap) ]
@@ -215,7 +215,7 @@
 
       (resumeOnResult [this res]
         (let [ ^Timer tm (.mm-g impl :timer) 
-               ^comzotohcljc.hohenheim.io.core.EmitterAPI src (.emitter event) ]
+               ^comzotohcljc.hhh.io.core.EmitterAPI src (.emitter event) ]
           (when-not (nil? tm) (.cancel tm))
           (.release src this)
           (.mm-s impl :result res)
@@ -234,7 +234,7 @@
         (timeoutMillis this (* 1000 secs)))
 
       (onExpiry [this]
-        (let [ ^comzotohcljc.hohenheim.io.core.EmitterAPI
+        (let [ ^comzotohcljc.hhh.io.core.EmitterAPI
                src (.emitter event) ]
           (.release src this)
           (.mm-s impl :timer nil)

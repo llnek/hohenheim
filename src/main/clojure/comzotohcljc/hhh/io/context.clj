@@ -21,10 +21,10 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.context
+  comzotohcljc.hhh.io.context
 
   (:gen-class
-    :name comzotohcljc.hohenheim.io.WebContext
+    :name comzotohcljc.hhh.io.WebContext
     :extends javax.servlet.ServletContextListener
     :init myInit
     :constructors {[] []}

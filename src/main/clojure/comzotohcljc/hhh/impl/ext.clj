@@ -21,22 +21,29 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.impl.ext )
+  comzotohcljc.hhh.impl.ext )
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
+(import '(java.net URL))
 (import '(java.io File))
-(import '(com.zotoh.hohenheim.core ServiceError ))
+(import '(com.zotoh.hohenheim.runtime AppMain))
+(import '(com.zotoh.hohenheim.core 
+  Versioned Hierarchial Startable
+  Identifiable Container ServiceError ))
+
+(import '(com.zotoh.hohenheim.io IOEvent))
 (import '(com.zotoh.wflow.core Job))
+(import '(com.zotoh.wflow Pipeline))
 
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(use '[comzotohcljc.hohenheim.core.constants])
-(use '[comzotohcljc.hohenheim.impl.defaults])
-(use '[comzotohcljc.hohenheim.etc.misc])
-(use '[comzotohcljc.hohenheim.core.sys])
+(use '[comzotohcljc.hhh.core.constants])
+(use '[comzotohcljc.hhh.impl.defaults])
+(use '[comzotohcljc.hhh.etc.misc])
+(use '[comzotohcljc.hhh.core.sys])
 
-(use '[comzotohcljc.util.core :only (MutableObjectAPI) ] )
+(use '[comzotohcljc.util.core :only (MutableObj) ] )
 
 (require '[ comzotohcljc.util.scheduler :as SC])
 (require '[ comzotohcljc.util.process :as PU ] )
@@ -51,20 +58,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* false)
 
-(defprotocol AppMainAPI
-  (contextualize [_ container] )
-  (configure [_ options] )
-  (initialize [_] )
-  (dispose [_] ))
-
-
 (defn- make-job "" [_container evt]
   (let [ impl (CU/make-mmap)
          jid (SN/next-long) ]
     (with-meta
       (reify
 
-        MutableObjectAPI
+        MutableObj
 
           (setf! [_ k v] (.mm-s impl k v))
           (clear! [_] (.mm-c impl))
@@ -81,24 +81,25 @@
       { :typeid (keyword "czc.hhh.impl/Job") } )))
 
 (defprotocol ^:private JobCreator
+  ""
   (update [_ event options] ))
 
-(defn- make-jobcreator "" [parObj]
+(defn- make-jobcreator "" ^comzotohcljc.hhh.impl.ext.JobCreator [parObj]
   (let [ impl (CU/make-mmap) ]
     (with-meta
       (reify
 
         JobCreator
 
-          (update [_ evt options]
-            (let [ cz (if (.hasRouter evt)
-                        (.routerClass evt)
-                        (:router-class options))
+          (update [_  evt options]
+            (let [ ^comzotohcljc.hhh.core.sys.Thingy src (.emitter ^IOEvent evt)
+                   c0 (.getAttr src :router)
+                   c1 (:router options)
                    job (make-job parObj evt) ]
               (try
-                (let [ p (make-pipeline job cz)
+                (let [ p (Pipeline. job (if (SU/hgl? c0) c0 c1))
                        q (if (nil? p) (make-OrphanFlow job) p) ]
-                  (.start q))
+                  (.start ^Startable q))
                 (catch Throwable e#
                   (-> (make-FatalErrorFlow job) (.start)))))))
 
@@ -108,7 +109,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ContainerAPI
 
-(defprotocol ContainerAPI ""
+(defprotocol ^:private ContainerAPI 
+  ""
   (reifyOneService [_ sid cfg] )
   (reifyService [_ svc cfg] )
   (reifyServices [_] )
@@ -116,7 +118,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- make-service-block [bk container cfg]
+(defn- make-service-block [^Identifiable bk container cfg]
   (let [ obj (MU/make-obj (.id bk)) ]
     (synthesize-component obj { :ctx container :props cfg } )
     obj))
@@ -126,21 +128,31 @@
     (with-meta
       (reify
 
-        Container
-          (notifyObservers [_ evt] )
-          (core [this]
-            (.getAttr this K_SCHEDULER))
-
-        Component
+        Thingy
 
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
           (setCtx! [_ x] (.mm-s impl :ctx x) )
           (getCtx [_] (.mm-g impl :ctx) )
+
+        Container
+          (notifyObservers [_ evt] )
+          (core [this]
+            (.getAttr this K_SCHEDULER))
+
+        Versioned
           (version [_] "1.0")
+
+        Hierarchial
           (parent [_] nil)
-          (id [_] (.id pod) )
+
+        Identifiable
+          (id [_] (.id ^Identifiable pod) )
+
+        Startable
+          (start [_] )
+          (stop [_] )
 
         ContainerAPI
 
@@ -160,6 +172,7 @@
 
           (reifyOneService [this nm cfg]
             (let [ svc (SU/nsb (:service cfg))
+                   ^comzotohcljc.hhh.core.sys.Registry
                    srg (.mm-g impl K_SVCS)
                    b (:enabled cfg) ]
               (if-not (or (false? b) (SU/nichts? svc))
@@ -167,7 +180,9 @@
                   (.reg srg s)))))
 
           (reifyService [this svc cfg]
-            (let [ root (.getf (.getCtx this) K_COMPS)
+            (let [ ^comzotohcljc.hhh.core.sys.Registry 
+                   root (.getf ^comzotohcljc.util.core.MutableObj (.getCtx this) K_COMPS)
+                   ^comzotohcljc.hhh.core.sys.Registry 
                    bks (.lookup root K_BLOCKS)
                    bk (.lookup bks (keyword svc)) ]
               (when (nil? bk)
@@ -176,13 +191,15 @@
 
     { :typeid (keyword "czc.hhh.ext/Container") } )) )
 
-(defn make-container [pod]
+(defn make-container [^comzotohcljc.hhh.core.sys.Thingy pod]
   (let [ c (make-app-container pod)
-         ctx (.getCtx pod)
+         ^comzotohcljc.util.core.MutableObj ctx (.getCtx pod)
          cl (.getf ctx K_APP_CZLR)
+         ^comzotohcljc.hhh.core.sys.Registry
          root (.getf ctx K_COMPS)
          apps (.lookup root K_APPS)
-         ps { K_APPDIR (File. (-> (.srcUrl pod) (.toURI))) } ]
+         ^URL url (.srcUrl pod) 
+         ps { K_APPDIR (File. (.toURI  url)) } ]
     (comp-compose c apps)
     (comp-contextualize c ctx)
     (comp-configure c ps)
@@ -190,14 +207,14 @@
       (do (PU/coroutine (fn []
                           (do
                             (comp-initialize c)
-                            (.start c))) cl) c)
+                            (.start ^Startable c))) cl) c)
       nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod comp-configure :czc.hhh.ext/Container
-  [co props]
-  (let [ appDir (K_APPDIR props)
+  [^comzotohcljc.hhh.core.sys.Thingy co props]
+  (let [ ^File appDir (K_APPDIR props)
          cfgDir (File. appDir DN_CONF)
          srg (make-component-registry :EventSources K_SVCS "1.0" co)
          mf (CU/load-javaprops (File. appDir MN_FILE))
@@ -218,18 +235,18 @@
       (.setAttr! K_ENVCONF envConf)
       (.setAttr! K_APPCONF appConf)
       (.setAttr! K_MFPROPS mf))
-    (info "container: configured app: " (.id co))))
+    (info "container: configured app: " (.id ^Identifiable co))))
 
 
 (defmethod comp-initialize :czc.hhh.ext/Container
-  [co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ env (.getAttr co K_ENVCONF)
          app (.getAttr co K_APPCONF)
          mf (.getAttr co K_MFPROPS)
          mCZ (SU/strim (.get mf "Main-Class"))
          reg (.getAttr co K_SVCS)
          jc (make-jobcreator co)
-         sc (SC/make-scheduler co)
+         ^comzotohcljc.util.scheduler.SchedulerAPI sc (SC/make-scheduler co)
          cfg (:container env) ]
 
     (.setAttr! co K_SCHEDULER sc)
@@ -239,7 +256,7 @@
     ;;(CU/test-nestr "Main-Class" mCZ)
 
     (when (SU/hgl? mCZ)
-      (let [ obj (MU/make-obj mCZ) ]
+      (let [ ^AppMain obj (MU/make-obj mCZ) ]
         (.contextualize obj co)
         (.configure obj app)
         (.initialize obj)
@@ -248,12 +265,12 @@
     (let [ svcs (:services env) ]
       (if (empty? svcs)
           (warn "No system service defined in env.conf.")
-          (.reifyServices co)))
+          (.reifyServices ^comzotohcljc.hhh.impl.ext.ContainerAPI  co)))
 
     ;; start the scheduler
     (.start sc cfg)
 
-    (info "Initialized app: " (.id co))))
+    (info "Initialized app: " (.id ^Identifiable co))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

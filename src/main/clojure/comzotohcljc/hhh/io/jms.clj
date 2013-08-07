@@ -21,7 +21,7 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.jms)
+  comzotohcljc.hhh.io.jms)
 
 
 (import '(org.apache.commons.lang3 StringUtils))
@@ -49,15 +49,15 @@
 (import '(java.io IOException))
 (import '(com.zotoh.hohenheim.io JMSEvent))
 
-(use '[comzotohcljc.util.core :only (MutableObjectAPI) ])
+(use '[comzotohcljc.util.core :only (MutableObj) ])
 (require '[comzotohcljc.crypto.codec :as CR])
 (require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
-(use '[comzotohcljc.hohenheim.io.events :only (make-jms-event) ])
-(use '[comzotohcljc.hohenheim.core.sys])
-(use '[comzotohcljc.hohenheim.io.core])
+(use '[comzotohcljc.hhh.io.events :only (make-jms-event) ])
+(use '[comzotohcljc.hhh.core.sys])
+(use '[comzotohcljc.hhh.io.core])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -78,12 +78,12 @@
         (getMsg [_] msg))
       { :typeid :czc.hhh.io/JMSEvent } )))
 
-(defn- onMessage [^comzotohcljc.hohenheim.io.core.EmitterAPI co msg]
+(defn- onMessage [^comzotohcljc.hhh.io.core.EmitterAPI co msg]
       ;;if (msg!=null) block { () => msg.acknowledge() }
   (.dispatch co (ioes-reify-event co msg)))
 
 (defmethod comp-configure :czc.hhh.io/JMS
-  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
   (do
     (.setAttr! co :contextFactory (:contextfactory cfg))
     (.setAttr! co :connFactory (:connfactory cfg))
@@ -96,7 +96,7 @@
     (.setAttr! co :destination (:destination cfg))
     co))
 
-(defn- inizFac ^Connection [^comzotohcljc.hohenheim.core.sys.Component co
+(defn- inizFac ^Connection [^comzotohcljc.hhh.core.sys.Thingy co
                 ^InitialContext ctx
                 ^ConnectionFactory cf]
 
@@ -119,7 +119,7 @@
 
     conn))
 
-(defn- inizTopic ^Connection [^comzotohcljc.hohenheim.core.sys.Component co 
+(defn- inizTopic ^Connection [^comzotohcljc.hhh.core.sys.Thingy co
                   ^InitialContext ctx 
                   ^TopicConnectionFactory cf]
 
@@ -143,7 +143,7 @@
     conn))
 
 
-(defn- inizQueue ^Connection [^comzotohcljc.hohenheim.core.sys.Component co 
+(defn- inizQueue ^Connection [^comzotohcljc.hhh.core.sys.Thingy co
                   ^InitialContext ctx 
                   ^QueueConnectionFactory cf]
 
@@ -166,7 +166,7 @@
 
 
 (defmethod ioes-start :czc.hhh.io/JMS
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^String cf (.getAttr co :contextFactory)
          pl (.getAttr co :providerUrl)
          ^String ju (.getAttr co :jndiUser)
@@ -207,7 +207,7 @@
 
 
 (defmethod ioes-stop :czc.hhh.io/JMS
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^Connection c (.getAttr co :conn) ]
     (when-not (nil? c)
       (CU/TryC (.close c)))

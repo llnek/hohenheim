@@ -22,7 +22,7 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.loops )
+  comzotohcljc.hhh.io.loops )
 
 (import '(java.util Date Timer TimerTask))
 (import '(com.zotoh.hohenheim.io TimerEvent))
@@ -30,7 +30,7 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(use '[comzotohcljc.util.core :only (MutableObjectAPI) ])
+(use '[comzotohcljc.util.core :only (MutableObj) ])
 
 (require '[comzotohcljc.util.process :as PU])
 (require '[comzotohcljc.util.dates :as DU])
@@ -38,10 +38,10 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
-(use '[comzotohcljc.hohenheim.io.events  :only (make-timer-event) ])
+(use '[comzotohcljc.hhh.io.events  :only (make-timer-event) ])
 
-(use '[comzotohcljc.hohenheim.core.sys])
-(use '[comzotohcljc.hohenheim.io.core])
+(use '[comzotohcljc.hhh.core.sys])
+(use '[comzotohcljc.hhh.io.core])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -77,7 +77,7 @@
       (.schedule tm tt ds))) )
 
 
-(defn- config-timertask [^comzotohcljc.hohenheim.core.sys.Component co]
+(defn- config-timertask [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ intv (.getAttr co :intervalMillis)
          t (.getAttr co :timer)
          ds (.getAttr co :delayMillis)
@@ -89,7 +89,7 @@
     co))
 
 
-(defn cfg-loopable [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+(defn cfg-loopable [^comzotohcljc.hhh.core.sys.Thingy co cfg]
   (let [ intv (:interval-secs cfg)
          ds (:delay-secs cfg)
          dw (SU/nsb (:delay-when cfg)) ]
@@ -102,12 +102,12 @@
     (info "loopable config: " cfg)
     co))
 
-(defn- start-timer [^comzotohcljc.hohenheim.core.sys.Component co]
+(defn- start-timer [^comzotohcljc.hhh.core.sys.Thingy co]
   (do
     (.setAttr! co :timer (Timer. true))
     (loopable-schedule co)))
 
-(defn- kill-timer [^comzotohcljc.hohenheim.core.sys.Component co]
+(defn- kill-timer [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^Timer t (.getAttr co :timer) ]
     (CU/TryC
         (when-not (nil? t) (.cancel t)) )))
@@ -144,7 +144,7 @@
   (ioes-stopped co))
 
 (defmethod loopable-wakeup :czc.hhh.io/RepeatingTimer
-  [^comzotohcljc.hohenheim.io.core.EmitterAPI co & args]
+  [^comzotohcljc.hhh.io.core.EmitterAPI co & args]
   (.dispatch co (ioes-reify-event co)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -187,7 +187,7 @@
   (ioes-stopped co))
 
 (defmethod loopable-wakeup :czc.hhh.io/OnceTimer
-  [^comzotohcljc.hohenheim.io.core.EmitterAPI co & args]
+  [^comzotohcljc.hhh.io.core.EmitterAPI co & args]
   (do
     (.dispatch co (ioes-reify-event co))
     (.stop ^Startable co)) )
@@ -206,7 +206,7 @@
 
 
 (defmethod ioes-start :czc.hhh.io/ThreadedTimer
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ds (.getAttr co :delayMillis)
          dw (.getAttr co :delayWhen)
          intv (.getAttr co :intervalMillis)
@@ -222,7 +222,7 @@
 
 
 (defmethod ioes-stop :czc.hhh.io/ThreadedTimer
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ loopy (.getAttr co :loopy) ]
     (reset! loopy false)
     (ioes-stopped co)))

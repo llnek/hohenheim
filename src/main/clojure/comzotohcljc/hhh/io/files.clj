@@ -21,7 +21,7 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.files )
+  comzotohcljc.hhh.io.files )
 
 
 (import '(java.io FileFilter File FilenameFilter IOException))
@@ -43,12 +43,12 @@
 
 
 
-(use '[comzotohcljc.hohenheim.core.sys :rename { seq* rego-seq* has? rego-has? } ])
+(use '[comzotohcljc.hhh.core.sys :rename { seq* rego-seq* has? rego-has? } ])
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(use '[comzotohcljc.hohenheim.io.loops :only (loopable-oneloop cfg-loopable) ])
-(use '[comzotohcljc.hohenheim.io.events :only (make-filepicker-event) ])
-(use '[comzotohcljc.hohenheim.io.core])
+(use '[comzotohcljc.hhh.io.loops :only (loopable-oneloop cfg-loopable) ])
+(use '[comzotohcljc.hhh.io.events :only (make-filepicker-event) ])
+(use '[comzotohcljc.hhh.io.core])
 
 (use '[comzotohcljc.util.seqnum :as SN])
 (use '[comzotohcljc.util.core :as CU])
@@ -83,11 +83,11 @@
         (getFile [_] f))
       { :typeid :czc.hhh.io/FileEvent } )))
 
-(defn- postPoll [^comzotohcljc.hohenheim.core.sys.Component co
+(defn- postPoll [^comzotohcljc.hhh.core.sys.Thingy co
                  ^File f 
                  action]
   (let [ ^File des (.getAttr co :dest)
-        ^comzotohcljc.hohenheim.io.core.EmitterAPI src co
+        ^comzotohcljc.hhh.io.core.EmitterAPI src co
          fname (.getName f)
          cf  (if (and (not= action :FP-DELETED) (CU/notnil? des))
                 (CU/TryC
@@ -98,7 +98,7 @@
 
 
 (defmethod comp-configure :czc.hhh.io/FilePicker
-  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
   (let [ ^String root (CU/subs-var (SU/nsb (:target-folder cfg)))
          ^String dest (CU/subs-var (SU/nsb (:recv-folder cfg)))
          ^String mask (SU/nsb (:fmask cfg)) ]
@@ -127,7 +127,7 @@
     co))
 
 (defmethod comp-initialize :czc.hhh.io/FilePicker
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ obs (FileAlterationObserver.
                ^File (.getAttr co :target)
                ^FileFilter (.getAttr co :mask))
@@ -147,7 +147,7 @@
 
 
 (defmethod loopable-oneloop :czc.hhh.io/FilePicker
-  [^comzotohcljc.hohenheim.core.sys.Component co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^FileAlterationMonitor mon (.getAttr co :monitor) ]
     (.start mon)))
 

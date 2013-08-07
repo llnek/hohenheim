@@ -41,7 +41,7 @@
 
 (defn make-if "Create a If Activity."
   [expr then else]
-  (let [ ^comzotohcljc.util.core.MutableObjectAPI b (make-activity :czc.wflow/If) ]
+  (let [ ^comzotohcljc.util.core.MutableObj b (make-activity :czc.wflow/If) ]
     (.setf! b :test expr)
     (.setf! b :then then)
     (.setf! b :else else)
@@ -52,7 +52,7 @@
   (ac-spawnpoint ac cur :czc.wflow/IfPoint))
 
 (defmethod ac-realize! :czc.wflow/If
-  [^comzotohcljc.util.core.MutableObjectAPI ac ^comzotohcljc.util.core.MutableObjectAPI fw]
+  [^comzotohcljc.util.core.MutableObj ac ^comzotohcljc.util.core.MutableObj fw]
   (let [ np (fw-next* fw)
          t (.getf ac :then)
          c (.getf ac :test)
@@ -63,14 +63,14 @@
     fw))
 
 (defmethod fw-evaluate! :czc.wflow/IfPoint
-  [^comzotohcljc.util.core.MutableObjectAPI fw job]
+  [^comzotohcljc.util.core.MutableObj fw job]
   (let [ c (fw-popattmt! fw)
          t (.getf fw :then)
          e (.getf fw :else)
          ^BoolExpr s (.getf fw :test)
          b (.evaluate s job) ]
     (debug "if-(test) = " (if b "OK" "FALSE"))
-    (let [ ^comzotohcljc.util.core.MutableObjectAPI rc (if b t e) ]
+    (let [ ^comzotohcljc.util.core.MutableObj rc (if b t e) ]
       (fw-setattmt! rc c)
       (fw-realize! fw)
       rc)))
@@ -80,7 +80,7 @@
 
 (defn make-while "Create a While Activity."
   [expr body]
-  (let [ ^comzotohcljc.util.core.MutableObjectAPI b (make-activity :czc.wflow/While) ]
+  (let [ ^comzotohcljc.util.core.MutableObj b (make-activity :czc.wflow/While) ]
     (.setf! b :test expr)
     (.setf! b :then body)
     b))
@@ -90,7 +90,7 @@
   (ac-spawnpoint ac cur :czc.wflow/WhilePoint))
 
 (defmethod ac-realize! :czc.wflow/While
-  [^comzotohcljc.util.core.MutableObjectAPI ac ^comzotohcljc.util.core.MutableObjectAPI fw]
+  [^comzotohcljc.util.core.MutableObj ac ^comzotohcljc.util.core.MutableObj fw]
   (let [ b (.getf ac :body)
          ^BoolExpr t (.getf ac :test) ]
     (when-not (nil? b)
@@ -98,7 +98,7 @@
     (.setf! fw :test t)
     fw))
 
-(defn- evalWhilePoint [^comzotohcljc.util.core.MutableObjectAPI fw job]
+(defn- evalWhilePoint [^comzotohcljc.util.core.MutableObj fw job]
   (let [ c (fw-popattmt! fw)
          np (fw-next* fw)
          body (.getf fw :body)
@@ -113,7 +113,7 @@
         (do
           (debug "looping - eval body")
           (fw-setattmt! body c)
-          (let [ ^comzotohcljc.util.core.MutableObjectAPI f (fw-evaluate! body job)
+          (let [ ^comzotohcljc.util.core.MutableObj f (fw-evaluate! body job)
                  id (fw-id* f) ]
             (cond
               (or (= id :czc.wflow/AsyncWaitPoint)
@@ -135,7 +135,7 @@
 ;; expr == ForLoopCountExpr
 (defn make-for "Create a For Activity."
   [expr body]
-  (let [ ^comzotohcljc.util.core.MutableObjectAPI b (make-activity :czc.wflow/For) ]
+  (let [ ^comzotohcljc.util.core.MutableObj b (make-activity :czc.wflow/For) ]
     (.setf! b :test expr)
     (.setf! b :body body)
     b))
@@ -159,7 +159,7 @@
         (set! loopCnt (dec loopCnt))))))
 
 (defmethod ac-realize! :czc.wflow/For
-  [^comzotohcljc.util.core.MutableObjectAPI ac ^comzotohcljc.util.core.MutableObjectAPI fw]
+  [^comzotohcljc.util.core.MutableObj ac ^comzotohcljc.util.core.MutableObj fw]
   (let [ b (.getf ac :body)
          t (.getf ac :test) ]
     (when-not (nil? b)
@@ -177,7 +177,7 @@
 
 (defn make-switch "Create a Switch Activity."
   [choiceExpr]
-  (let [ ^comzotohcljc.util.core.MutableObjectAPI a (make-activity :czc.wflow/Switch) ]
+  (let [ ^comzotohcljc.util.core.MutableObj a (make-activity :czc.wflow/Switch) ]
     (.setf! a :test choiceExpr)
     (.setf! a :default nil)
     (.setf! a :choices {} )
@@ -188,7 +188,7 @@
   (ac-spawnpoint ac cur :czc.wflow/SwitchPoint))
 
 (defmethod ac-realize! :czc.wflow/Switch
-  [^comzotohcljc.util.core.MutableObjectAPI ac ^comzotohcljc.util.core.MutableObjectAPI cur]
+  [^comzotohcljc.util.core.MutableObj ac ^comzotohcljc.util.core.MutableObj cur]
   (let [ df (.getf cur :default)
          cs (.getf ac :choices)
          np (fw-next* cur)
@@ -204,7 +204,7 @@
     cur))
 
 (defmethod fw-evaluate! :czc.wflow/SwitchPoint
-  [^comzotohcljc.util.core.MutableObjectAPI fw job]
+  [^comzotohcljc.util.core.MutableObj fw job]
   (let [ cs (.getf fw :choices)
          df (.getf fw :default)
          c (fw-popattmt! fw)

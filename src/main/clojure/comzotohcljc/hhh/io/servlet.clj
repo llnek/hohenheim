@@ -21,10 +21,10 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.servlet
+  comzotohcljc.hhh.io.servlet
 
   (:gen-class
-    :name comzotohcljc.hohenheim.io.WebServlet
+    :name comzotohcljc.hhh.io.WebServlet
     :extends javax.servlet.http.HttpServlet
     :init myInit
     :constructors {[] []}
@@ -45,8 +45,8 @@
 (import '(com.zotoh.hohenheim.io IOSession HTTPResult HTTPEvent))
 
 
-(use '[comzotohcljc.hohenheim.io.events  :only (make-servlet-event) ])
-(use '[comzotohcljc.hohenheim.io.http  :only (make-http-result) ])
+(use '[comzotohcljc.hhh.io.events  :only (make-servlet-event) ])
+(use '[comzotohcljc.hhh.io.http  :only (make-http-result) ])
 
 
 (use '[clojure.tools.logging :only (info warn error debug)])
@@ -54,8 +54,8 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.mime :as MM])
-(use '[comzotohcljc.hohenheim.io.triggers])
-(use '[comzotohcljc.hohenheim.io.core])
+(use '[comzotohcljc.hhh.io.triggers])
+(use '[comzotohcljc.hhh.io.core])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -156,23 +156,23 @@
 
       (getRequestURL [_] (.getRequestURL req))
 
-      (getResultObject [_] result)
+      (getResultObj [_] result)
       (replyResult [_] )
 
 
       )))
 
-(defn- dispREQ [ ^comzotohcljc.hohenheim.io.WebServlet c0 
+(defn- dispREQ [ ^comzotohcljc.hhh.io.WebServlet c0
                  ^Continuation ct evt req rsp]
-  (let [ ^comzotohcljc.hohenheim.core.sys.Component dev @(.myState c0)
+  (let [ ^comzotohcljc.hhh.core.sys.Thingy dev @(.myState c0)
          wm (.getAttr dev :waitMillis) ]
     (doto ct
       (.setTimeout wm)
       (.suspend rsp))
-    (let [ ^comzotohcljc.hohenheim.io.core.WaitEventHolder 
+    (let [ ^comzotohcljc.hhh.io.core.WaitEventHolder
            w  (make-async-wait-holder evt
                   (make-servlet-trigger req rsp dev))
-          ^comzotohcljc.hohenheim.io.core.EmitterAPI src @(.myState c0) ]
+          ^comzotohcljc.hhh.io.core.EmitterAPI src @(.myState c0) ]
       (.timeoutMillis w wm)
       (.hold src w)
       (.dispatch src evt))))
@@ -189,7 +189,7 @@
 (defn -myInit []
   ([] (atom nil)))
 
-(defn -service [ ^comzotohcljc.hohenheim.io.WebServlet this
+(defn -service [ ^comzotohcljc.hhh.io.WebServlet this
                  ^HttpServletRequest req rsp]
   (let [ state (.myState this)
          evt (ioes-reify-event @state req) ]
@@ -202,7 +202,7 @@
       (doSyncSvc this evt req rsp))))
 
 
-(defn -init [ ^comzotohcljc.hohenheim.io.WebServlet this ^ServletConfig cfg]
+(defn -init [ ^comzotohcljc.hhh.io.WebServlet this ^ServletConfig cfg]
   (do
     (.super-init this cfg)
     (let [ ctx (.getServletContext cfg)

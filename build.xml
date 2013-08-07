@@ -45,7 +45,10 @@
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
-      <arg value="comzotohcljc.hohenheim.etc.cmdline"/>
+      <arg value="comzotohcljc.hhh.impl.defaults" />
+      <arg value="comzotohcljc.hhh.impl.ext" />
+      <arg value="comzotohcljc.hhh.impl.sys" />
+      <arg value="comzotohcljc.hhh.impl.exec" />
     </java>
   </target>
 
@@ -94,29 +97,29 @@
       <arg value="comzotohcljc.dbio.mysql" />
       <arg value="comzotohcljc.dbio.postgresql" />
 
-      <arg value="comzotohcljc.hohenheim.io.context"/>
-      <arg value="comzotohcljc.hohenheim.io.core"/>
-      <arg value="comzotohcljc.hohenheim.io.events"/>
-      <arg value="comzotohcljc.hohenheim.io.files"/>
-      <arg value="comzotohcljc.hohenheim.io.http"/>
-      <arg value="comzotohcljc.hohenheim.io.jms"/>
-      <arg value="comzotohcljc.hohenheim.io.loops"/>
-      <arg value="comzotohcljc.hohenheim.io.mails"/>
-      <arg value="comzotohcljc.hohenheim.io.netty"/>
-      <arg value="comzotohcljc.hohenheim.io.servlet"/>
-      <arg value="comzotohcljc.hohenheim.io.triggers"/>
+      <arg value="comzotohcljc.hhh.io.context"/>
+      <arg value="comzotohcljc.hhh.io.core"/>
+      <arg value="comzotohcljc.hhh.io.events"/>
+      <arg value="comzotohcljc.hhh.io.files"/>
+      <arg value="comzotohcljc.hhh.io.http"/>
+      <arg value="comzotohcljc.hhh.io.jms"/>
+      <arg value="comzotohcljc.hhh.io.loops"/>
+      <arg value="comzotohcljc.hhh.io.mails"/>
+      <arg value="comzotohcljc.hhh.io.netty"/>
+      <arg value="comzotohcljc.hhh.io.servlet"/>
+      <arg value="comzotohcljc.hhh.io.triggers"/>
 
-      <arg value="comzotohcljc.hohenheim.core.constants" />
-      <arg value="comzotohcljc.hohenheim.core.climain" />
-      <arg value="comzotohcljc.hohenheim.core.sys" />
-      <arg value="comzotohcljc.hohenheim.etc.cmdline" />
-      <arg value="comzotohcljc.hohenheim.etc.core" />
-      <arg value="comzotohcljc.hohenheim.etc.misc" />
+      <arg value="comzotohcljc.hhh.core.constants" />
+      <arg value="comzotohcljc.hhh.core.climain" />
+      <arg value="comzotohcljc.hhh.core.sys" />
+      <arg value="comzotohcljc.hhh.etc.cmdline" />
+      <arg value="comzotohcljc.hhh.etc.core" />
+      <arg value="comzotohcljc.hhh.etc.misc" />
 
-      <arg value="comzotohcljc.hohenheim.impl.defaults" />
-      <arg value="comzotohcljc.hohenheim.impl.ext" />
-      <arg value="comzotohcljc.hohenheim.impl.sys" />
-      <arg value="comzotohcljc.hohenheim.impl.exec" />
+      <arg value="comzotohcljc.hhh.impl.defaults" />
+      <arg value="comzotohcljc.hhh.impl.ext" />
+      <arg value="comzotohcljc.hhh.impl.sys" />
+      <arg value="comzotohcljc.hhh.impl.exec" />
 
       <!--
       <arg value="comzotohcljc.wflow.activity" />

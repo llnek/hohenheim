@@ -21,43 +21,41 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.impl.defaults )
+  comzotohcljc.hhh.impl.defaults )
 
 (import '(com.zotoh.frwk.util CoreUtils))
 (import '(com.zotoh.hohenheim.loaders AppClassLoader))
 (import '(com.zotoh.hohenheim.core
+  Versioned Identifiable Hierarchial
   RegistryError ServiceError ConfigError))
 (import '(java.io File))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(use '[ comzotohcljc.util.core :only (MutableObjectAPI) ] )
-(use '[comzotohcljc.hohenheim.core.constants])
-(use '[comzotohcljc.hohenheim.core.sys])
+(use '[ comzotohcljc.util.core :only (MutableObj) ] )
+(use '[comzotohcljc.hhh.core.constants])
+(use '[comzotohcljc.hhh.core.sys])
 
 (require '[ comzotohcljc.util.files :as FU ] )
 (require '[ comzotohcljc.util.core :as CU ] )
 (require '[ comzotohcljc.util.str :as SU ] )
 
 
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* false)
 
-
-
 (defn precondDir "" [d]
-  (CU/test-cond (str "Directory " d " must be read-writable.") (FU/dir-readwrite? d)))
+  (CU/test-cond (str "Directory " d " must be read-writable.") 
+                (FU/dir-readwrite? d)))
 
 (defn precondFile "" [f]
-  (CU/test-cond (str "File " f " must be readable.") (FU/file-read? f)))
+  (CU/test-cond (str "File " f " must be readable.") 
+                (FU/file-read? f)))
 
-(defn maybeDir "" [^comzotohcljc.util.core.MutableObjectAPI m kn]
+(defn maybeDir "" ^File [^comzotohcljc.util.core.MutableObj m kn]
   (let [ v (.getf m kn) ]
     (cond
       (instance? String v)
-      (File. v)
+      (File. ^String v)
 
       (instance? File v)
       v
@@ -67,7 +65,7 @@
 
 (defn print-mutableObj
   ([ctx] (print-mutableObj ctx false))
-  ([^comzotohcljc.util.core.MutableObjectAPI ctx dbg]
+  ([^comzotohcljc.util.core.MutableObj ctx dbg]
     (let [ b (StringBuilder.) ]
       (doseq [ [k v] (.seq* ctx) ]
         (.append b (str k " = " v "\n")))
@@ -77,11 +75,27 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defprotocol Deployer
+  ""
+  (undeploy [_ app] )
+  (deploy [_ src] ))
+
+(defprotocol PODMeta 
+  ""
+  (typeof [_ ])
+  (srcUrl [_ ]))
+
+(defprotocol Kernel 
+  ""
+  (start [_] )
+  (stop [_] ))
 
 
-(defn make-context "" []
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn make-context "" ^comzotohcljc.util.core.MutableObj []
   (let [ impl (CU/make-mmap) ]
-    (reify MutableObjectAPI
+    (reify MutableObj
       (setf! [_ k v] (.mm-s impl k v) )
       (seq* [_] (seq (.mm-m* impl)))
       (getf [_ k] (.mm-g impl k) )
@@ -100,15 +114,21 @@
     (with-meta
       (reify
 
-        Component
+        Thingy
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
-          (parent [_] parObj)
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
+
+        Hierarchial
+          (parent [_] parObj)
+
+        Versioned
           (version [_] ver)
+
+        Identifiable
           (id [_] regoId)
 
         Registry
@@ -122,7 +142,7 @@
             (let [ cache (.mm-g impl :cache)
                    c (get cache cid) ]
               (if (and (nil? c) (satisfies? Registry parObj))
-                (.lookup ^comzotohcljc.hohenheim.core.sys.Registry parObj cid)
+                (.lookup ^comzotohcljc.hhh.core.sys.Registry parObj cid)
                 c)) )
 
           (seq* [_]
@@ -130,17 +150,17 @@
               (seq cache)))
 
           (dereg [this c]
-            (let [ cid (if (nil? c) nil (.id c))
+            (let [ cid (if (nil? c) nil (.id ^Identifiable c))
                    cache (.mm-g impl :cache) ]
               (when (has? this cid)
                 (.mm-s impl :cache (dissoc cache cid)))))
 
           (reg [this c]
-            (let [ cid (if (nil? c) nil (.id c))
+            (let [ cid (if (nil? c) nil (.id ^Identifiable c))
                    cache (.mm-g impl :cache) ]
               (when (has? this cid)
                 (throw (RegistryError.
-                         (str "Component \"" cid "\" already exists" ))))
+                         (str "Thingy \"" cid "\" already exists" ))))
               (.mm-s impl :cache (assoc cache cid c)))) )
 
       { :typeid (keyword (str "czc.hhh.impl/" (name regoType))) } )) )
@@ -148,11 +168,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn comp-clone-context 
-  [^comzotohcljc.hohenheim.core.sys.Component co
-   ^comzotohcljc.util.core.MutableObjectAPI ctx]
+  [^comzotohcljc.hhh.core.sys.Thingy co
+   ^comzotohcljc.util.core.MutableObj ctx]
   (do
     (when-not (nil? ctx)
-      (let [ ^comzotohcljc.util.core.MutableObjectAPIi x (make-context) ]
+      (let [ x (make-context) ]
         (doseq [ [k v] (.seq* ctx) ]
           (.setf! x k v))
         (.setCtx! co x)))

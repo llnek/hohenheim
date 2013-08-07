@@ -90,7 +90,7 @@ public interface HTTPEvent  extends IOEvent {
 
   //------------
 
-  public HTTPResult getResultObject();
+  public HTTPResult getResultObj();
   public void replyResult();
 }
 

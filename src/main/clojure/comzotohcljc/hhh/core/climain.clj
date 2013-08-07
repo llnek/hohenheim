@@ -21,7 +21,7 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.core.climain )
+  comzotohcljc.hhh.core.climain )
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
@@ -33,12 +33,13 @@
 (require '[comzotohcljc.util.files :as FU])
 (require '[comzotohcljc.util.ini :as WI])
 
-(use '[comzotohcljc.hohenheim.impl.exec :only (make-execvisor) ])
-(use '[comzotohcljc.hohenheim.core.constants])
-(use '[comzotohcljc.hohenheim.core.sys])
-(use '[comzotohcljc.hohenheim.impl.defaults])
+(use '[comzotohcljc.hhh.impl.exec :only (make-execvisor) ])
+(use '[comzotohcljc.hhh.core.constants])
+(use '[comzotohcljc.hhh.core.sys])
+(use '[comzotohcljc.hhh.impl.defaults])
 
 (import '(com.zotoh.hohenheim.core
+  Versioned Identifiable Hierarchial
   Startable ConfigError))
 (import '(com.zotoh.hohenheim.loaders
   AppClassLoader RootClassLoader ExecClassLoader))
@@ -49,7 +50,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- inizContext [baseDir]
+(defn- inizContext [^File baseDir]
   (let [ cfg (File. baseDir DN_CFG)
          f (File. cfg (str "app/" (name K_PROPS)))
          home (.getParentFile cfg) ]
@@ -60,19 +61,19 @@
       (.setf! K_BASEDIR home)
       (.setf! K_CFGDIR cfg))))
 
-(defn- setupClassLoader [ctx]
+(defn- setupClassLoader [^comzotohcljc.util.core.MutableObj ctx]
   (let [ root (.getf ctx K_ROOT_CZLR)
          cl (ExecClassLoader. root) ]
     (MU/set-cldr cl)
     (.setf! ctx K_EXEC_CZLR cl)
     ctx))
 
-(defn- setupClassLoaderAsRoot [ctx]
+(defn- setupClassLoaderAsRoot [^comzotohcljc.util.core.MutableObj ctx]
   (let [ root (RootClassLoader. (MU/get-cldr)) ]
     (.setf! ctx K_ROOT_CZLR root)
     ctx))
 
-(defn- maybeInizLoaders [ctx]
+(defn- maybeInizLoaders [^comzotohcljc.util.core.MutableObj ctx]
   (let [ cz (MU/get-cldr) ]
     (if (instance? ExecClassLoader cz)
       (-> ctx
@@ -81,7 +82,7 @@
       (setupClassLoader (setupClassLoaderAsRoot ctx)))
     ctx))
 
-(defn- loadConf [ctx]
+(defn- loadConf [^comzotohcljc.util.core.MutableObj ctx]
   (let [ home (.getf ctx K_BASEDIR)
          cf (File. home  (str DN_CFG "/app/" (name K_PROPS) ))
          w (WI/parse-inifile cf)
@@ -92,8 +93,8 @@
       (.setf! K_PROPS w)
       (.setf! K_L10N loc))) )
 
-(defn- setupResources [ctx]
-  (let [ rc (LN/get-resource "comzotohcljc.hohenheim.etc.Resources"
+(defn- setupResources [^comzotohcljc.util.core.MutableObj ctx]
+  (let [ rc (LN/get-resource "comzotohcljc.hhh.etc.Resources"
                              (.getf ctx K_LOCALE)) ]
     (.setf! ctx K_RCBUNDLE rc)
     ctx))
@@ -109,22 +110,23 @@
     (.setCtx! cli ctx)
     ctx))
 
-(defn- start-exec [ctx]
+(defn- start-exec [^comzotohcljc.util.core.MutableObj ctx]
   (do
     (info "About to start Hohenheim...")
     (-> (.getf ctx K_EXECV) (.start))
     (info "Hohenheim started.")
     ctx))
 
-(defn- primodial [ctx]
+(defn- primodial [^comzotohcljc.util.core.MutableObj ctx]
   (let [ cl (.getf ctx K_EXEC_CZLR)
          cli (.getf ctx K_CLISH)
+        ^comzotohcljc.util.ini.IWin32Conf
          wc (.getf ctx K_PROPS)
          cz (.optString wc K_COMPS K_EXECV "") ]
     (CU/test-cond "conf file:exec-visor"
-                  (= cz "comzotohcljc.hohenheim.impl.Execvisor"))
+                  (= cz "comzotohcljc.hhh.impl.Execvisor"))
     (info "inside primodial()")
-    (let [ execv (make-execvisor cli) ]
+    (let [ ^comzotohcljc.util.core.MutableObj execv (make-execvisor cli) ]
       (.setf! ctx K_EXECV execv)
       (synthesize-component execv { :ctx ctx } )
       ctx)))
@@ -134,17 +136,17 @@
     (info "Enabling remote shutdown...")
     nil))
 
-(defn- stop-cli [ctx trigger]
-  (let [ pid (.getf ctx K_PIDFILE)
+(defn- stop-cli [^comzotohcljc.util.core.MutableObj ctx trigger]
+  (let [ ^File pid (.getf ctx K_PIDFILE)
          execv (.getf ctx K_EXECV) ]
     (when-not (nil? pid) (FileUtils/deleteQuietly pid))
     (info "About to stop Hohenheim...")
     (when-not (nil? execv)
-      (.stop execv))
+      (.stop ^Startable execv))
     (info "Hohenheim stopped.")
     (deliver trigger 911)))
 
-(defn- hookShutdown [ctx]
+(defn- hookShutdown [^comzotohcljc.util.core.MutableObj ctx]
   (let [ cli (.getf ctx K_CLISH)
          trigger (promise) ]
     (.addShutdownHook (Runtime/getRuntime)
@@ -154,13 +156,13 @@
     (debug "Added shutdown hook.")
     [ctx trigger] ))
 
-(defn- writePID [ctx]
-  (let [ fp (File. (.getf ctx K_BASEDIR) "hohenheim.pid") ]
+(defn- writePID [^comzotohcljc.util.core.MutableObj ctx]
+  (let [ fp (File. ^File (.getf ctx K_BASEDIR) "hohenheim.pid") ]
     (FileUtils/writeStringToFile fp (PU/pid) "utf-8")
     (.setf! ctx K_PIDFILE fp)
     ctx))
 
-(defn- pause-cli [[ctx trigger]]
+(defn- pause-cli [[ ^comzotohcljc.util.core.MutableObj ctx trigger]]
   (do
     (print-mutableObj ctx)
     (info "Applications are now running...")
@@ -179,15 +181,21 @@
   (let [ impl (CU/make-mmap) ]
     (reify
 
-      Component
+      Thingy
 
         (setCtx! [_ x] (.mm-s impl :ctx x))
         (getCtx [_] (.mm-g impl :ctx))
-        (parent [_] nil)
         (setAttr! [_ a v] (.mm-s impl a v) )
         (clrAttr! [_ a] (.mm-r impl a) )
         (getAttr [_ a] (.mm-g impl a) )
+
+      Hierarchial
+        (parent [_] nil)
+
+      Versioned
         (version [_] "1.0")
+
+      Identifiable
         (id [_] K_CLISH)
 
       Startable
@@ -203,7 +211,7 @@
             (hookShutdown)
             (pause-cli)) )
 
-        (stop [_] (.stop (.mm-g impl K_EXECV) )))) )
+        (stop [_] (.stop ^Startable (.mm-g impl K_EXECV) )))) )
 
 
 (defn start-main "" [ & args ]
@@ -211,8 +219,8 @@
     (when (< (count args) 1)
       (throw (CmdHelpError. "Hohenheim Home not defined.")))
     (info "set hohenheim-home= " (first args))
-    (-> (apply make-climain args) (.start)) ))
-
+    (let [ ^Startable cm  (apply make-climain args) ]
+      (.start cm))))
 
 
 

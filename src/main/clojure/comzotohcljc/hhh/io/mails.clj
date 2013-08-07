@@ -21,7 +21,7 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.mails )
+  comzotohcljc.hhh.io.mails )
 
 (import '(java.util Properties))
 (import '(javax.mail.internet MimeMessage))
@@ -39,10 +39,10 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
-(use '[comzotohcljc.hohenheim.core.sys])
+(use '[comzotohcljc.hhh.core.sys])
 
-(use '[comzotohcljc.hohenheim.io.loops ])
-(use '[comzotohcljc.hohenheim.io.core ])
+(use '[comzotohcljc.hhh.io.loops ])
+(use '[comzotohcljc.hhh.io.core ])
 
 
 
@@ -55,7 +55,7 @@
     (when-not (nil? fd)
       (when (.isOpen fd) (.close fd true))) ))
 
-(defn- closeStore [^comzotohcljc.hohenheim.core.sys.Component co]
+(defn- closeStore [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^Store conn (.getAttr co :store)
          fd (.getAttr co :folder) ]
     (closeFolder fd)
@@ -65,7 +65,7 @@
     (.setAttr! co :folder nil)) )
 
 (defn- resolve-provider
-  [^comzotohcljc.hohenheim.core.sys.Component co protos ^String demo ^String mock]
+  [^comzotohcljc.hhh.core.sys.Thingy co protos ^String demo ^String mock]
 
   (let [ [^String pkey ^String sn] (if (.getAttr co :ssl) (first protos) (last protos))
          props (doto (Properties.)
@@ -121,7 +121,7 @@
       { :typeid :czc.hhh.io/EmailEvent } )))
 
 
-(defn- connect-pop3 [^comzotohcljc.hohenheim.core.sys.Component co]
+(defn- connect-pop3 [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ pwd (SU/nsb (.getAttr co :pwd))
          ^Session session (.getAttr co :session)
          user (.getAttr co :user)
@@ -140,8 +140,8 @@
         (throw (IOException. "cannot find inbox.")) ))))
 
 
-(defn- read-pop3 [^comzotohcljc.hohenheim.io.core.EmitterAPI co msgs]
-  (let [^comzotohcljc.hohenheim.core.sys.Component src co]
+(defn- read-pop3 [^comzotohcljc.hhh.io.core.EmitterAPI co msgs]
+  (let [^comzotohcljc.hhh.core.sys.Thingy src co]
     (doseq [ ^MimeMessage mm (seq msgs) ]
       (try
           (doto mm (.getAllHeaders)(.getContent))
@@ -150,7 +150,7 @@
           (when (.getAttr src :deleteMsg)
             (.setFlag mm Flags$Flag/DELETED true)))))) )
 
-(defn- scan-pop3 [^comzotohcljc.hohenheim.core.sys.Component co]
+(defn- scan-pop3 [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^Store s (.getAttr co :store)
          ^Folder fd (.getAttr co :folder) ]
     (when (and (CU/notnil? fd) (not (.isOpen fd)))
@@ -173,7 +173,7 @@
       (closeStore co))) )
 
 
-(defn- std-config [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+(defn- std-config [^comzotohcljc.hhh.core.sys.Thingy co cfg]
   (let [ port (:port cfg)
          pwd (:passwd cfg) ]
     (.setAttr! co :ssl (if (false? (:ssl cfg)) false true))
@@ -185,7 +185,7 @@
     co))
 
 (defmethod comp-configure :czc.hhh.io/POP3
-  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
   (let [ demo (System/getProperty "hohenheim.demo.pop3" "") ]
     (std-config co cfg)
     (resolve-provider co
@@ -229,7 +229,7 @@
 
 
 (defmethod comp-configure :czc.hhh.io/IMAP
-  [^comzotohcljc.hohenheim.core.sys.Component co cfg]
+  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
   (let [ demo (System/getProperty "hohenheim.demo.imap" "") ]
     (std-config co cfg)
     (resolve-provider co

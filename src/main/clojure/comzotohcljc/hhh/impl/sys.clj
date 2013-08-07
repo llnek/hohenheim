@@ -21,18 +21,20 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.impl.sys )
+  comzotohcljc.hhh.impl.sys )
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
 (import '(com.zotoh.hohenheim.loaders AppClassLoader))
-(import '(com.zotoh.hohenheim.core Startable))
+(import '(com.zotoh.hohenheim.core Identifiable Hierarchial Versioned Startable))
+(import '(java.net URL))
 (import '(java.io File))
+(import '(java.security SecureRandom))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(use '[comzotohcljc.hohenheim.core.constants])
-(use '[comzotohcljc.hohenheim.core.sys])
-(use '[comzotohcljc.hohenheim.impl.defaults])
-(use '[comzotohcljc.hohenheim.impl.ext])
+(use '[comzotohcljc.hhh.core.constants])
+(use '[comzotohcljc.hhh.core.sys])
+(use '[comzotohcljc.hhh.impl.defaults])
+(use '[comzotohcljc.hhh.impl.ext])
 
 (require '[ comzotohcljc.util.core :as CU ] )
 (require '[ comzotohcljc.util.str :as SU ] )
@@ -46,21 +48,6 @@
 ;;(set! *warn-on-reflection* false)
 
 
-
-(defprotocol DeployerAPI ""
-  (undeploy [_ app] )
-  (deploy [_ src] ))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defprotocol PODMetaAPI ""
-  (typeof [_ ])
-  (srcUrl [_ ]))
-
-(defprotocol KernelAPI ""
-  (start [_] )
-  (stop [_] ))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Deployer
 
@@ -69,28 +56,34 @@
     (with-meta
       (reify
 
-        Component
+        Thingy
 
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
           (setCtx! [_ x] (.mm-s impl :ctx x) )
           (getCtx [_] (.mm-g impl :ctx) )
+
+        Versioned
           (version [_] "1.0" )
+
+        Hierarchial
           (parent [_] nil)
+
+        Identifiable
           (id [_] K_DEPLOYER )
 
-        DeployerAPI
+        Deployer
 
           (undeploy [this app]
-            (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (getCtx this)
+            (let [ ^comzotohcljc.util.core.MutableObj ctx (getCtx this)
                    dir (File. (.getf ctx K_PLAYDIR) app) ]
               (when (.exists dir)
                   (FileUtils/deleteDirectory dir))))
 
           (deploy [this src]
             (let [ app (FilenameUtils/getBaseName (CU/nice-fpath src))
-                   ^comzotohcljc.util.core.MutableObjectAPI ctx (getCtx this)
+                   ^comzotohcljc.util.core.MutableObj ctx (getCtx this)
                    des (File. (.getf ctx K_PLAYDIR) app)
                    pod (File. (.toURI src)) ]
               (when-not (.exists des)
@@ -109,13 +102,13 @@
     (comp-clone-context co ctx)))
 
 (defmethod comp-initialize :czc.hhh.impl/Deployer
-  [^comzotohcljc.hohenheim.core.sys.Component co]
-  (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (.getCtx co)
+  [^comzotohcljc.hhh.core.sys.Thingy co]
+  (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx co)
          py (.getf ctx K_PLAYDIR)
          ^File pd (.getf ctx K_PODSDIR)
          fs (FileUtils/listFiles pd (into-array String ["pod"]) false) ]
     (doseq [ ^File f (seq fs)]
-      (.deploy ^comzotohcljc.hohenheim.impl.sys.DeployerAPI co (-> f (.toURI)(.toURL))))))
+      (.deploy ^comzotohcljc.hhh.impl.defaults.Deployer co (-> f (.toURI)(.toURL))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -123,12 +116,12 @@
 
 (defn- maybe-start-pod 
   
-  [^comzotohcljc.hohenheim.core.sys.Component knl 
-   ^comzotohcljc.hohenheim.core.sys.Component pod]
+  [^comzotohcljc.hhh.core.sys.Thingy knl
+   ^comzotohcljc.hhh.core.sys.Thingy pod]
 
   (CU/TryC
     (let [ cache (.getAttr knl K_CONTAINERS)
-           cid (.id pod)
+           cid (.id ^Identifiable pod)
            ctr (make-container pod) ]
       (if (CU/notnil? ctr)
         (do
@@ -145,30 +138,36 @@
     (with-meta
       (reify
 
-        Component
+        Thingy
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
+
+        Versioned
           (version [_] "1.0")
+
+        Hierarchial
           (parent [_] nil)
+
+        Identifiable
           (id [_] K_KERNEL )
  
-        KernelAPI
+        Kernel
 
           (start [this]
-            (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (getCtx this)
-                   ^comzotohcljc.hohenheim.core.sys.Registry root (.getf ctx K_COMPS)
-                   ^comzotohcljc.util.core.MutableObjectAPI apps (.lookup root K_APPS) ]
+            (let [ ^comzotohcljc.util.core.MutableObj ctx (getCtx this)
+                   ^comzotohcljc.hhh.core.sys.Registry root (.getf ctx K_COMPS)
+                   ^comzotohcljc.util.core.MutableObj apps (.lookup root K_APPS) ]
               ;; need this to prevent deadlocks amongst pods
               ;; when there are dependencies
               ;; TODO: need to handle this better
               (doseq [ [k v] (seq* apps) ]
                 (let [ r (-> (CU/new-random) (.nextInt 6)) ]
                   (maybe-start-pod this v)
-                  (PU/safe-wait (* 1000 (Math/max 1 r)))))))
+                  (PU/safe-wait (* 1000 (Math/max (int 1) r)))))))
 
           (stop [this]
             (let [ cs (.mm-g impl K_CONTAINERS) ]
@@ -187,18 +186,24 @@
     (with-meta
       (reify
 
-        Component
+        Thingy
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
+
+        Versioned
           (version [_] ver)
+
+        Hierarchial
           (parent [_] parObj)
+
+        Identifiable
           (id [_] pid )
 
-        PODMetaAPI
+        PODMeta
 
           (srcUrl [_] pathToPOD)
           (typeof [_] podType))
@@ -209,11 +214,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod comp-initialize :czc.hhh.impl/PODMeta
-  [^comzotohcljc.hohenheim.core.sys.Component co]
-  (let [ ^comzotohcljc.util.core.MutableObjectAPI ctx (.getCtx co)
+  [^comzotohcljc.hhh.core.sys.Thingy co]
+  (let [ ^comzotohcljc.util.core.MutableObj ctx (.getCtx co)
          rcl (.getf ctx K_ROOT_CZLR)
+         ^URL url (.srcUrl ^comzotohcljc.hhh.impl.defaults.PODMeta co)
          cl  (AppClassLoader. rcl) ]
-    (.configure cl (CU/nice-fpath (File. (.toURI (.srcUrl co)))) )
+    (.configure cl (CU/nice-fpath (File. (.toURI  url))) )
     (.setf! ctx K_APP_CZLR cl)))
 
 (defmethod comp-compose :czc.hhh.impl/Kernel

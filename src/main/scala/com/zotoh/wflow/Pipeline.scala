@@ -34,8 +34,8 @@ import com.zotoh.wflow.core.Job
 
 trait PipelineDelegate {
 
-  def getStartActivity() : Activity
-  def onStop(job:Job) : Unit
+  def getStartActivity(pipe:Pipeline) : Activity
+  def onStop(pipe:Pipeline) : Unit
   def onError(err:Throwable, curPt:FlowPoint) : Activity
 
 }
@@ -83,7 +83,7 @@ class Pipeline (private val _theJob:Job, private val _delegateClass:String) {
   def getPID() = _pid
 
   protected def onEnd() {
-    _delegate.onStop(_theJob)
+    _delegate.onStop(this)
   }
 
   protected[wflow] def onError(e:Throwable, cur:FlowPoint) : Activity = {
@@ -95,7 +95,7 @@ class Pipeline (private val _theJob:Job, private val _delegateClass:String) {
   }
 
   protected def onStart():Activity = {
-    _delegate.getStartActivity() match {
+    _delegate.getStartActivity(this) match {
       case x:Activity => x
       case _ => new Nihil()
     }

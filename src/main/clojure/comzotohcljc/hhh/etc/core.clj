@@ -20,12 +20,12 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.etc.core
+  comzotohcljc.hhh.etc.core
   (:gen-class))
 
 (use '[clojure.tools.logging :only (info debug)])
 
-(require '[comzotohcljc.hohenheim.etc.cmdline :as CL])
+(require '[comzotohcljc.hhh.etc.cmdline :as CL])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.files :as FU])

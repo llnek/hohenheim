@@ -38,8 +38,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defmulti parse-inifile "Parse a INI config file." class)
-
 (defprotocol IWin32Conf "A Windows INI file object."
 
   (getSection [_ sectionName] )
@@ -53,6 +51,8 @@
   (optLong [_ sectionName property dft] )
   (optBool [_ sectionName property dft] )
   (optDouble [_ sectionName property dft] ) )
+
+(defmulti ^comzotohcljc.util.ini.IWin32Conf parse-inifile "Parse a INI config file." class)
 
 
 (defn- throwBadIni [^LineNumberReader rdr]

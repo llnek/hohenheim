@@ -21,17 +21,17 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.etc.cmdline )
+  comzotohcljc.hhh.etc.cmdline )
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(com.zotoh.hohenheim.etc CmdHelpError))
 (import '(org.apache.commons.io FileUtils))
-(import '(java.util Properties Date))
+(import '(java.util Calendar ResourceBundle Properties Date))
 (import '(java.io File))
 
-(require '[comzotohcljc.hohenheim.core.climain :as CLI])
+(require '[comzotohcljc.hhh.core.climain :as CLI])
 (require '[comzotohcljc.i18n.resources :as RC])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.dates :as DU])
@@ -41,7 +41,7 @@
 (require '[comzotohcljc.crypto.codec :as CE])
 (require '[comzotohcljc.crypto.core :as CC])
 
-(use '[comzotohcljc.hohenheim.core.constants])
+(use '[comzotohcljc.hhh.core.constants])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

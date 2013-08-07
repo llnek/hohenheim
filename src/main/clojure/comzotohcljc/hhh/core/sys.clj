@@ -22,21 +22,21 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.core.sys )
+  comzotohcljc.hhh.core.sys )
+
+(import '(com.zotoh.hohenheim.core 
+  Hierarchial Identifiable Versioned))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 
-(defprotocol Component ""
+(defprotocol Thingy ""
   (setCtx! [_ ctx] )
   (getCtx [_] )
   (setAttr! [_ a v] )
   (clrAttr! [_ a] )
-  (getAttr [_ a] )
-  (version [_] )
-  (parent [_] )
-  (id [_] ))
+  (getAttr [_ a] ) )
 
 (defprotocol Registry ""
   (lookup [_ cid] )

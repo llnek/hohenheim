@@ -22,16 +22,18 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hohenheim.io.core )
+  comzotohcljc.hhh.io.core )
 
-(import '(com.zotoh.hohenheim.core Identifiable Disposable Startable))
+(import '(com.zotoh.hohenheim.core 
+  Versioned Hierarchial
+  Identifiable Disposable Startable))
 (import '(com.zotoh.hohenheim.core Container))
 (import '(com.zotoh.hohenheim.io Emitter))
 
 (import '(java.util HashMap))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(use '[comzotohcljc.hohenheim.core.sys])
+(use '[comzotohcljc.hhh.core.sys])
 
 (require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
@@ -102,19 +104,25 @@
     (with-meta
       (reify
 
-        Component
+        Thingy
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
+
+        Versioned
           (version [_] "1.0")
+
+        Hierarchial
           (parent [_] parObj)
+
+        Identifiable
           (id [_] eeid)
 
         Emitter
-          (container [this] (parent this))
+          (container [this] (.parent this))
 
         Disposable
 
