@@ -207,6 +207,7 @@
         <exclude name="**/.svn"/>
       </fileset>
       <fileset dir="${src.dir}/clojure">
+        <exclude name="**/*.meta"/>
         <exclude name="**/*.clj"/>
         <exclude name="**/.svn"/>
       </fileset>
@@ -299,6 +300,12 @@
        -->
 
   <target name="pack_resources">
+
+    <copy todir="${pack.dir}/blocks" flatten="true">
+      <fileset dir="${src.dir}/clojure">
+        <include name="**/*.meta"/>
+      </fileset>
+    </copy>
 
     <copy todir="${pack.dir}/etc">
       <fileset dir="${basedir}/etc"/>
