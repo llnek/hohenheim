@@ -364,7 +364,7 @@
   ^KeyPair
   [^String algo keylen]
   (let [ kpg (doto (KeyPairGenerator/getInstance algo _BCProvider)
-                   (.initialize keylen (get-srand))) ]
+                   (.initialize ^long keylen (get-srand))) ]
     (debug "Generating keypair for algo " algo ", length " keylen)
     (.generateKeyPair kpg)) )
 

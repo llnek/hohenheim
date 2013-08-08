@@ -147,8 +147,8 @@
 
     (instance? InputStream p) (.setBinaryStream ps pos p)
     (instance? Reader p) (.setCharacterStream ps pos p)
-    (instance? Blob p) (.setBlob ps pos ^Blob p)
-    (instance? Clob p) (.setClob ps pos ^Clob p)
+    (instance? Blob p) (.setBlob ps ^long pos ^Blob p)
+    (instance? Clob p) (.setClob ps ^long pos ^Clob p)
 
     (instance? (MU/chars-class) p) (.setString ps pos (String. ^chars p))
     (instance? (MU/bytes-class) p) (.setBytes ps pos ^bytes p)

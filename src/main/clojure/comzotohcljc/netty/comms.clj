@@ -543,13 +543,14 @@
     (let [ ctx (CS/make-sslClientCtx (= "https" (.getScheme (.toURI targetUrl))))
            ^String host (.getHost targetUrl)
            pnum (.getPort targetUrl)
-           port (if (< pnum 0) (if (nil? ctx) 80 443) pnum)
+           ^long port (if (< pnum 0) (if (nil? ctx) 80 443) pnum)
            pl (make-pipeClient ctx serviceIO)
            ^ClientBootstrap cli (:client clientr)
            ^ChannelGroup cg (:cgroup clientr) ]
       (debug "Netty client connecting to " host ":" port)
       (.setPipelineFactory cli pl)
-      (let [ ^ChannelFuture cf (doto (.connect cli (InetSocketAddress. host port))
+      (let [ ^ChannelFuture cf (doto (.connect cli 
+                                               (InetSocketAddress. host port))
                   (.awaitUninterruptibly))
              ok (.isSuccess cf)
              e (if (not ok) (.getCause cf) nil) ]

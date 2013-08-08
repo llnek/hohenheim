@@ -62,9 +62,9 @@
                     (when (fn? func) (func)))))
          [^Date dw ^long ds] delays ]
     (when (instance? Date dw)
-      (.schedule tm tt dw intv) )
+      (.schedule tm tt dw ^long intv) )
     (when (number? ds)
-      (.schedule tm tt ds intv))) )
+      (.schedule tm tt ds ^long intv))) )
 
 (defn- config-timer [^Timer tm delays func]
   (let [ tt (proxy [TimerTask][]
