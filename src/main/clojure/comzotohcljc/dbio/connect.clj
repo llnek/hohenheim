@@ -66,7 +66,7 @@
     (str (:driver jdbc) (:url jdbc)
          (:user jdbc) (SU/nsb (:pwd jdbc)))))
 
-(defn- maybe-finz-pool [^long hc]
+(defn- maybe-finz-pool [ hc]
   (let [ tloc (DBIOLocal/getCache) ;; a thread local
          ^HashMap c (.get tloc) ;; c == java hashmap
          ^comzotohcljc.dbio.core.JDBCPoolAPI
@@ -78,7 +78,7 @@
 (defn- maybe-get-pool
 
   ^comzotohcljc.dbio.core.JDBCPoolAPI
-  [^long hc jdbc options]
+  [ hc jdbc options]
 
   (let [ tloc (DBIOLocal/getCache) ;; get the thread local
          ^HashMap c (.get tloc) ] ;; c == java hashmap

@@ -362,7 +362,7 @@
 
 (defn make-keypair "Make a Asymmetric key-pair."
   ^KeyPair
-  [^String algo ^long keylen]
+  [^String algo keylen]
   (let [ kpg (doto (KeyPairGenerator/getInstance algo _BCProvider)
                    (.initialize keylen (get-srand))) ]
     (debug "Generating keypair for algo " algo ", length " keylen)
@@ -423,7 +423,7 @@
       bits)) )
 
 (defn make-csrreq "Make a PKCS10 - csr-request."
-  [^long keylen ^String dnStr ^clojure.lang.Keyword fmt]
+  [keylen ^String dnStr ^clojure.lang.Keyword fmt]
   (do
     (debug "make-csrreq: dnStr= " dnStr ", key-len= " keylen)
     (let [ ^KeyPair kp (make-keypair (SU/nsb *RSA*) keylen)

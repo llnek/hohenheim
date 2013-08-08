@@ -91,7 +91,7 @@
   (if (nil? s) false (> (.length s) 0)))
 
 (defn nichts?  "Returns true if this string is empty."
-  [^String s] 
+  [^String s]
   (not (hgl? s)))
 
 (defn strim "Safely trim this string - handles null."
@@ -108,13 +108,13 @@
     buf))
 
 (defn splunk "Split a large string into chucks, each chunk having a specific length."
-  [^String largeString ^long chunkLength]
+  [^String largeString chunkLength]
   (if (nil? largeString)
     []
     (loop [ ret (transient []) src largeString ]
       (if (<= (.length src) chunkLength)
         (persistent! (if (> (.length src) 0)
-          (conj! ret src) 
+          (conj! ret src)
           ret) )
         (recur (conj! ret (.substring src 0 chunkLength))
                (.substring src chunkLength)) ))))
@@ -156,23 +156,23 @@
     (if (some #(.equals src %) strs) true false)))
 
 (defn make-string "Make a string of contain length."
-  ^String [ ^Object ch  ^long cnt]
+  ^String [ ch  cnt]
   (let [ buf (StringBuilder.) ]
     (dotimes [ n cnt ]
-      (.append buf ch))
+      (.append buf ^Character ch))
     (.toString buf)) )
 
 (defn right "Gets the rightmost len characters of a String."
-  ^String [^String src ^long len]
+  ^String [^String src len]
   (if (nil? src)
     ""
-    (StringUtils/right src len)) )
+    (StringUtils/right src ^long len)) )
 
 (defn left "Gets the leftmost len characters of a String."
-  ^String [^String src ^long len]
+  ^String [^String src len]
   (if (nil? src)
     ""
-    (StringUtils/left src len)) )
+    (StringUtils/left src ^long len)) )
 
 
 

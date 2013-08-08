@@ -40,7 +40,7 @@
 ;;(set! *warn-on-reflection* true)
 
 (defn leap-year? "Return true if this is a leap year."
-  [^long year]
+  [year]
   (cond 
     (zero? (mod year 400))
     true
@@ -127,21 +127,21 @@
 
 (defn plus-months ""
   ^Date
-  [^long months]
+  [months]
   (let [ now (make-cal (Date.)) ]
     (-> (add-months now months)
       (.getTime))))
 
 (defn plus-years ""
   ^Date
-  [^long years]
+  [years]
   (let [ now (make-cal (Date.)) ]
     (-> (add-years now years)
       (.getTime))))
 
 (defn plus-days ""
   ^Date
-  [^long days]
+  [days]
   (let [ now (make-cal (Date.)) ]
     (-> (add-days now days)
       (.getTime))))

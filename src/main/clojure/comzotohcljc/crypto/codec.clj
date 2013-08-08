@@ -117,7 +117,7 @@
 ;; caesar cipher
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- identify-ch ^Character [^long pos] (aget ^chars VISCHS pos))
+(defn- identify-ch ^Character [pos] (aget ^chars VISCHS ^long pos))
 
 (defn- locate-ch ^long [^Character ch]
   (let [ idx (some (fn [i] (if (= ch (aget ^chars VISCHS i)) i nil)) (range VISCHS_LEN)) ]
@@ -146,7 +146,7 @@
 (defn caesar-encrypt "Encrypt clear text by character rotation."
 
   ^String
-  [^String text ^long shiftpos]
+  [^String text shiftpos]
 
   (if (or (StringUtils/isEmpty text) (= shiftpos 0))
     text
@@ -163,7 +163,7 @@
 (defn caesar-decrypt "Decrypt text which was encrypted by the caesar method."
 
   ^String
-  [^String text ^long shiftpos]
+  [^String text shiftpos]
 
   (if (or (StringUtils/isEmpty text) (= shiftpos 0))
     text
@@ -208,10 +208,10 @@
 ;; java cryptor
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- getCipher ^Cipher [^String pkey ^long mode ^String algo]
+(defn- getCipher ^Cipher [^String pkey mode ^String algo]
   (let [ spec (SecretKeySpec. (keyAsBits pkey algo) algo) ]
     (doto (Cipher/getInstance algo)
-      (.init mode spec))))
+      (.init ^long mode spec))))
 
 (defn- jcEncr 
 
@@ -324,7 +324,7 @@
 ;; passwords
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- createXXX [^long len ^chars chArray]
+(defn- createXXX [ len ^chars chArray]
   (cond
     (< len 0)
     nil
@@ -378,14 +378,14 @@
 (defn create-random-string ""
 
   ^String
-  [ ^long len]
+  [ len]
 
   (createXXX len s_asciiChars))
 
 (defn create-strong-pwd ""
 
   ^comzotohcljc.crypto.codec.Password
-  [^long len]
+  [ len]
 
   (pwdify (createXXX len s_pwdChars)))
 

@@ -139,9 +139,9 @@
     fp))
 
 (defn copy-bytes "Copy x number of bytes from the source input-stream."
-  [^InputStream src ^OutputStream out ^long bytesToCopy]
+  [^InputStream src ^OutputStream out bytesToCopy]
   (when-not (<= bytesToCopy 0)
-    (IOUtils/copyLarge src out 0 bytesToCopy)) )
+    (IOUtils/copyLarge src out 0 ^long bytesToCopy)) )
 
 (defn reset-source! "Reset an input source."
   [^InputSource inpsrc]
@@ -181,8 +181,8 @@
       (finally
         (IOUtils/closeQuietly os)))) )
 
-(defn- slurp-bytes 
-  ^XData [^InputStream inp ^long lmt]
+(defn- slurp-bytes
+  ^XData [^InputStream inp lmt]
 
   (let [ bits (byte-array 4096)
          baos (make-baos) ]
@@ -221,8 +221,8 @@
       (finally
         (IOUtils/closeQuietly os)))) )
 
-(defn- slurp-chars 
-  ^XData [^InputStream inp ^long lmt]
+(defn- slurp-chars
+  ^XData [^InputStream inp lmt]
   (let [ wtr (CharArrayWriter. (int 10000))
          bits (char-array 4096) ]
     (loop [ c (.read inp bits) cnt 0 ]

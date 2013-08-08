@@ -99,7 +99,7 @@
 
 (defrecord HTTPMsgInfo [^String protocol ^String method ^String uri
                         is-chunked keep-alive
-                        ^long clen headers params] )
+                        clen headers params] )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

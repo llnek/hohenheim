@@ -54,7 +54,7 @@
       (async-exec r cl))))
 
 (defn safe-wait "Block current thread for some millisecs."
-  [^long millisecs]
+  [millisecs]
   (CU/Try!
     (when (> millisecs 0) (Thread/sleep millisecs))
     ))

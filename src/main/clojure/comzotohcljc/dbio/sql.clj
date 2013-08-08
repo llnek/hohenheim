@@ -71,7 +71,7 @@
           (str " AND " (ese (col-name :verid zm)) "=?")
           "")))
 
-(defn- lockError [^String opcode ^long cnt ^String table ^long rowID]
+(defn- lockError [^String opcode cnt ^String table rowID]
   (when (= cnt 0)
     (throw (OptLockError. opcode table rowID))))
 
@@ -87,7 +87,7 @@
                     (seq filters)) ]
     [ (SU/nsb wc) (CU/flatten-nil (vals filters)) ] ))
 
-(defn- readCol ^Object [sqlType ^long pos ^ResultSet rset]
+(defn- readCol ^Object [sqlType pos ^ResultSet rset]
   (let [ obj (.getObject rset (int pos))
          ^InputStream inp (cond
                   (instance? Blob obj) (.getBinaryStream ^Blob obj)
@@ -102,7 +102,7 @@
       (CU/notnil? inp) (with-open [p inp] (IO/read-bytes p))
       :else obj)))
 
-(defn- readOneCol [^long sqlType ^long pos ^ResultSet rset]
+(defn- readOneCol [sqlType pos ^ResultSet rset]
   (case sqlType
       Types/TIMESTAMP (.getTimestamp rset (int pos) ^Calendar DU/*GMT-CAL*)
       Types/DATE (.getDate rset (int pos) ^Calendar DU/*GMT-CAL*)
@@ -135,7 +135,7 @@
 (defn- insert? [^String sql]
   (.startsWith (.toLowerCase (SU/strim sql)) "insert"))
 
-(defn- setBindVar [^PreparedStatement ps ^long pos p]
+(defn- setBindVar [^PreparedStatement ps pos p]
   (cond
     (instance? String p) (.setString ps pos p)
     (instance? Long p) (.setLong ps pos p)
@@ -201,7 +201,7 @@
     (doseq [n (seq (range 0 (count params))) ]
       (setBindVar ps (inc n) (nth params n)))))
 
-(defn- handleGKeys [^ResultSet rs ^long cnt options]
+(defn- handleGKeys [^ResultSet rs cnt options]
   (let [ rc (cond
               (= cnt 1) (.getObject rs 1)
               :else (.getLong rs (SU/nsb (:pkey options)))) ]

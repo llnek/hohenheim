@@ -29,7 +29,7 @@
 (import '(java.io
   InputStream File FileInputStream
   ByteArrayInputStream ByteArrayOutputStream))
-(import '(java.util Properties Date GregorianCalendar TimeZone))
+(import '(java.util Properties Date Calendar GregorianCalendar TimeZone))
 (import '(java.util.zip DataFormatException Deflater Inflater))
 (import '(java.sql Timestamp))
 (import '(java.rmi.server UID))
@@ -108,20 +108,20 @@
   (^SecureRandom [numBytes] (SecureRandom. (SecureRandom/getSeed numBytes)) ))
 
 (defn now-jtstamp "Return a java sql Timestamp."
-  []
+  ^Timestamp []
   (Timestamp. (.getTime (Date.))))
 
 (defn now-date "Return a java Date."
-  []
+  ^Date []
   (Date.) )
 
 (defn now-cal "Return a Gregorian Calendar."
-  []
+  ^Calendar []
   (GregorianCalendar. ))
 
 (defn to-charset "Return a java Charset of the encoding."
-  ([^String enc] (Charset/forName enc))
-  ([] (to-charset "utf-8")) )
+  (^Charset [^String enc] (Charset/forName enc))
+  (^Charset [] (to-charset "utf-8")) )
 
 (defmethod nice-fpath String
   ^String [^String fpath]
@@ -198,15 +198,15 @@
   (not (is-windows?)))
 
 (defn conv-long "Parse string as a long value."
-  [^String s ^long dftLongVal]
+  ^long [^String s dftLongVal]
   (try (Long/parseLong s) (catch Throwable e dftLongVal)))
 
 (defn conv-double "Parse string as a double value."
-  [^String s ^double dftDblVal]
+  ^double [^String s dftDblVal]
   (try (Double/parseDouble s) (catch Throwable e dftDblVal)))
 
 (defn conv-bool "Parse string as a boolean value."
-  [^String s]
+  ^Boolean [^String s]
   (contains? _BOOLS (.toLowerCase (nsb s))))
 
 (defmethod load-javaprops InputStream
@@ -275,7 +275,7 @@
   (if (nil? bits)
     nil
     (let [ buf (byte-array 1024)
-           decr (Inflater.) 
+           decr (Inflater.)
            baos (ByteArrayOutputStream. (alength bits)) ]
       (.setInput decr bits)
       (loop []
@@ -298,7 +298,7 @@
     (str "" rc)))
 
 (defn now-millis "Return the current time in milliseconds."
-  []
+  ^long []
   (java.lang.System/currentTimeMillis))
 
 (defn get-fpath "Return the file path only."
@@ -319,11 +319,11 @@
     fp))
 
 (defn make-tmpdir "Generate and return a new temp File dir."
-  []
+  ^File []
   (fetch-tmpdir (uid)))
 
 (defn get-tmpdir "Return the current temp File dir."
-  []
+  ^File []
   (fetch-tmpdir ""))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -411,7 +411,7 @@
 
 (defn gen-numbers "Return a list of random int numbers between a range."
   ^clojure.lang.IPersistentCollection
-  [^long start ^long end ^long howMany]
+  [start end howMany]
   (if (or (>= start end) (< (- end start) howMany) )
     []
     (let [ _end (if (< end Integer/MAX_VALUE) (+ end 1) end )

@@ -55,7 +55,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- config-repeat-timer [^Timer tm delays ^long intv func]
+(defn- config-repeat-timer [^Timer tm delays intv func]
   (let [ tt (proxy [TimerTask][]
               (run [_]
                 (CU/TryC

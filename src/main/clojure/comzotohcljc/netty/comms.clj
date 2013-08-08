@@ -295,7 +295,7 @@
          ^ChannelBuffer cbuf (.getContent msg)
          ^XData xdata (:xs attObj)
          ^OutputStream cout (:os attObj)
-         ^long csum (:clen attObj)
+         csum (:clen attObj)
          nsum (NetUtils/sockItDown cbuf cout csum)
          nout (if (.isDiskFile xdata)
                   cout
@@ -437,7 +437,7 @@
 (defn netty-xxx-server
 
   ^NettyServer
-  [^String host ^long port
+  [^String host port
    ^comzotohcljc.netty.comms.NettyServiceIO usercb options]
 
   (let [ ^URL keyUrl (:serverkey options)
@@ -454,7 +454,7 @@
 
 (defn make-mem-httpd "Make an in-memory http server."
 
-  [^String host ^long port
+  [^String host port
    ^comzotohcljc.netty.comms.NettyServiceIO usercb options ]
 
   (netty-xxx-server host port usercb options ))
@@ -518,7 +518,7 @@
 
 (defn make-mem-filer ""
 
-  [^String host ^long port options]
+  [^String host port options]
   (netty-xxx-server host port (filer-handler (:vdir options)) options))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -543,7 +543,7 @@
     (let [ ctx (CS/make-sslClientCtx (= "https" (.getScheme (.toURI targetUrl))))
            ^String host (.getHost targetUrl)
            pnum (.getPort targetUrl)
-           ^long port (if (< pnum 0) (if (nil? ctx) 80 443) pnum)
+           port (if (< pnum 0) (if (nil? ctx) 80 443) pnum)
            pl (make-pipeClient ctx serviceIO)
            ^ClientBootstrap cli (:client clientr)
            ^ChannelGroup cg (:cgroup clientr) ]

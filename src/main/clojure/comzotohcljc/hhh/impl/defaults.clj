@@ -152,13 +152,13 @@
               (seq cache)))
 
           (dereg [this c]
-            (let [ cid (if (nil? c) nil (.id  c))
+            (let [ cid (if (nil? c) nil (.id  ^Identifiable c))
                    cache (.mm-g impl :cache) ]
               (when (has? this cid)
                 (.mm-s impl :cache (dissoc cache cid)))))
 
           (reg [this c]
-            (let [ cid (if (nil? c) nil (.id  c))
+            (let [ cid (if (nil? c) nil (.id  ^Identifiable c))
                    cache (.mm-g impl :cache) ]
               (when (has? this cid)
                 (throw (RegistryError.
