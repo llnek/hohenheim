@@ -301,9 +301,7 @@
            ^comzotohcljc.hhh.core.sys.Thingy co bk  ]
       (when (SU/hgl? cz)
         (.setAttr! co :id (keyword cz))
-        (CU/TryC
-          (MU/load-class cz)
-          (.setAttr! co :active true) ))
+        (.setAttr! co :active true) )
       (.setAttr! co :version (SU/strim (.optString cfg "info" "version" "")))
       (.setAttr! co :name (SU/strim (.optString cfg "info" "name" "")))
       co)))

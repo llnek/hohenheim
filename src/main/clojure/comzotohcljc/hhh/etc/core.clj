@@ -68,13 +68,14 @@
     (print (String/format fmt (into-array Object [k v]) ))))
 
 (defn- usage []
-  (println (SU/make-string \= 78))
+ (println (SU/make-string \= 78))
   (println "> hohenheim <commands & options>")
   (println "> -----------------")
   (drawHelpLines "> %-35s %s\n" CMDLINE-INFO)
   (println ">")
   (println "> help - show standard commands")
-  (println (SU/make-string \= 78)) )
+  (println (SU/make-string \= 78))
+  )
 
 
 ;; arg(0) is hohenheim-home
@@ -90,8 +91,8 @@
 
 (defn -main "Main Entry" [& args]
   ;; for security, don't just eval stuff
-  (alter-var-root #'*read-eval* (constantly false))
-  (let [ rcpath (str "comzotohcljc/hohenheim/etc/Resources")
+  ;;(alter-var-root #'*read-eval* (constantly false))
+  (let [ rcpath (str "comzotohcljc/hhh/etc/Resources")
          rcb (LU/get-resource rcpath (Locale/getDefault)) ]
     (if (< (count args) 2)
       (usage)

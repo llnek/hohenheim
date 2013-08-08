@@ -90,9 +90,7 @@
   (srcUrl [_ ]))
 
 (defprotocol Kernel 
-  ""
-  (start [_] )
-  (stop [_] ))
+  ""              )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -154,17 +152,17 @@
               (seq cache)))
 
           (dereg [this c]
-            (let [ cid (if (nil? c) nil (.id ^Identifiable c))
+            (let [ cid (if (nil? c) nil (.id  c))
                    cache (.mm-g impl :cache) ]
               (when (has? this cid)
                 (.mm-s impl :cache (dissoc cache cid)))))
 
           (reg [this c]
-            (let [ cid (if (nil? c) nil (.id ^Identifiable c))
+            (let [ cid (if (nil? c) nil (.id  c))
                    cache (.mm-g impl :cache) ]
               (when (has? this cid)
                 (throw (RegistryError.
-                         (str "Thingy \"" cid "\" already exists" ))))
+                         (str "Component \"" cid "\" already exists" ))))
               (.mm-s impl :cache (assoc cache cid c)))) )
 
       { :typeid (keyword (str "czc.hhh.impl/" (name regoType))) } )) )

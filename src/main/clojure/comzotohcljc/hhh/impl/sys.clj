@@ -160,7 +160,7 @@
           (id [_] K_KERNEL )
 
         Kernel
-
+        Startable
           (start [this]
             (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
                    ^comzotohcljc.hhh.core.sys.Registry

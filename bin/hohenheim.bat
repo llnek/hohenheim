@@ -29,7 +29,7 @@ set LIBP=-Djava.library.path=$HOHENHEIM_HOME/bin
 set JPROF=-agentpath:/Applications/jprofiler7/bin/macos/libjprofilerti.jnilib=port=8849
 set VMXRGS=-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m
 set CLDR=-Djava.system.class.loader=com.zotoh.hohenheim.loaders.ExecClassLoader
-set MAINCZ=comzotohcljc.hohenheim.etc.core
+set MAINCZ=comzotohcljc.hhh.etc.core
 
 if NOT EXIST %L4JFILE% SET LOGREF=
 

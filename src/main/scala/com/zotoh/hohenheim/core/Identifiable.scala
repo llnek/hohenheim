@@ -25,6 +25,6 @@ package com.zotoh.hohenheim.core
  * @author kenl
  */
 trait Identifiable {
-  def id(): Long
+  def id(): Any
 }
 

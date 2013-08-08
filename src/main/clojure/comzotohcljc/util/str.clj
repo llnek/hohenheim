@@ -156,9 +156,9 @@
     (if (some #(.equals src %) strs) true false)))
 
 (defn make-string "Make a string of contain length."
-  ^String [^Character ch ^long times]
+  ^String [ ^Object ch  ^long cnt]
   (let [ buf (StringBuilder.) ]
-    (dotimes [ n times ]
+    (dotimes [ n cnt ]
       (.append buf ch))
     (.toString buf)) )
 
