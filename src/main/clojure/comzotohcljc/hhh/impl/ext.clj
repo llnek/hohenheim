@@ -28,11 +28,12 @@
 (import '(java.net URL))
 (import '(java.io File))
 (import '(com.zotoh.hohenheim.runtime AppMain))
-(import '(com.zotoh.hohenheim.core 
+(import '(com.zotoh.hohenheim.core
   Versioned Hierarchial Startable
-  Identifiable Container ServiceError ))
+  Identifiable Container ConfigError ServiceError ))
 
 (import '(com.zotoh.hohenheim.io IOEvent))
+(import '(com.zotoh.frwk.util CoreUtils))
 (import '(com.zotoh.wflow.core Job))
 (import '(com.zotoh.wflow Pipeline))
 
@@ -58,6 +59,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* false)
+
+(defprotocol CljAppMain
+  ""
+  (contextualize [_ ctr] )
+  (configure [_ options] )
+  (initialize [_] )
+  (dispose [_] ))
 
 (defn- make-job "" [_container evt]
   (let [ impl (CU/make-mmap)
@@ -85,15 +93,18 @@
   ""
   (update [_ event options] ))
 
-(defn- make-jobcreator "" ^comzotohcljc.hhh.impl.ext.JobCreator [parObj]
+(defn- make-jobcreator ""
+  ^comzotohcljc.hhh.impl.ext.JobCreator [parObj]
   (let [ impl (CU/make-mmap) ]
+    (info "about to synthesize a job-creator...")
     (with-meta
       (reify
 
         JobCreator
 
           (update [_  evt options]
-            (let [ ^comzotohcljc.hhh.core.sys.Thingy src (.emitter ^IOEvent evt)
+            (let [ ^comzotohcljc.hhh.core.sys.Thingy
+                   src (.emitter ^IOEvent evt)
                    c0 (.getAttr src :router)
                    c1 (:router options)
                    job (make-job parObj evt) ]
@@ -110,7 +121,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ContainerAPI
 
-(defprotocol ^:private ContainerAPI 
+(defprotocol ^:private ContainerAPI
   ""
   (reifyOneService [_ sid cfg] )
   (reifyService [_ svc cfg] )
@@ -126,6 +137,7 @@
 
 (defn- make-app-container [pod]
   (let [ impl (CU/make-mmap) ]
+    (info "about to create an app-container...")
     (with-meta
       (reify
 
@@ -138,7 +150,10 @@
           (getCtx [_] (.mm-g impl :ctx) )
 
         Container
-          (notifyObservers [_ evt] )
+          (notifyObservers [_ evt]
+            (let [ ^comzotohcljc.hhh.impl.ext.JobCreator
+                   jc (.getAttr this K_JCTOR) ]
+              (.update jc evt {})))
           (core [this]
             (.getAttr this K_SCHEDULER))
 
@@ -181,9 +196,10 @@
                   (.reg srg s)))))
 
           (reifyService [this svc cfg]
-            (let [ ^comzotohcljc.hhh.core.sys.Registry 
-                   root (.getf ^comzotohcljc.util.core.MuObj (.getCtx this) K_COMPS)
-                   ^comzotohcljc.hhh.core.sys.Registry 
+            (let [^comzotohcljc.util.core.MuObj ctx (.getCtx this)
+                   ^comzotohcljc.hhh.core.sys.Registry
+                   root (.getf ctx K_COMPS)
+                   ^comzotohcljc.hhh.core.sys.Registry
                    bks (.lookup root K_BLOCKS)
                    bk (.lookup bks (keyword svc)) ]
               (when (nil? bk)
@@ -199,7 +215,7 @@
          ^comzotohcljc.hhh.core.sys.Registry
          root (.getf ctx K_COMPS)
          apps (.lookup root K_APPS)
-         ^URL url (.srcUrl ^comzotohcljc.hhh.impl.defaults.PODMeta pod) 
+         ^URL url (.srcUrl ^comzotohcljc.hhh.impl.defaults.PODMeta pod)
          ps { K_APPDIR (File. (.toURI  url)) } ]
     (comp-compose c apps)
     (comp-contextualize c ctx)
@@ -219,10 +235,10 @@
          cfgDir (File. appDir ^String DN_CONF)
          srg (make-component-registry :EventSources K_SVCS "1.0" co)
          mf (CU/load-javaprops (File. appDir ^String MN_FILE))
-         envConf (JS/read-str (FileUtils/readFileToString 
+         envConf (JS/read-str (FileUtils/readFileToString
                                 (File. cfgDir "env.conf"))
                               :key-fn keyword)
-         appConf (JS/read-str (FileUtils/readFileToString 
+         appConf (JS/read-str (FileUtils/readFileToString
                                 (File. cfgDir "app.conf"))
                               :key-fn keyword) ]
     ;;WebPage.setup(new File(appDir))
@@ -233,11 +249,25 @@
     (synthesize-component srg {} )
     (doto co
       (.setAttr! K_SVCS srg)
+      (.setAttr! K_ENVCONF_FP (File. cfgDir "env.conf"))
+      (.setAttr! K_APPCONF_FP (File. cfgDir "app.conf"))
       (.setAttr! K_ENVCONF envConf)
       (.setAttr! K_APPCONF appConf)
       (.setAttr! K_MFPROPS mf))
     (info "container: configured app: " (.id ^Identifiable co))))
 
+
+(defn- doCljApp [ctr opts ^comzotohcljc.hhh.impl.ext.CljAppMain obj]
+  (.contextualize obj ctr)
+  (.configure obj opts)
+  (.initialize obj))
+
+(defn- doJavaApp [^comzotohcljc.hhh.core.sys.Thingy ctr ^AppMain obj]
+  (let [ ^File cfg (.getAttr ctr K_APPCONF_FP)
+         json (CoreUtils/readJson cfg) ]
+  (.contextualize obj ctr)
+  (.configure obj json)
+  (.initialize obj)) )
 
 (defmethod comp-initialize :czc.hhh.ext/Container
   [^comzotohcljc.hhh.core.sys.Thingy co]
@@ -247,7 +277,8 @@
          mCZ (SU/strim (.get mf "Main-Class"))
          reg (.getAttr co K_SVCS)
          jc (make-jobcreator co)
-         ^comzotohcljc.util.scheduler.SchedulerAPI sc (SC/make-scheduler co)
+         ^comzotohcljc.util.scheduler.SchedulerAPI
+         sc (SC/make-scheduler co)
          cfg (:container env) ]
 
     (.setAttr! co K_SCHEDULER sc)
@@ -257,10 +288,13 @@
     ;;(CU/test-nestr "Main-Class" mCZ)
 
     (when (SU/hgl? mCZ)
-      (let [ ^AppMain obj (MU/make-obj mCZ) ]
-        (.contextualize obj co)
-        (.configure obj app)
-        (.initialize obj)
+      (let [ obj (MU/make-obj mCZ) ]
+        (cond
+          (satisfies? CljAppMain obj)
+          (doCljApp co app obj)
+          (instance? AppMain obj)
+          (doJavaApp co obj)
+          :else (throw (ConfigError. (str "Invalid Main Class " mCZ))))
         (info "application main-class " mCZ " created and invoked")))
 
     (let [ svcs (:services env) ]

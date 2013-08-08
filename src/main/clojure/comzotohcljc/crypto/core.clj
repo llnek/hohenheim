@@ -252,7 +252,7 @@
   (find-aliases keystore (fn [^KeyStore ks ^String n] (.isKeyEntry ks n))))
 
 (defn- rego-certs [^KeyStore ks
-                   ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+                   ^comzotohcljc.crypto.codec.Password pwdObj]
   (let [ ^chars ca (if-not (nil? pwdObj)(.toCharArray pwdObj)) ]
     (doseq [ ^String a (pkey-aliases ks) ]
       (let [ ^KeyStore$PrivateKeyEntry pke (.getEntry ks a (KeyStore$PasswordProtection. ca))
@@ -261,7 +261,7 @@
           (.setCertificateEntry ks (new-alias) c))))))
 
 (defn get-pkcsStore "Create a PKCS12 key-store."
-  (^KeyStore [^InputStream inp ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+  (^KeyStore [^InputStream inp ^comzotohcljc.crypto.codec.Password pwdObj]
     (let [ ca (if-not (nil? pwdObj)(.toCharArray pwdObj))
            ks (doto (KeyStore/getInstance "PKCS12" _BCProvider)
                 (.load inp ca)) ]
@@ -272,7 +272,7 @@
 
 (defn get-jksStore "Create a JKS key-store."
 
-  (^KeyStore [^InputStream inp ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+  (^KeyStore [^InputStream inp ^comzotohcljc.crypto.codec.Password pwdObj]
     (let [ ca (if-not (nil? pwdObj)(.toCharArray pwdObj))
            ks (doto (KeyStore/getInstance "JKS" (Security/getProvider "SUN"))
                 (.load inp ca)) ]
@@ -296,7 +296,7 @@
 (defmethod init-store! :stream
   ^KeyStore [^KeyStore store
              ^InputStream inp
-             ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+             ^comzotohcljc.crypto.codec.Password pwdObj]
 
   (let [ ca (if-not (nil? pwdObj) (.toCharArray pwdObj)) ]
     (doto store (.load inp ca))))
@@ -304,14 +304,14 @@
 (defmethod init-store! :bytes
   ^KeyStore [^KeyStore store
              ^bytes bits
-             ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+             ^comzotohcljc.crypto.codec.Password pwdObj]
 
   (init-store! store (IO/streamify bits) pwdObj))
 
 (defmethod init-store! :file
   ^KeyStore [^KeyStore store
              ^File f
-             ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+             ^comzotohcljc.crypto.codec.Password pwdObj]
 
   (with-open [ inp (FileInputStream. f) ]
     (init-store! store inp pwdObj)))
@@ -329,7 +329,7 @@
 (defn conv-pkey "Returns a KeyStore$PrivateKeyEntry."
   ^KeyStore$PrivateKeyEntry
   [^bytes bits
-   ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+   ^comzotohcljc.crypto.codec.Password pwdObj]
 
   (let [ ca (if-not (nil? pwdObj)(.toCharArray pwdObj))
          ks (get-pkcsStore) ]
@@ -371,7 +371,7 @@
 (defn- loadPKCS12Key
   ^KeyStore$PrivateKeyEntry
   [^URL p12File
-   ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+   ^comzotohcljc.crypto.codec.Password pwdObj]
 
   (with-open [ inp (.openStream p12File) ]
     (let [ ca (if-not (nil? pwdObj)(.toCharArray pwdObj))
@@ -472,7 +472,7 @@
 (defn- mkSSV1 
 
   ^bytes
-  [^KeyStore ks ^KeyPair kp ^comzotohcljc.crypto.codec.PasswordAPI pwdObj options]
+  [^KeyStore ks ^KeyPair kp ^comzotohcljc.crypto.codec.Password pwdObj options]
 
     (let [ pv (.getProvider ks)
            [^Certificate cert ^PrivateKey pkey] (mkSSV1Cert pv kp options)
@@ -485,7 +485,7 @@
 (defn make-pkcs12 "Make a PKCS12 object from key and cert."
 
   [^bytes keyPEM ^bytes certPEM
-   ^comzotohcljc.crypto.codec.PasswordAPI pwdObj ^File out]
+   ^comzotohcljc.crypto.codec.Password pwdObj ^File out]
 
   (let [ ct (.getTrustedCertificate (conv-cert certPEM))
          rdr (InputStreamReader. (IO/streamify keyPEM))
@@ -499,7 +499,7 @@
 
 (defn make-ssv1PKCS12 "Make a SSV1 (root level) type PKCS12 object."
 
-  [^String dnStr ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
+  [^String dnStr ^comzotohcljc.crypto.codec.Password pwdObj
    ^File out options]
 
   (let [ dft { :keylen 1024 :start (Date.) :end (DU/plus-months 12) :algo DEF_ALGO }
@@ -512,7 +512,7 @@
 
 (defn make-ssv1JKS "Make a SSV1 (root level) type JKS object."
 
-  [^String dnStr ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
+  [^String dnStr ^comzotohcljc.crypto.codec.Password pwdObj
    ^File out options]
 
   (let [ dft { :keylen 1024 :start (Date.) :end (DU/plus-months 12) :algo "SHA1withDSA" }
@@ -555,7 +555,7 @@
 
 (defn- mkSSV3
 
-  [ ^KeyStore ks ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
+  [ ^KeyStore ks ^comzotohcljc.crypto.codec.Password pwdObj
     issuerObjs options ]
 
   (let [ ^PrivateKey issuerKey (last issuerObjs)
@@ -574,7 +574,7 @@
 
 (defn make-ssv3XXX
 
-  [^String dnStr ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
+  [^String dnStr ^comzotohcljc.crypto.codec.Password pwdObj
    ^File out options]
 
   (let [ hack (:hack options)
@@ -588,7 +588,7 @@
 
 (defn make-ssv3PKCS12 "Make a SSV3 type PKCS12 object."
 
-  [^String dnStr ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
+  [^String dnStr ^comzotohcljc.crypto.codec.Password pwdObj
    ^File out options]
 
   (make-ssv3XXX dnStr pwdObj out
@@ -597,7 +597,7 @@
 ;; JKS uses SUN and hence needs to use DSA
 (defn make-ssv3JKS "Make a SSV3 JKS object."
 
-  [^String dnStr ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
+  [^String dnStr ^comzotohcljc.crypto.codec.Password pwdObj
    ^File out options]
 
   (make-ssv3XXX dnStr pwdObj out
@@ -605,7 +605,7 @@
 
 (defn export-pkcs7 "Extract and export PKCS7 info from a PKCS12 object."
 
-  [^URL p12File ^comzotohcljc.crypto.codec.PasswordAPI pwdObj
+  [^URL p12File ^comzotohcljc.crypto.codec.Password pwdObj
    ^File fileOut]
 
   (let [ pkey (loadPKCS12Key p12File pwdObj)
@@ -632,18 +632,18 @@
 
 (defn new-session "Creates a new java-mail session."
   (^Session [] (new-session "" nil))
-  (^Session [^String user ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+  (^Session [^String user ^comzotohcljc.crypto.codec.Password pwdObj]
     (Session/getInstance (System/getProperties)
       (if (StringUtils/isEmpty user)
         nil
         (DefaultAuthenticator. user (SU/nsb pwdObj)) ))))
 
 (defn new-mimeMsg "Create a new MIME Message."
-  (^MimeMessage [^String user ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+  (^MimeMessage [^String user ^comzotohcljc.crypto.codec.Password pwdObj]
      (new-mimeMsg user pwdObj nil))
   (^MimeMessage [] (new-mimeMsg "" nil nil))
   (^MimeMessage [^InputStream inp] (new-mimeMsg "" nil inp))
-  (^MimeMessage [^String user ^comzotohcljc.crypto.codec.PasswordAPI pwdObj ^InputStream inp]
+  (^MimeMessage [^String user ^comzotohcljc.crypto.codec.Password pwdObj ^InputStream inp]
       (let [ s (new-session user pwdObj) ]
         (if (nil? inp) (MimeMessage. s) (MimeMessage. s inp)))) )
 
@@ -1077,7 +1077,7 @@
 (defn desc-cert "Return a object"
 
   ( ^comzotohcljc.crypto.core.CertDesc
-    [^bytes privateKeyBits ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+    [^bytes privateKeyBits ^comzotohcljc.crypto.codec.Password pwdObj]
       (let [ pkey (conv-pkey privateKeyBits pwdObj) ]
         (if (nil? pkey)
           (->CertDesc nil nil nil nil)
@@ -1097,7 +1097,7 @@
     (catch Throwable e false)))
 
 (defn valid-pkey? "Validate this Private Key."
-  [^bytes keyBits ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+  [^bytes keyBits ^comzotohcljc.crypto.codec.Password pwdObj]
     (let [ pkey (conv-pkey keyBits pwdObj) ]
       (if (nil? pkey)
         false

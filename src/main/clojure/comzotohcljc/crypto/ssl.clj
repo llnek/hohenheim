@@ -38,10 +38,10 @@
 
 (defn make-sslContext "Make a server-side SSLContext."
 
-  (^SSLContext [^URL keyUrl ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+  (^SSLContext [^URL keyUrl ^comzotohcljc.crypto.codec.Password pwdObj]
    (make-sslContext keyUrl pwdObj "TLS"))
 
-  (^SSLContext [^URL keyUrl ^comzotohcljc.crypto.codec.PasswordAPI pwdObj ^String flavor]
+  (^SSLContext [^URL keyUrl ^comzotohcljc.crypto.codec.Password pwdObj ^String flavor]
     (let [ ctx (SSLContext/getInstance flavor)
            ks (with-open [ inp (.openStream keyUrl) ]
                 (if (CY/pkcs-file? keyUrl)

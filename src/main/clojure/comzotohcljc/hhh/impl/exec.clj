@@ -28,6 +28,7 @@
 (import '(java.io File FileFilter))
 (import '(java.net URL))
 (import '(java.util Date))
+(import '(com.zotoh.frwk.io IOUtils))
 (import '(com.zotoh.hohenheim.core
   Startable Versioned Hierarchial Identifiable))
 (use '[clojure.tools.logging :only (info warn error debug)])
@@ -70,11 +71,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- chkManifest 
-  [^comzotohcljc.hhh.core.sys.Thingy execv app ^File des mf]
+(defn- chkManifest
+
+  [^comzotohcljc.hhh.core.sys.Thingy execv
+   app
+   ^File des
+   mf]
+
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx execv)
-         ^comzotohcljc.hhh.core.sys.Registry root (.getf ctx K_COMPS)
-         ^comzotohcljc.hhh.core.sys.Registry apps (.lookup root K_APPS)
+         ^comzotohcljc.hhh.core.sys.Registry
+         root (.getf ctx K_COMPS)
+         ^comzotohcljc.hhh.core.sys.Registry
+         apps (.lookup root K_APPS)
          ps (CU/load-javaprops mf)
          ver (.getProperty ps "Implementation-Version" "")
          cz (.getProperty ps "Main-Class" "") ]
@@ -82,7 +90,7 @@
     (CU/test-nestr "POD-MainClass" cz)
     (CU/test-nestr "POD-Version" ver)
 
-    (info "Checking manifest for app: " app ", version: " ver ", main-class: " cz)
+    (info "checking manifest for app: " app ", version: " ver ", main-class: " cz)
 
     ;;ps.gets("Manifest-Version")
     ;;.gets("Implementation-Title")
@@ -90,7 +98,8 @@
     ;;.gets("Implementation-Vendor")
     ;;.gets("Implementation-Vendor-Id")
 
-    (let [ ^comzotohcljc.hhh.core.sys.Thingy m (-> (make-podmeta app ver nil cz (-> des (.toURI) (.toURL)))
+    (let [ ^comzotohcljc.hhh.core.sys.Thingy
+           m (-> (make-podmeta app ver nil cz (-> des (.toURI) (.toURL)))
                  (synthesize-component { :ctx ctx })) ]
       (.setf! ^comzotohcljc.util.core.MuObj (.getCtx m) K_EXECV execv)
       (.reg apps m)
@@ -99,8 +108,9 @@
 (defn- inspect-pod [execv ^File des]
   (let [ app (FilenameUtils/getBaseName (CU/nice-fpath des))
          mf (File. des ^String MN_FILE) ]
-    (info "About to inspect dir: " des)
-    (try
+    (info "About to inspect app: " app)
+    (info "app-dir: " des)
+    (CU/TryC
         (precondDir (File. des ^String POD_INF))
         (precondDir (File. des ^String POD_CLASSES))
         (precondDir (File. des ^String POD_LIB))
@@ -109,10 +119,9 @@
         (precondFile (File. des ^String CFG_ENV_CF))
         (precondDir (File. des ^String DN_CONF))
         (precondFile mf)
-        (chkManifest execv app des mf)
-      (catch Throwable e#
-        (error e# "")))) )
+        (chkManifest execv app des mf) )))
 
+;; check all apps to ensure they are kosher.
 (defn- inspect-pods [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          ^FileFilter ff DirectoryFileFilter/DIRECTORY
@@ -162,34 +171,41 @@
 
         Startable
           (start [this]
-            (let [ ^comzotohcljc.hhh.core.sys.Registry
-                   root (.getf ^comzotohcljc.util.core.MuObj (getCtx this) K_COMPS)
+            (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
+                   ^comzotohcljc.hhh.core.sys.Registry
+                   root (.getf ctx K_COMPS)
                    ^Startable k (.lookup root K_KERNEL) ]
               (inspect-pods this)
               (.start k)))
           (stop [this]
-            (let [ ^comzotohcljc.hhh.core.sys.Registry
-                   root (.getf ^comzotohcljc.util.core.MuObj (getCtx this) K_COMPS)
+            (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
+                   ^comzotohcljc.hhh.core.sys.Registry
+                   root (.getf ctx K_COMPS)
                    ^Startable k (.lookup root K_KERNEL) ]
               (.stop k)))  )
 
        { :typeid (keyword "czc.hhh.impl/Execvisor") } )))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- start-jmx []
+  (info "no JMS yet")
+)
 
 (defmethod comp-initialize :czc.hhh.impl/Execvisor
   [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
-        ^comzotohcljc.util.ini.IWin32Conf cf (.getf ctx K_PROPS)
+         ^comzotohcljc.util.ini.IWin32Conf
+         cf (.getf ctx K_PROPS)
          comps (.getSection cf K_COMPS)
          regs (.getSection cf K_REGS)
          jmx  (.getSection cf K_JMXMGM) ]
 
-    (info "Initializing component: Execvisor: " co)
+    (info "initializing component: Execvisor: " co)
     (CU/test-nonil "conf file: components" comps)
     (CU/test-nonil "conf file: registries" regs)
     (CU/test-nonil "conf file: jmx mgmt" jmx)
+
     (System/setProperty "file.encoding" "utf-8")
 
     (let [ ^File home (.homeDir ^comzotohcljc.hhh.impl.exec.ExecvisorAPI co)
@@ -218,7 +234,7 @@
           (.setf! K_DBSDIR db)
           (.setf! K_TMPDIR tmp)
           (.setf! K_BKSDIR bks)) )
-    ;;(start-jmx)
+    (start-jmx)
     (let [ ^comzotohcljc.hhh.core.sys.Registry
            root (make-component-registry :SystemRegistry K_COMPS "1.0" co)
            bks (make-component-registry :BlocksRegistry K_BLOCKS "1.0" nil)
@@ -240,7 +256,6 @@
         (synthesize-component knl options)) )
 
     ))
-
 
 (defn- make-blockmeta "" [^URL url]
   (let [ impl (CU/make-mmap) ]
@@ -281,8 +296,8 @@
          ^comzotohcljc.util.ini.IWin32Conf cfg (WI/parse-inifile url)
          inf (.getSection cfg "info") ]
     (CU/test-nonil "Invalid block-meta file, no info section." inf)
-    (info "Initializing BlockMeta: " url)
-    (let [ cz (SU/strim (.optString cfg "info" "block-type" "")) 
+    (info "initializing BlockMeta: " url)
+    (let [ cz (SU/strim (.optString cfg "info" "block-type" ""))
            ^comzotohcljc.hhh.core.sys.Thingy co bk  ]
       (when (SU/hgl? cz)
         (.setAttr! co :id (keyword cz))
@@ -297,13 +312,13 @@
   [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          bDir (.getf ctx K_BKSDIR)
-         fs (FileUtils/listFiles ^File bDir (into-array String ["meta"]) false) ]
+         fs (IOUtils/listFiles ^File bDir "meta" false) ]
     (doseq [ ^File f (seq fs) ]
       (let [ ^comzotohcljc.hhh.core.sys.Thingy
              b (-> (make-blockmeta (-> f (.toURI)(.toURL)))
                    (synthesize-component {}) ) ]
         (.reg ^comzotohcljc.hhh.core.sys.Registry co b)
-        (info "Added one block: " (.id ^Identifiable b)) ))))
+        (info "added one block: " (.id ^Identifiable b)) ))))
 
 
 

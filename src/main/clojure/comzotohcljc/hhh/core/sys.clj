@@ -24,21 +24,22 @@
 
   comzotohcljc.hhh.core.sys )
 
-(import '(com.zotoh.hohenheim.core 
+(import '(com.zotoh.hohenheim.core
   Hierarchial Identifiable Versioned))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-
-(defprotocol Thingy ""
+(defprotocol Thingy
+  ""
   (setCtx! [_ ctx] )
   (getCtx [_] )
   (setAttr! [_ a v] )
   (clrAttr! [_ a] )
   (getAttr [_ a] ) )
 
-(defprotocol Registry ""
+(defprotocol Registry
+  ""
   (lookup [_ cid] )
   (has? [_ cid] )
   (seq* [_] )
@@ -49,15 +50,27 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmulti comp-contextualize "" (fn [a ctx] (:typeid (meta a))))
+(defmulti ^comzotohcljc.hhh.core.sys.Thingy comp-contextualize
+  ""
+  (fn [a ctx] (:typeid (meta a))))
 
-(defmulti comp-compose "" (fn [a rego] (:typeid (meta a))))
+(defmulti ^comzotohcljc.hhh.core.sys.Thingy comp-compose
+  ""
+  (fn [a rego] (:typeid (meta a))))
 
-(defmulti comp-configure "" (fn [a options] (:typeid (meta a))))
+(defmulti ^comzotohcljc.hhh.core.sys.Thingy comp-configure
+  ""
+  (fn [a options] (:typeid (meta a))))
 
-(defmulti comp-initialize "" (fn [a] (:typeid (meta a))))
+(defmulti ^comzotohcljc.hhh.core.sys.Thingy comp-initialize
+  ""
+  (fn [a] (:typeid (meta a))))
 
-(defn synthesize-component "" [c options]
+(defn synthesize-component ""
+
+  ^comzotohcljc.hhh.core.sys.Thingy
+  [c options]
+
   (let [ rego (:rego options)
          ctx (:ctx options)
          props (:props options) ]

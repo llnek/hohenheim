@@ -104,7 +104,7 @@
   (algo [_] ))
 
 ;; BCrypt.checkpw(candidate, hashed)
-(defprotocol PasswordAPI
+(defprotocol ^:private PasswordAPI
   (toCharArray [_] )
   (encoded [_] )
   (stronglyHashed [_] )
@@ -384,7 +384,7 @@
 
 (defn create-strong-pwd ""
 
-  ^comzotohcljc.crypto.codec.PasswordAPI
+  ^comzotohcljc.crypto.codec.Password
   [^long len]
 
   (pwdify (createXXX len s_pwdChars)))

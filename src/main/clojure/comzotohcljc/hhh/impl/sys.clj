@@ -25,11 +25,13 @@
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
 (import '(com.zotoh.hohenheim.loaders AppClassLoader))
-(import '(com.zotoh.hohenheim.core Identifiable Hierarchial Versioned Startable))
+(import '(com.zotoh.hohenheim.core
+  Identifiable Hierarchial Versioned Startable))
 (import '(java.net URL))
 (import '(java.io File))
 (import '(java.security SecureRandom))
 (import '(java.util.zip ZipFile))
+(import '(com.zotoh.frwk.io IOUtils))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hhh.core.constants])
@@ -106,17 +108,15 @@
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          py (.getf ctx K_PLAYDIR)
          pd (.getf ctx K_PODSDIR)
-         fs (FileUtils/listFiles ^File pd (into-array String ["pod"]) false) ]
+         fs (IOUtils/listFiles ^File pd "pod" false) ]
     (doseq [ ^File f (seq fs)]
-      (.deploy ^comzotohcljc.hhh.impl.defaults.Deployer co 
-               (-> f (.toURI)(.toURL))))))
-
+      (.deploy ^comzotohcljc.hhh.impl.defaults.Deployer co f))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Kernel
 
-(defn- maybe-start-pod 
-  
+(defn- maybe-start-pod
+
   [^comzotohcljc.hhh.core.sys.Thingy knl
    ^comzotohcljc.hhh.core.sys.Thingy pod]
 
@@ -155,13 +155,15 @@
 
         Identifiable
           (id [_] K_KERNEL )
- 
+
         Kernel
 
           (start [this]
             (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
-                   ^comzotohcljc.hhh.core.sys.Registry root (.getf ctx K_COMPS)
-                   ^comzotohcljc.util.core.MuObj apps (.lookup root K_APPS) ]
+                   ^comzotohcljc.hhh.core.sys.Registry
+                   root (.getf ctx K_COMPS)
+                   ^comzotohcljc.util.core.MuObj
+                   apps (.lookup root K_APPS) ]
               ;; need this to prevent deadlocks amongst pods
               ;; when there are dependencies
               ;; TODO: need to handle this better

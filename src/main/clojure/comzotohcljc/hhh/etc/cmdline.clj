@@ -30,6 +30,7 @@
 (import '(org.apache.commons.io FileUtils))
 (import '(java.util Calendar ResourceBundle Properties Date))
 (import '(java.io File))
+(import '(com.zotoh.frwk.io IOUtils))
 
 (require '[comzotohcljc.hhh.core.climain :as CLI])
 (require '[comzotohcljc.i18n.resources :as RC])
@@ -274,7 +275,7 @@
       (throw (CmdHelpError.)))))
 
 (defn- genHash [text]
-  (let [ ^comzotohcljc.crypto.codec.PasswordAPI p (CE/pwdify text) ]
+  (let [ ^comzotohcljc.crypto.codec.Password p (CE/pwdify text) ]
     (println (.hashed p))))
 
 (defn- onHash [ & args]
@@ -283,7 +284,7 @@
     (throw (CmdHelpError.))))
 
 (defn- encrypt [pkey text]
-  (let [ ^comzotohcljc.crypto.codec.PasswordAPI p (CE/pwdify text pkey) ]
+  (let [ ^comzotohcljc.crypto.codec.Password p (CE/pwdify text pkey) ]
     (println (.encoded p))))
 
 (defn- onEncrypt [ & args]
@@ -292,7 +293,7 @@
     (throw (CmdHelpError.))))
 
 (defn- decrypt [pkey secret]
-  (let [ ^comzotohcljc.crypto.codec.PasswordAPI p (CE/pwdify secret pkey) ]
+  (let [ ^comzotohcljc.crypto.codec.Password p (CE/pwdify secret pkey) ]
     (println (.text p))))
 
 (defn- onDecrypt [ & args]
@@ -316,7 +317,7 @@
 
 (defn- scanJars [^File dir ^StringBuilder out]
   (let [ sep (System/getProperty "line.separator")
-         fs (FileUtils/listFiles dir (into-array String ["jar"]) false) ]
+         fs (IOUtils/listFiles dir "jar" false) ]
     (doseq [ f (seq fs) ]
       (doto out
         (.append (str "<classpathentry  kind=\"lib\" path=\""

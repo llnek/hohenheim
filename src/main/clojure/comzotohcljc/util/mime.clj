@@ -27,7 +27,7 @@
 
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.net URLDecoder URLEncoder))
-(import '(java.io InputStream File))
+(import '(java.io IOException InputStream File))
 (import '(java.net URL))
 (import '(java.util.regex Pattern Matcher))
 (import '(java.util Properties))

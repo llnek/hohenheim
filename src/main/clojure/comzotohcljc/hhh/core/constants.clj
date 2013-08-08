@@ -39,7 +39,8 @@
 (def WEB_INF  "WEB-INF" )
 
 (def DN_BLOCKS  "blocks" )
-(def DN_CORE "exec" )
+(def DN_BOOT "boot" )
+(def DN_EXEC "exec" )
 (def DN_CONF "conf" )
 (def DN_CLASSES "classes" )
 (def DN_LIB "lib" )
@@ -121,7 +122,9 @@
 (def K_RCBUNDLE :str-bundle )
 
 (def K_PIDFILE :pid-file )
+(def K_APPCONF_FP :app-conf-file)
 (def K_APPCONF :app-conf)
+(def K_ENVCONF_FP :env-conf-file)
 (def K_ENVCONF :env-conf)
 (def K_MFPROPS :mf-props)
 

@@ -75,11 +75,18 @@
 
 (defn- maybeInizLoaders [^comzotohcljc.util.core.MuObj ctx]
   (let [ cz (MU/get-cldr) ]
-    (if (instance? ExecClassLoader cz)
+    (cond
+      (instance? RootClassLoader cz)
+      (do
+        (.setf! ctx K_ROOT_CZLR cz)
+        (setupClassLoader ctx))
+      (instance? ExecClassLoader cz)
       (do
         (.setf! ctx K_ROOT_CZLR (.getParent cz))
-        (.setf! ctx K_EXEC_CZLR cz) )
+        (.setf! ctx K_EXEC_CZLR cz))
+      :else
       (setupClassLoader (setupClassLoaderAsRoot ctx)))
+    (info "classloaders configured.  using ExecClassLoader.")
     ctx))
 
 (defn- loadConf [^comzotohcljc.util.core.MuObj ctx]
@@ -90,6 +97,7 @@
          lg (.toLowerCase ^String (.optString w K_LOCALE K_LANG "en"))
          cn (.toUpperCase ^String (.optString w K_LOCALE K_COUNTRY ""))
          loc (if (SU/hgl? cn) (Locale. lg cn) (Locale. lg)) ]
+    (info (str "using locale: " loc))
     (doto ctx
       (.setf! K_PROPS w)
       (.setf! K_L10N loc))) )
@@ -98,22 +106,24 @@
   (let [ rc (LN/get-resource "comzotohcljc.hhh.etc.Resources"
                              (.getf ctx K_LOCALE)) ]
     (.setf! ctx K_RCBUNDLE rc)
+    (info "resource bundle found and loaded.")
     ctx))
 
 (defn- pre-parse [^comzotohcljc.hhh.core.sys.Thingy cli args]
   (let [ bh (File. ^String (first args))
          ctx (inizContext bh) ]
     (info "inside pre-parse()")
-    (precondDir (File. bh ^String DN_PATCH))
-    (precondDir (File. bh ^String DN_CORE))
-    (precondDir (File. bh ^String DN_LIB))
+    (precondDir (File. bh ^String DN_BLOCKS))
+    (precondDir (File. bh ^String DN_CFG))
+    (precondDir (File. bh ^String DN_BOXX))
     (.setf! ctx K_CLISH cli)
     (.setCtx! cli ctx)
+    (info "home directory looks ok.")
     ctx))
 
 (defn- start-exec [^comzotohcljc.util.core.MuObj ctx]
   (do
-    (info "About to start Hohenheim...")
+    (info "about to start Hohenheim...")
     (let [ ^Startable exec (.getf ctx K_EXECV) ]
       (.start exec))
     (info "Hohenheim started.")
@@ -131,6 +141,7 @@
     (let [ ^comzotohcljc.util.core.MuObj execv (make-execvisor cli) ]
       (.setf! ctx K_EXECV execv)
       (synthesize-component execv { :ctx ctx } )
+      (info "Execvisor created and synthesized - OK.")
       ctx)))
 
 (defn- enableRemoteShutdown []
@@ -155,23 +166,26 @@
           (Thread. (reify Runnable
                       (run [_] (CU/Try! (stop-cli ctx trigger))))))
     (enableRemoteShutdown)
-    (debug "Added shutdown hook.")
+    (info "added shutdown hook.")
     [ctx trigger] ))
 
 (defn- writePID [^comzotohcljc.util.core.MuObj ctx]
   (let [ fp (File. ^File (.getf ctx K_BASEDIR) "hohenheim.pid") ]
     (FileUtils/writeStringToFile fp (PU/pid) "utf-8")
     (.setf! ctx K_PIDFILE fp)
+    (info "wrote hohenheim.pid - OK.")
     ctx))
 
 (defn- pause-cli [[ ^comzotohcljc.util.core.MuObj ctx trigger]]
   (do
     (print-mutableObj ctx)
-    (info "Applications are now running...")
+    (info "applications are now running...")
+    (info "system thread paused, promise given :) - waiting to be delivered!")
     (deref trigger) ;; pause here
-    (info "Applications are shutting down...")
+    (info "promised delivered!")
+    (info "applications are shutting down...")
     (PU/safe-wait 5000) ;; give some time for stuff to wind-down.
-    (info "Bye.")
+    (info "Hohenheim says \"Goodbye\".")
     (System/exit 0)))
 
 

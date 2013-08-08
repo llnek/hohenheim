@@ -37,6 +37,7 @@
 (import '(com.jolbox.bonecp BoneCP BoneCPConfig))
 (import '(org.apache.commons.lang3 StringUtils))
 
+(use '[comzotohcljc.crypto.codec])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.meta :as MU])
 (require '[comzotohcljc.util.str :as SU])
@@ -50,7 +51,7 @@
 (def ^:dynamic *DDL_BVS* nil)
 
 (defrecord JDBCInfo [^String driver ^String url ^String user
-                     ^comzotohcljc.crypto.codec.PasswordAPI pwdObj] )
+                     ^comzotohcljc.crypto.codec.Password pwdObj] )
 
 (defprotocol DBAPI ""
   (supportsOptimisticLock [_] )
@@ -64,7 +65,7 @@
 (defn make-jdbc
   ^comzotohcljc.dbio.core.JDBCInfo
   [^String driver ^String url ^String user
-   ^comzotohcljc.crypto.codec.PasswordAPI pwdObj]
+   ^comzotohcljc.crypto.codec.Password pwdObj]
   (JDBCInfo. driver url user pwdObj))
 
 (def ^:dynamic *DBTYPES* {

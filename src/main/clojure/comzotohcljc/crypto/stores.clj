@@ -77,13 +77,13 @@
 
 (defprotocol CryptoStoreAPI
 
-  (addKeyEntity [_ ^bytes bits ^comzotohcljc.crypto.codec.PasswordAPI pwdObj] )
+  (addKeyEntity [_ ^bytes bits ^comzotohcljc.crypto.codec.Password pwdObj] )
   (addCertEntity [_ ^bytes bits] )
   (trustManagerFactory [_] )
   (keyManagerFactory [_] )
   (certAliases [_] )
   (keyAliases [_] )
-  (keyEntity [_ ^String nm ^comzotohcljc.crypto.codec.PasswordAPI pwdObj] )
+  (keyEntity [_ ^String nm ^comzotohcljc.crypto.codec.Password pwdObj] )
   (certEntity [_ ^String nm] )
   (removeEntity [_ ^String nm] )
   (intermediateCAs [_] )
@@ -101,14 +101,14 @@
 
   ^comzotohcljc.crypto.stores.CryptoStoreAPI
   [^KeyStore keystore
-   ^comzotohcljc.crypto.codec.PasswordAPI passwdObj]
+   ^comzotohcljc.crypto.codec.Password passwdObj]
 
   (reify CryptoStoreAPI
 
     (addKeyEntity [this bits pwdObj]
       ;; we load the p12 content into an empty keystore, then extract the entry
       ;; and insert it into the current one.
-      (let [ ch (.toCharArray ^comzotohcljc.crypto.codec.PasswordAPI pwdObj)
+      (let [ ch (.toCharArray ^comzotohcljc.crypto.codec.Password pwdObj)
              tmp (doto (mkStore keystore) (.load bits ch))
              pp (KeyStore$PasswordProtection. ch)
              ^KeyStore$PrivateKeyEntry pkey (.getEntry tmp (.nextElement (.aliases tmp)) pp) ]
@@ -131,7 +131,7 @@
     (keyAliases [_] (CO/pkey-aliases keystore))
 
     (keyEntity [_ nm pwdObj]
-      (let [ ca (.toCharArray ^comzotohcljc.crypto.codec.PasswordAPI pwdObj) ]
+      (let [ ca (.toCharArray ^comzotohcljc.crypto.codec.Password pwdObj) ]
         (.getEntry keystore nm (KeyStore$PasswordProtection. ca))))
 
     (certEntity [_ nm]

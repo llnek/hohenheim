@@ -24,6 +24,7 @@ package com.zotoh.frwk.io
 import org.apache.commons.lang3.StringUtils
 import java.io._
 import org.slf4j._
+import org.apache.commons.io.FileUtils
 
 object IOUtils {
   
@@ -52,7 +53,10 @@ object IOUtils {
       workDir)
   }
 
-  
+  def listFiles(dir:File, ext:String, recurse:Boolean) = {
+    FileUtils.listFiles(dir, Array(ext),recurse)
+  }
+
 }
 
 
