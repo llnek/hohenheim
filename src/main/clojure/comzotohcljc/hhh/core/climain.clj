@@ -49,6 +49,9 @@
 (import '(org.apache.commons.io FileUtils))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
+
+(def CLI-TRIGGER (promise))
 
 (defn- inizContext ^comzotohcljc.util.core.MuObj [^File baseDir]
   (let [ cfg (File. baseDir ^String DN_CFG)
@@ -100,11 +103,12 @@
     (info (str "using locale: " loc))
     (doto ctx
       (.setf! K_PROPS w)
-      (.setf! K_L10N loc))) )
+      (.setf! K_LOCALE loc))) )
 
 (defn- setupResources [^comzotohcljc.util.core.MuObj ctx]
-  (let [ rc (LN/get-resource "comzotohcljc.hhh.etc.Resources"
+  (let [ rc (LN/get-resource "comzotohcljc/hhh/etc/Resources"
                              (.getf ctx K_LOCALE)) ]
+    (CU/test-nonil "etc/resouces" rc)
     (.setf! ctx K_RCBUNDLE rc)
     (info "resource bundle found and loaded.")
     ctx))
@@ -149,25 +153,26 @@
     (info "Enabling remote shutdown...")
     nil))
 
-(defn- stop-cli [^comzotohcljc.util.core.MuObj ctx trigger]
+(defn- stop-cli [^comzotohcljc.util.core.MuObj ctx]
   (let [ ^File pid (.getf ctx K_PIDFILE)
          execv (.getf ctx K_EXECV) ]
     (when-not (nil? pid) (FileUtils/deleteQuietly pid))
-    (info "About to stop Hohenheim...")
+    (info "about to stop Hohenheim...")
+    (info "applications are shutting down...")
     (when-not (nil? execv)
       (.stop ^Startable execv))
     (info "Hohenheim stopped.")
-    (deliver trigger 911)))
+    (info "Hohenheim says \"Goodbye\".")
+    (deliver CLI-TRIGGER 911)))
 
 (defn- hookShutdown [^comzotohcljc.util.core.MuObj ctx]
-  (let [ cli (.getf ctx K_CLISH)
-         trigger (promise) ]
+  (let [ cli (.getf ctx K_CLISH) ]
     (.addShutdownHook (Runtime/getRuntime)
           (Thread. (reify Runnable
-                      (run [_] (CU/Try! (stop-cli ctx trigger))))))
+                      (run [_] (CU/Try! (stop-cli ctx))))))
     (enableRemoteShutdown)
     (info "added shutdown hook.")
-    [ctx trigger] ))
+    ctx))
 
 (defn- writePID [^comzotohcljc.util.core.MuObj ctx]
   (let [ fp (File. ^File (.getf ctx K_BASEDIR) "hohenheim.pid") ]
@@ -176,16 +181,14 @@
     (info "wrote hohenheim.pid - OK.")
     ctx))
 
-(defn- pause-cli [[ ^comzotohcljc.util.core.MuObj ctx trigger]]
+(defn- pause-cli [^comzotohcljc.util.core.MuObj ctx]
   (do
-    (print-mutableObj ctx)
+    (CU/print-mutableObj ctx)
     (info "applications are now running...")
-    (info "system thread paused, promise given :) - waiting to be delivered!")
-    (deref trigger) ;; pause here
-    (info "promised delivered!")
-    (info "applications are shutting down...")
+    (info "system thread paused on promise - awwaits delivery.")
+    (deref CLI-TRIGGER) ;; pause here
+    (info "promise delivered!")
     (PU/safe-wait 5000) ;; give some time for stuff to wind-down.
-    (info "Hohenheim says \"Goodbye\".")
     (System/exit 0)))
 
 

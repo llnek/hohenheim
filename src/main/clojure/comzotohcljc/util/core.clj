@@ -471,6 +471,16 @@
 
 
 
+(defn print-mutableObj
+  ([ctx] (print-mutableObj ctx false))
+  ([^comzotohcljc.util.core.MuObj ctx dbg]
+    (let [ b (StringBuilder.) ]
+      (doseq [ [k v] (.seq* ctx) ]
+        (.append b (str k " = " v "\n")))
+      (let [ s (str "\n" b) ]
+        (if dbg
+          (debug s)
+          (info s)))) ) )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
