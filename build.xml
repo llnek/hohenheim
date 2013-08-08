@@ -45,6 +45,19 @@
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
+    </java>
+  </target>
+
+  <target name="clj-hhh-main">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="comzotohcljc.hhh.core.constants" />
+      <arg value="comzotohcljc.hhh.core.climain" />
+      <arg value="comzotohcljc.hhh.core.sys" />
+      <arg value="comzotohcljc.hhh.etc.cmdline" />
+      <arg value="comzotohcljc.hhh.etc.core" />
+      <arg value="comzotohcljc.hhh.etc.misc" />
       <arg value="comzotohcljc.hhh.impl.defaults" />
       <arg value="comzotohcljc.hhh.impl.ext" />
       <arg value="comzotohcljc.hhh.impl.sys" />
@@ -52,11 +65,66 @@
     </java>
   </target>
 
-  <target name="compile_clj">
+  <target name="clj-hhh-io">
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="comzotohcljc.hhh.io.context"/>
+      <arg value="comzotohcljc.hhh.io.core"/>
+      <arg value="comzotohcljc.hhh.io.events"/>
+      <arg value="comzotohcljc.hhh.io.files"/>
+      <arg value="comzotohcljc.hhh.io.http"/>
+      <arg value="comzotohcljc.hhh.io.jms"/>
+      <arg value="comzotohcljc.hhh.io.loops"/>
+      <arg value="comzotohcljc.hhh.io.mails"/>
+      <arg value="comzotohcljc.hhh.io.netty"/>
+      <arg value="comzotohcljc.hhh.io.servlet"/>
+      <arg value="comzotohcljc.hhh.io.triggers"/>
+    </java>
+  </target>
 
+  <target name="clj-dbio">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="comzotohcljc.dbio.core" />
+      <arg value="comzotohcljc.dbio.sql" />
+      <arg value="comzotohcljc.dbio.simple" />
+      <arg value="comzotohcljc.dbio.composite" />
+      <arg value="comzotohcljc.dbio.connect" />
+      <arg value="comzotohcljc.dbio.drivers" />
+      <arg value="comzotohcljc.dbio.sqlserver" />
+      <arg value="comzotohcljc.dbio.h2" />
+      <arg value="comzotohcljc.dbio.oracle" />
+      <arg value="comzotohcljc.dbio.mysql" />
+      <arg value="comzotohcljc.dbio.postgresql" />
+    </java>
+  </target>
+
+  <target name="clj-net">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="comzotohcljc.net.comms" />
+      <arg value="comzotohcljc.netty.comms" />
+    </java>
+  </target>
+
+  <target name="clj-crypto">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="comzotohcljc.crypto.core" />
+      <arg value="comzotohcljc.crypto.codec" />
+      <arg value="comzotohcljc.crypto.stores" />
+      <arg value="comzotohcljc.crypto.ssl" />
+    </java>
+  </target>
+
+  <target name="clj-util">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.dir}" />
       <arg value="comzotohcljc.util.core" />
       <arg value="comzotohcljc.util.bytes" />
       <arg value="comzotohcljc.util.cmdline" />
@@ -74,53 +142,14 @@
       <arg value="comzotohcljc.util.usastate" />
       <arg value="comzotohcljc.util.ini" />
       <arg value="comzotohcljc.util.scheduler" />
-
       <arg value="comzotohcljc.i18n.resources" />
+    </java>
+  </target>
 
-      <arg value="comzotohcljc.crypto.core" />
-      <arg value="comzotohcljc.crypto.codec" />
-      <arg value="comzotohcljc.crypto.stores" />
-      <arg value="comzotohcljc.crypto.ssl" />
-
-      <arg value="comzotohcljc.net.comms" />
-      <arg value="comzotohcljc.netty.comms" />
-
-      <arg value="comzotohcljc.dbio.core" />
-      <arg value="comzotohcljc.dbio.sql" />
-      <arg value="comzotohcljc.dbio.simple" />
-      <arg value="comzotohcljc.dbio.composite" />
-      <arg value="comzotohcljc.dbio.connect" />
-      <arg value="comzotohcljc.dbio.drivers" />
-      <arg value="comzotohcljc.dbio.sqlserver" />
-      <arg value="comzotohcljc.dbio.h2" />
-      <arg value="comzotohcljc.dbio.oracle" />
-      <arg value="comzotohcljc.dbio.mysql" />
-      <arg value="comzotohcljc.dbio.postgresql" />
-
-      <arg value="comzotohcljc.hhh.io.context"/>
-      <arg value="comzotohcljc.hhh.io.core"/>
-      <arg value="comzotohcljc.hhh.io.events"/>
-      <arg value="comzotohcljc.hhh.io.files"/>
-      <arg value="comzotohcljc.hhh.io.http"/>
-      <arg value="comzotohcljc.hhh.io.jms"/>
-      <arg value="comzotohcljc.hhh.io.loops"/>
-      <arg value="comzotohcljc.hhh.io.mails"/>
-      <arg value="comzotohcljc.hhh.io.netty"/>
-      <arg value="comzotohcljc.hhh.io.servlet"/>
-      <arg value="comzotohcljc.hhh.io.triggers"/>
-
-      <arg value="comzotohcljc.hhh.core.constants" />
-      <arg value="comzotohcljc.hhh.core.climain" />
-      <arg value="comzotohcljc.hhh.core.sys" />
-      <arg value="comzotohcljc.hhh.etc.cmdline" />
-      <arg value="comzotohcljc.hhh.etc.core" />
-      <arg value="comzotohcljc.hhh.etc.misc" />
-
-      <arg value="comzotohcljc.hhh.impl.defaults" />
-      <arg value="comzotohcljc.hhh.impl.ext" />
-      <arg value="comzotohcljc.hhh.impl.sys" />
-      <arg value="comzotohcljc.hhh.impl.exec" />
-
+  <target name="compile_clj">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.dir}" />
       <!--
       <arg value="comzotohcljc.wflow.activity" />
       <arg value="comzotohcljc.wflow.point" />
@@ -159,7 +188,12 @@
       <include name="**/*.scala"/>
     </scalac>
 
-    <antcall target="compile_clj" />
+    <antcall target="clj-util" />
+    <antcall target="clj-crypto" />
+    <antcall target="clj-net" />
+    <antcall target="clj-dbio" />
+    <antcall target="clj-hhh-io" />
+    <antcall target="clj-hhh-main" />
 
     <!-- copy over other resources -->
 

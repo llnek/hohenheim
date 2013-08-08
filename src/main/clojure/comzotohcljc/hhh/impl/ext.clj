@@ -29,7 +29,7 @@
 (import '(java.io File))
 (import '(com.zotoh.hohenheim.runtime AppMain))
 (import '(com.zotoh.hohenheim.core
-  Versioned Hierarchial Startable
+  Versioned Hierarchial Startable Disposable
   Identifiable Container ConfigError ServiceError ))
 
 (import '(com.zotoh.hohenheim.io IOEvent))
@@ -40,8 +40,13 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
+(use '[comzotohcljc.hhh.io.core :only (make-emitter)])
 (use '[comzotohcljc.hhh.core.constants])
-(use '[comzotohcljc.hhh.impl.defaults :rename {enabled? blockmeta-enabled? } ])
+(use '[comzotohcljc.hhh.core.constants])
+(use '[comzotohcljc.hhh.impl.defaults 
+       :rename {enabled? blockmeta-enabled?
+                start kernel-start
+                stop kernel-stop } ])
 (use '[comzotohcljc.hhh.etc.misc])
 (use '[comzotohcljc.hhh.core.sys])
 
@@ -65,6 +70,8 @@
   (contextualize [_ ctr] )
   (configure [_ options] )
   (initialize [_] )
+  (start [_] )
+  (stop [_])
   (dispose [_] ))
 
 (defn- make-job "" [_container evt]
@@ -131,8 +138,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- make-service-block [^Identifiable bk container cfg]
-  (let [ obj (MU/make-obj (.id bk)) ]
+  (let [ eid (.id bk) obj (make-emitter container eid) ]
+    (info "about to synthesize an emitter: " eid)
     (synthesize-component obj { :ctx container :props cfg } )
+    (info "emitter synthesized - OK.")
     obj))
 
 (defn- make-app-container [pod]
@@ -150,7 +159,7 @@
           (getCtx [_] (.mm-g impl :ctx) )
 
         Container
-          (notifyObservers [_ evt]
+          (notifyObservers [this evt]
             (let [ ^comzotohcljc.hhh.impl.ext.JobCreator
                    jc (.getAttr this K_JCTOR) ]
               (.update jc evt {})))
@@ -167,8 +176,52 @@
           (id [_] (.id ^Identifiable pod) )
 
         Startable
-          (start [_] )
-          (stop [_] )
+          (start [_]
+            (let [ ^comzotohcljc.hhh.core.sys.Registry
+                   srg (.mm-g impl K_SVCS)
+                   main (.mm-g impl :main-app) ]
+              (info "container starting all services...")
+              (doseq [ [k v] (seq* srg) ]
+                (.start ^Startable v))
+              (info "container starting main app...")
+              (cond
+                (satisfies? CljAppMain main)
+                (.start ^comzotohcljc.hhh.impl.ext.CljAppMain main)
+                (instance? AppMain main)
+                (.start ^AppMain main)
+                :else nil)))
+
+          (stop [_]
+            (let [ ^comzotohcljc.hhh.core.sys.Registry
+                   srg (.mm-g impl K_SVCS)
+                   main (.mm-g impl :main-app) ]
+              (info "container stopping all services...")
+              (doseq [ [k v] (seq* srg) ]
+                (.stop ^Startable v))
+              (info "container stopping main app...")
+              (cond
+                (satisfies? CljAppMain main)
+                (.stop ^comzotohcljc.hhh.impl.ext.CljAppMain main)
+                (instance? AppMain main)
+                (.stop ^AppMain main)
+                :else nil)))
+
+        Disposable
+          (dispose [_]
+            (let [ ^comzotohcljc.hhh.core.sys.Registry
+                   srg (.mm-g impl K_SVCS)
+                   main (.mm-g impl :main-app) ]
+              (doseq [ [k v] (seq* srg) ]
+                (.dispose ^Disposable v))
+              (info "container dispose() - main app getting disposed.")
+              (cond
+                (satisfies? CljAppMain main)
+                (.stop ^comzotohcljc.hhh.impl.ext.CljAppMain main)
+                (instance? AppMain main)
+                (.stop ^AppMain main)
+                :else nil)))
+
+        Disposable
 
         ContainerAPI
 
@@ -295,6 +348,7 @@
           (instance? AppMain obj)
           (doJavaApp co obj)
           :else (throw (ConfigError. (str "Invalid Main Class " mCZ))))
+        (.setAttr! co :main-app obj)
         (info "application main-class " mCZ " created and invoked")))
 
     (let [ svcs (:services env) ]
