@@ -1,6 +1,7 @@
 package com.zotoh.hohenheim.runtime
 
-import com.zotoh.hohenheim.core.{Startable, Container, Initializable, Disposable}
+import com.zotoh.hohenheim.core.Container
+import com.zotoh.frwk.core.{Startable, Initializable, Disposable}
 import org.json.JSONObject
 
 trait AppMain extends Disposable with Initializable with Startable {

@@ -232,9 +232,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(derive :czc.hhh.io/JettyIO :czc.hhh.io/HTTP)
-
-
 
 (def ^:private http-eof nil)
 

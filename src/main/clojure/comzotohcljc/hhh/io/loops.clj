@@ -26,7 +26,7 @@
 
 (import '(java.util Date Timer TimerTask))
 (import '(com.zotoh.hohenheim.io TimerEvent))
-(import '(com.zotoh.hohenheim.core Startable))
+(import '(com.zotoh.frwk.core Startable))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
@@ -57,7 +57,7 @@
 
 (defn- config-repeat-timer [^Timer tm delays intv func]
   (let [ tt (proxy [TimerTask][]
-              (run [_]
+              (run []
                 (CU/TryC
                     (when (fn? func) (func)))))
          [^Date dw ^long ds] delays ]
@@ -68,7 +68,7 @@
 
 (defn- config-timer [^Timer tm delays func]
   (let [ tt (proxy [TimerTask][]
-              (run [_]
+              (run []
                 (when (fn? func) (func))))
          [^Date dw ^long ds] delays]
     (when (instance? Date dw)
@@ -93,11 +93,12 @@
   (let [ intv (:interval-secs cfg)
          ds (:delay-secs cfg)
          dw (SU/nsb (:delay-when cfg)) ]
-    (when (SU/hgl? dw)
-      (.setAttr! co :delayWhen (DU/parse-iso8601 (SU/strim dw))))
-    (when-not (number? ds)
-      (.setAttr! co :delayMillis (* 1000 ds)))
-    (when-not (number? intv)
+    (if (SU/hgl? dw)
+      (.setAttr! co :delayWhen (DU/parse-iso8601 (SU/strim dw)))
+      (do
+        (.setAttr! co :delayMillis 
+                   (* 1000 (Math/min (int 3) (if (number? ds) ds 3))))))
+    (when (number? intv)
       (.setAttr! co :intervalMillis (* 1000 intv)))
     (info "loopable config: " cfg)
     co))
@@ -216,7 +217,7 @@
                                 (while @loopy (loopable-wakeup co intv))))) ]
     (.setAttr! co :loopy loopy)
     (if (or (number? ds) (instance? Date dw))
-      (config-timer (Timer.) dw ds func)
+      (config-timer (Timer.) [dw ds] func)
       (func))
     (ioes-started co)))
 
@@ -228,11 +229,6 @@
     (ioes-stopped co)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(derive :czc.hhh.io/RepeatingTimer :czc.hhh.io/Emitter)
-(derive :czc.hhh.io/OnceTimer :czc.hhh.io/Emitter)
-(derive :czc.hhh.io/ThreadedTimer :czc.hhh.io/RepeatingTimer)
 
 
 (def ^:private loops-eof nil)

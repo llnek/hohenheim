@@ -19,7 +19,7 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.core
 
 trait Hierarchial {
 	def parent() : Any

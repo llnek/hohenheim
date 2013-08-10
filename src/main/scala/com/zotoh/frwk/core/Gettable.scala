@@ -19,14 +19,12 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.core
 
 /**
  * @author kenl
  */
-trait Configurable {
-
-  def configure(c:Configuration): Unit
-
+trait Gettable {
+  def get(key:Any): Any
 }
 

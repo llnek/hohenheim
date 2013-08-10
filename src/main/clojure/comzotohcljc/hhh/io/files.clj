@@ -156,8 +156,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(derive :czc.hhh.io/FilePicker :czc.hhh.io/ThreadedTimer)
-
-
 (def ^:private files-eof nil)
 

@@ -19,12 +19,14 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.core
 
 /**
  * @author kenl
  */
-trait Initializable {
-  def initialize(): Unit
+trait Configurable {
+
+  def configure(c:Configuration): Unit
+
 }
 

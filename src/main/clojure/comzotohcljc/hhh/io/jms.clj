@@ -217,7 +217,5 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(derive :czc.hhh.io/JMS :czc.hhh.io/Emitter)
-
 (def ^:private jms-eof nil)
 

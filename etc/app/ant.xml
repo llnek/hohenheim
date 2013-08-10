@@ -363,6 +363,7 @@
       <replace file="${app.dir}/src/main/clojure/${app.domain.path}/pipe.clj"
         token="@@APPDOMAIN@@" value="${hohenheim.app.domain}"/>
       <replace file="${app.dir}/conf/env.conf" token="@@APPDOMAIN@@" value="${hohenheim.app.domain}"/>
+      <replace file="${app.dir}/build.xml" token="@@APPDOMAIN@@" value="${hohenheim.app.domain}"/>
       <replace file="${app.dir}/build.xml" token="@@APPID@@" value="${hohenheim.appid}"/>
     </target>
 

@@ -21,6 +21,8 @@
 
 package com.zotoh.hohenheim.core
 
+import com.zotoh.frwk.core.Gettable
+
 /**
  * @author kenl
  */

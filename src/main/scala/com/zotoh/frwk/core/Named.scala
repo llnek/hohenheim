@@ -19,16 +19,12 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.core
 
 /**
  * @author kenl
  */
-trait Startable {
-
-  def start(): Unit
-  def stop(): Unit
-
+trait Named {
+  def getName(): String
 }
-
 

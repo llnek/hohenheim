@@ -25,8 +25,9 @@
 
 (import '(com.zotoh.frwk.util CoreUtils))
 (import '(com.zotoh.hohenheim.loaders AppClassLoader))
+(import '(com.zotoh.frwk.core
+  Versioned Identifiable Hierarchial))
 (import '(com.zotoh.hohenheim.core
-  Versioned Identifiable Hierarchial
   RegistryError ServiceError ConfigError))
 (import '(java.io File))
 
@@ -83,17 +84,6 @@
 (defprotocol Kernel 
   ""              )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn make-context "" ^comzotohcljc.util.core.MuObj []
-  (let [ impl (CU/make-mmap) ]
-    (reify MuObj
-      (setf! [_ k v] (.mm-s impl k v) )
-      (seq* [_] (seq (.mm-m* impl)))
-      (getf [_ k] (.mm-g impl k) )
-      (clrf! [_ k] (.mm-r impl k) )
-      (clear! [_] (.mm-c impl)))) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -157,26 +147,6 @@
               (.mm-s impl :cache (assoc cache cid c)))) )
 
       { :typeid (keyword (str "czc.hhh.impl/" (name regoType))) } )) )
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn comp-clone-context 
-  [^comzotohcljc.hhh.core.sys.Thingy co
-   ^comzotohcljc.util.core.MuObj ctx]
-  (do
-    (when-not (nil? ctx)
-      (let [ x (make-context) ]
-        (doseq [ [k v] (.seq* ctx) ]
-          (.setf! x k v))
-        (.setCtx! co x)))
-    co))
-
-(defmethod comp-contextualize :default [co ctx]
-  (comp-clone-context co ctx))
-
-(defmethod comp-configure :default [co props] co)
-(defmethod comp-initialize :default [co] co)
-(defmethod comp-compose :default [co rego] co)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

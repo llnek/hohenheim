@@ -29,7 +29,7 @@
 (import '(java.net URL))
 (import '(java.util Date))
 (import '(com.zotoh.frwk.io IOUtils))
-(import '(com.zotoh.hohenheim.core
+(import '(com.zotoh.frwk.core
   Startable Versioned Hierarchial Identifiable))
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hhh.core.constants])

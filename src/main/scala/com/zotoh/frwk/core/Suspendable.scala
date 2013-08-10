@@ -19,12 +19,15 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.core
 
 /**
  * @author kenl
  */
-trait Named {
-  def getName(): String
+trait Suspendable {
+
+  def suspend(): Unit
+  def resume(): Unit
+
 }
 

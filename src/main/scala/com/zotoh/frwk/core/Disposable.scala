@@ -19,14 +19,15 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.core
+
 
 /**
  * @author kenl
  */
-trait Settable {
+trait Disposable {
 
-  def set(key:Any, p:Any): Unit
+  def dispose(): Unit
 
 }
 

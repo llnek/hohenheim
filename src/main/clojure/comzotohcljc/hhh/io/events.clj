@@ -34,7 +34,7 @@
 (import '(java.net Socket))
 (import '(java.io File))
 (import '(com.zotoh.frwk.io XData))
-(import '(com.zotoh.hohenheim.core Identifiable))
+(import '(com.zotoh.frwk.core Identifiable))
 (import '(com.zotoh.hohenheim.io IOResult IOEvent Emitter))
 
 (require '[comzotohcljc.util.seqnum :as SN])

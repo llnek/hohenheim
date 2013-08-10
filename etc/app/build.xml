@@ -20,6 +20,7 @@
   <!-- paths used for compilation and run  -->
   <path id="compile.path.id">
     <path location="${out.jar.dir}" />
+    <path location="${src.dir}/clojure" />
     <fileset dir="${lib.dir}" />
     <fileset dir="${hohenheim.home}/dist"/>
     <fileset dir="${hohenheim.home}/lib"/>
@@ -90,6 +91,20 @@
 
 
   <!-- target: compile server-side source code ================================= -->
+  <target name="compile-clj">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" 
+      maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="@@APPDOMAIN@@.core" />
+      <arg value="@@APPDOMAIN@@.pipe" />
+    </java>
+    <copy todir="${out.jar.dir}">
+      <fileset dir="${build.dir}">
+      </fileset>
+    </copy>
+  </target>
+
   <target name="compile_and_jar">
 
     <javac sourcepath="" srcdir="${src.dir}/java" destdir="${out.jar.dir}"
@@ -103,6 +118,8 @@
       <include name="**/*.scala"/>
     </scalac>
 
+    <antcall target="compile-clj"/>
+
     <!-- copy over other resources -->
     <copy todir="${out.jar.dir}">
       <fileset dir="${src.dir}/java">
@@ -111,6 +128,10 @@
       </fileset>
       <fileset dir="${src.dir}/scala">
         <exclude name="**/*.scala"/>
+        <exclude name="**/.svn"/>
+      </fileset>
+      <fileset dir="${src.dir}/clojure">
+        <exclude name="**/*.clj"/>
         <exclude name="**/.svn"/>
       </fileset>
     </copy>

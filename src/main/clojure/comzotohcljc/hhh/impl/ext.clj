@@ -28,9 +28,11 @@
 (import '(java.net URL))
 (import '(java.io File))
 (import '(com.zotoh.hohenheim.runtime AppMain))
-(import '(com.zotoh.hohenheim.core
+(import '(com.zotoh.frwk.core
   Versioned Hierarchial Startable Disposable
-  Identifiable Container ConfigError ServiceError ))
+  Identifiable ))
+(import '(com.zotoh.hohenheim.core
+  Container ConfigError ServiceError ))
 
 (import '(com.zotoh.hohenheim.io IOEvent))
 (import '(com.zotoh.frwk.util CoreUtils))
@@ -40,8 +42,15 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(use '[comzotohcljc.hhh.io.core :only (make-emitter)])
-(use '[comzotohcljc.hhh.core.constants])
+;;(use '[comzotohcljc.hhh.io.core :only (make-emitter)])
+(use '[comzotohcljc.hhh.io.core :rename {enabled? io-enabled?} ])
+(use '[comzotohcljc.hhh.io.loops])
+(use '[comzotohcljc.hhh.io.mails])
+(use '[comzotohcljc.hhh.io.jms])
+(use '[comzotohcljc.hhh.io.http])
+(use '[comzotohcljc.hhh.io.netty])
+(use '[comzotohcljc.hhh.io.events])
+
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.impl.defaults 
        :rename {enabled? blockmeta-enabled?
@@ -118,7 +127,7 @@
               (try
                 (let [ p (Pipeline. job (if (SU/hgl? c0) c0 c1))
                        q (if (nil? p) (make-OrphanFlow job) p) ]
-                  (.start ^Startable q))
+                  (.start ^Pipeline q))
                 (catch Throwable e#
                   (-> (make-FatalErrorFlow job) (.start)))))))
 
@@ -138,10 +147,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- make-service-block [^Identifiable bk container cfg]
-  (let [ eid (.id bk) obj (make-emitter container eid) ]
+  (let [ eid (.id bk) obj (make-emitter container eid)
+         hid (:handler cfg)
+         mm (meta obj) ]
     (info "about to synthesize an emitter: " eid)
+    (info "emitter meta: " mm)
+    (info "is emitter = " (isa?  (:typeid mm) :czc.hhh.io/Emitter))
     (synthesize-component obj { :ctx container :props cfg } )
-    (info "emitter synthesized - OK.")
+    (.setAttr! obj :router hid)
+    (info "emitter synthesized - OK. handler => " hid)
     obj))
 
 (defn- make-app-container [pod]

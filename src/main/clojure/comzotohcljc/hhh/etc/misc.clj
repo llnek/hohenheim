@@ -27,7 +27,7 @@
 (import '(com.zotoh.wflow.core FlowError))
 (import '(com.zotoh.wflow Pipeline PipelineDelegate PTask Work))
 (import '(com.zotoh.hohenheim.io IOEvent HTTPEvent HTTPResult))
-(import '(com.zotoh.hohenheim.core Startable))
+(import '(com.zotoh.frwk.core Startable))
 
 (require '[comzotohcljc.net.comms :as NC])
 
@@ -48,7 +48,8 @@
       (instance? HTTPEvent ev)
       (PTask. (make-work s))
       :else
-      (throw (FlowError.  (str "Unhandled event-type \"" (type ev) "\"."))))))
+      (throw (FlowError.  
+               (str "Unhandled event-type \"" (:typeid (meta ev))  "\"."))))))
 
 (deftype FatalErrorFlow [] PipelineDelegate
   (getStartActivity [_ pipe] 

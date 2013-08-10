@@ -19,15 +19,12 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.core
 
 /**
  * @author kenl
  */
-trait Suspendable {
-
-  def suspend(): Unit
-  def resume(): Unit
-
+trait Identifiable {
+  def id(): Any
 }
 

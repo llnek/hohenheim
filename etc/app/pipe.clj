@@ -1,31 +1,21 @@
 (ns @@APPDOMAIN@@.pipe )
 
-(import '(com.zotoh.hohenheim.core Job))
-
+(import '( com.zotoh.wflow 
+  FlowPoint Activity Pipeline PipelineDelegate PTask Work))
+(import '(com.zotoh.wflow.core Job))
 (use '[clojure.tools.logging :only (info warn error debug)])
-(use '[comzotohcljc.wflow.core])
-(use '[comzotohcljc.wflow.user])
 
-(deftype Handler [] PipelineDelegateAPI
+(deftype Handler [] PipelineDelegate
+  (getStartActivity [_  pipe] 
+    (PTask. (reify Work
+              (perform [_ fw job arg]
+                (info "I  just handled a job!")))))
 
-  (getStart [_ pipe]
-    (info "pipeline calling getStart")
-    (fn [pipe]
-      (make-ptask (fn [fw job arg]
-                    (info "handled one job!")))))
+  (onStop [_ pipe]
+    (info "nothing to be done here, just stop please."))
 
-  (getStop [_ pipe ]
-    (info "pipeline calling getStop")
-    (fn [pipe] (info "nothing more to do, just stop.")))
-
-  (getError [_ pipe error cur]
-    (info "pipeline encountered error" )
-    (fn [pipe error cur]
-      (info "error happens!  just quit")
-      nil))
-)
-
-
+  (onError [ _ err curPt]
+    (info "Oops, I got an error!")))
 
 
 

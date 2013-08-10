@@ -19,15 +19,11 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
-
+package com.zotoh.frwk.core
 
 /**
  * @author kenl
  */
-trait Disposable {
-
-  def dispose(): Unit
-
+trait Versioned {
+  def version(): String
 }
-

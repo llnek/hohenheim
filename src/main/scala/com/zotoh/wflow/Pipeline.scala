@@ -30,6 +30,7 @@ import org.slf4j._
 import com.zotoh.frwk.util.Schedulable
 import java.util.concurrent.atomic.AtomicLong
 import com.zotoh.wflow.core.Job
+import com.zotoh.frwk.core.Startable
 
 
 trait PipelineDelegate {
@@ -53,7 +54,7 @@ object Pipeline {
  * @author kenl
  *
  */
-class Pipeline (private val _theJob:Job, private val _delegateClass:String) {
+class Pipeline (private val _theJob:Job, private val _delegateClass:String) extends Startable {
 
   private val _log:Logger= LoggerFactory.getLogger(classOf[Pipeline] )
   def tlog() = _log
@@ -104,9 +105,9 @@ class Pipeline (private val _theJob:Job, private val _delegateClass:String) {
   def start() {
     tlog().debug("{}: {} => pid : {} => starting" , "Pipeline", _delegateClass , asJObj(_pid))
 
-    val f1= onStart().reify( new NihilPoint(this))
-    _active=true
     try {
+      val f1= onStart().reify( new NihilPoint(this))
+      _active=true
       core().run(f1)
     } catch {
       case e:Throwable =>

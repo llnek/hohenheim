@@ -19,7 +19,7 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.core
 
 import java.util.{Date=>JDate, Map=>JMap, Set=>JSet, List=>JList}
 

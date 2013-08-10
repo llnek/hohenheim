@@ -25,7 +25,7 @@
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
 (import '(com.zotoh.hohenheim.loaders AppClassLoader))
-(import '(com.zotoh.hohenheim.core
+(import '(com.zotoh.frwk.core
   Identifiable Hierarchial Versioned Startable))
 (import '(java.net URL))
 (import '(java.io File))

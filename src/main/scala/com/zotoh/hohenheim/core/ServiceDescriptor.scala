@@ -21,6 +21,7 @@
 
 package com.zotoh.hohenheim.core
 
+import com.zotoh.frwk.core.{Named,Versioned}
 /**
  * @author kenl
  */

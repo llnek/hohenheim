@@ -146,20 +146,20 @@
     </java>
   </target>
 
-  <target name="compile_clj">
-    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
-      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
-      <sysproperty key="clojure.compile.path" value="${build.dir}" />
-      <!--
-      <arg value="comzotohcljc.wflow.activity" />
-      <arg value="comzotohcljc.wflow.point" />
-      <arg value="comzotohcljc.wflow.core" />
-      <arg value="comzotohcljc.wflow.composites" />
-      <arg value="comzotohcljc.wflow.conditionals" />
-      <arg value="comzotohcljc.wflow.delays" />
-      <arg value="comzotohcljc.wflow.user" />
-      -->
-    </java>
+  <target name="compile-clj">
+    <antcall target="clj-util"/>
+    <antcall target="clj-crypto"/>
+    <antcall target="clj-net"/>
+    <antcall target="clj-dbio"/>
+    <antcall target="clj-hhh-io"/>
+    <antcall target="clj-hhh-main"/>
+    <copy todir="${build.dir}">
+      <fileset dir="${src.dir}/clojure">
+        <exclude name="**/*.meta"/>
+        <exclude name="**/*.clj"/>
+        <exclude name="**/.svn"/>
+      </fileset>
+    </copy>
   </target>
 
   <target name="compile_and_jar">
@@ -188,15 +188,7 @@
       <include name="**/*.scala"/>
     </scalac>
 
-    <antcall target="clj-util" />
-    <antcall target="clj-crypto" />
-    <antcall target="clj-net" />
-    <antcall target="clj-dbio" />
-    <antcall target="clj-hhh-io" />
-    <antcall target="clj-hhh-main" />
-
     <!-- copy over other resources -->
-
     <copy todir="${build.dir}">
       <fileset dir="${src.dir}/java">
         <exclude name="**/*.java"/>
@@ -206,13 +198,14 @@
         <exclude name="**/*.scala"/>
         <exclude name="**/.svn"/>
       </fileset>
-      <fileset dir="${src.dir}/clojure">
-        <exclude name="**/*.meta"/>
-        <exclude name="**/*.clj"/>
-        <exclude name="**/.svn"/>
-      </fileset>
     </copy>
 
+    <antcall target="compile-clj"/>
+
+    <antcall target="jarit"/>
+  </target>
+
+  <target name="jarit">
     <jar destfile="${distrib.dir}/${PID}-${build.version}.jar" >
       <fileset dir="${build.dir}">
         <exclude name="**/log4j.properties"/>

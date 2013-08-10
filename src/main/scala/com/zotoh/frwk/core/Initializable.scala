@@ -19,12 +19,12 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.core
 
 /**
  * @author kenl
  */
-trait Gettable {
-  def get(key:Any): Any
+trait Initializable {
+  def initialize(): Unit
 }
 

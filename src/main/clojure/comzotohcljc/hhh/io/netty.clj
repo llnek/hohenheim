@@ -229,7 +229,5 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(derive :czc.hhh.io/NettyIO :czc.hhh.io/HTTP)
-
 (def ^:private netty-eof nil)
 

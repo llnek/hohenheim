@@ -24,7 +24,7 @@
 
   comzotohcljc.hhh.io.core )
 
-(import '(com.zotoh.hohenheim.core 
+(import '(com.zotoh.frwk.core 
   Versioned Hierarchial
   Identifiable Disposable Startable))
 (import '(com.zotoh.hohenheim.core Container))
@@ -159,10 +159,29 @@
 
       { :typeid emId } )))
 
+(defmethod comp-contextualize :czc.hhh.io/Emitter [co ctx]
+  (let [ ^comzotohcljc.hhh.core.sys.Thingy c ctx ]
+    (comp-clone-context co (.getCtx c))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (derive :czc.hhh.io/HTTP :czc.hhh.io/Emitter)
+
+(derive :czc.hhh.io/JettyIO :czc.hhh.io/HTTP)
+(derive :czc.hhh.io/NettyIO :czc.hhh.io/HTTP)
+
+(derive :czc.hhh.io/RepeatingTimer :czc.hhh.io/Emitter)
+(derive :czc.hhh.io/OnceTimer :czc.hhh.io/Emitter)
+(derive :czc.hhh.io/ThreadedTimer :czc.hhh.io/RepeatingTimer)
+
+(derive :czc.hhh.io/FilePicker :czc.hhh.io/ThreadedTimer)
+(derive :czc.hhh.io/IMAP :czc.hhh.io/ThreadedTimer)
+(derive :czc.hhh.io/POP3 :czc.hhh.io/ThreadedTimer)
+
+(derive :czc.hhh.io/JMS :czc.hhh.io/Emitter)
+
+
 
 (def ^:private core-eof nil)
 

@@ -38,9 +38,10 @@
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.impl.defaults])
 
-(import '(com.zotoh.hohenheim.core
+(import '(com.zotoh.hohenheim.core ConfigError))
+(import '(com.zotoh.frwk.core
   Versioned Identifiable Hierarchial
-  Startable ConfigError))
+  Startable ))
 (import '(com.zotoh.hohenheim.loaders
   AppClassLoader RootClassLoader ExecClassLoader))
 (import '(com.zotoh.hohenheim.etc CmdHelpError))

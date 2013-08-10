@@ -242,10 +242,5 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-(derive :czc.hhh.io/IMAP :czc.hhh.io/ThreadedTimer)
-(derive :czc.hhh.io/POP3 :czc.hhh.io/ThreadedTimer)
-
-
 (def ^:private mails-eof nil)
 

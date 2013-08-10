@@ -24,8 +24,11 @@
 
   comzotohcljc.hhh.core.sys )
 
-(import '(com.zotoh.hohenheim.core
+(import '(com.zotoh.frwk.core
   Hierarchial Identifiable Versioned))
+
+(use '[comzotohcljc.util.core :only (MuObj)])
+(require '[comzotohcljc.util.core :as CU])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -80,6 +83,33 @@
    (comp-initialize c)
    c) )
 
+
+(defn make-context "" ^comzotohcljc.util.core.MuObj []
+  (let [ impl (CU/make-mmap) ]
+    (reify MuObj
+      (setf! [_ k v] (.mm-s impl k v) )
+      (seq* [_] (seq (.mm-m* impl)))
+      (getf [_ k] (.mm-g impl k) )
+      (clrf! [_ k] (.mm-r impl k) )
+      (clear! [_] (.mm-c impl)))) )
+
+(defn comp-clone-context 
+  [^comzotohcljc.hhh.core.sys.Thingy co
+   ^comzotohcljc.util.core.MuObj ctx]
+  (do
+    (when-not (nil? ctx)
+      (let [ x (make-context) ]
+        (doseq [ [k v] (.seq* ctx) ]
+          (.setf! x k v))
+        (.setCtx! co x)))
+    co))
+
+(defmethod comp-contextualize :default [co ctx]
+  (comp-clone-context co ctx))
+
+(defmethod comp-configure :default [co props] co)
+(defmethod comp-initialize :default [co] co)
+(defmethod comp-compose :default [co rego] co)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
