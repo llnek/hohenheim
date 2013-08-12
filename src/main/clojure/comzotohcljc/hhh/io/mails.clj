@@ -57,7 +57,7 @@
 
 (defn- closeStore [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^Store conn (.getAttr co :store)
-         fd (.getAttr co :folder) ]
+         ^Folder fd (.getAttr co :folder) ]
     (closeFolder fd)
     (CU/TryC
       (when-not (nil? conn) (.close conn)) )
@@ -67,7 +67,7 @@
 (defn- resolve-provider
   [^comzotohcljc.hhh.core.sys.Thingy co protos ^String demo ^String mock]
 
-  (let [ [^String pkey ^String sn] (if (.getAttr co :ssl) (first protos) (last protos))
+  (let [ [^String pkey ^String sn]  protos
          props (doto (Properties.)
                      (.put  "mail.store.protocol" sn) )
          session (Session/getInstance props nil)
@@ -97,6 +97,17 @@
         (getMsg [_] msg))
       { :typeid :czc.hhh.io/EmailEvent } )) )
 
+(defn- ctor-email-event [co msg]
+  (let [ eeid (SN/next-long) ]
+    (with-meta
+      (reify EmailEvent
+        (getSession [_] nil)
+        (getId [_] eeid)
+        (emitter [_] co)
+        (getMsg [_] msg))
+      { :typeid :czc.hhh.io/EmailEvent } )))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; POP3
 
@@ -110,16 +121,8 @@
   (make-emitter container :czc.hhh.io/POP3))
 
 (defmethod ioes-reify-event :czc.hhh.io/POP3
-  [co args]
-  (let [ msg (first args) eeid (SN/next-long) ]
-    (with-meta
-      (reify EmailEvent
-        (getSession [_] nil)
-        (getId [_] eeid)
-        (emitter [_] co)
-        (getMsg [_] msg))
-      { :typeid :czc.hhh.io/EmailEvent } )))
-
+  [co & args]
+  (ctor-email-event co (first args)))
 
 (defn- connect-pop3 [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ pwd (SU/nsb (.getAttr co :pwd))
@@ -163,7 +166,7 @@
 
 
 (defmethod loopable-oneloop :czc.hhh.io/POP3
-  [co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (try
       (connect-pop3 co)
       (scan-pop3 co)
@@ -174,8 +177,10 @@
 
 
 (defn- std-config [^comzotohcljc.hhh.core.sys.Thingy co cfg]
-  (let [ port (:port cfg)
+  (let [ intv (:interval-secs cfg)
+         port (:port cfg)
          pwd (:passwd cfg) ]
+    (.setAttr! co :intervalMillis (* 1000 (if (number? intv) intv 300)))
     (.setAttr! co :ssl (if (false? (:ssl cfg)) false true))
     (.setAttr! co :deleteMsg (true? (:deletemsg cfg)))
     (.setAttr! co :host (:host cfg))
@@ -209,7 +214,7 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/IMAP
   [co & args]
-  (make-email-event co (first args)))
+  (ctor-email-event co (first args)))
 
 (defn- connect-imap [co] (connect-pop3 co))
 
@@ -218,7 +223,7 @@
 (defn- scan-imap [co] (scan-pop3 co))
 
 (defmethod loopable-oneloop :czc.hhh.io/IMAP
-  [co]
+  [^comzotohcljc.hhh.core.sys.Thingy co]
   (try
       (connect-imap co)
       (scan-imap co)

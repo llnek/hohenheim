@@ -46,6 +46,7 @@
 (use '[comzotohcljc.hhh.io.core :rename {enabled? io-enabled?} ])
 (use '[comzotohcljc.hhh.io.loops])
 (use '[comzotohcljc.hhh.io.mails])
+(use '[comzotohcljc.hhh.io.files])
 (use '[comzotohcljc.hhh.io.jms])
 (use '[comzotohcljc.hhh.io.http])
 (use '[comzotohcljc.hhh.io.netty])

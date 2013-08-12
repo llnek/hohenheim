@@ -46,7 +46,8 @@
 (use '[comzotohcljc.hhh.core.sys :rename { seq* rego-seq* has? rego-has? } ])
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(use '[comzotohcljc.hhh.io.loops :only (loopable-oneloop cfg-loopable) ])
+(use '[comzotohcljc.hhh.io.loops 
+       :only (loopable-schedule loopable-oneloop cfg-loopable) ])
 (use '[comzotohcljc.hhh.io.events :only (make-filepicker-event) ])
 (use '[comzotohcljc.hhh.io.core])
 
@@ -143,12 +144,14 @@
     (.addListener obs lnr)
     (.addObserver mon obs)
     (.setAttr! co :monitor mon)
+    (info "FilePicker's apache io monitor created - OK.")
     co))
 
 
-(defmethod loopable-oneloop :czc.hhh.io/FilePicker
+(defmethod loopable-schedule :czc.hhh.io/FilePicker
   [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^FileAlterationMonitor mon (.getAttr co :monitor) ]
+    (info "FilePicker's apache io monitor starting...")
     (.start mon)))
 
 

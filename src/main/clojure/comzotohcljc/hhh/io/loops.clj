@@ -34,6 +34,7 @@
 
 (require '[comzotohcljc.util.process :as PU])
 (require '[comzotohcljc.util.dates :as DU])
+(require '[comzotohcljc.util.meta :as MU])
 (require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
@@ -198,6 +199,19 @@
 
 ;;(defmethod loopable-oneloop :default [co] nil)
 
+(defmethod loopable-schedule :czc.hhh.io/ThreadedTimer 
+  [^comzotohcljc.hhh.core.sys.Thingy co]
+  (let [ intv (.getAttr co :intervalMillis)
+         cl (MU/get-cldr)
+         loopy (atom true)
+         func (fn []
+                (PU/coroutine (fn []
+                                (while @loopy (loopable-wakeup co intv)))
+                              cl)) ]
+    (.setAttr! co :loopy loopy)
+    (info "threaded one timer - interval = " intv)
+    (func)))
+
 (defmethod loopable-wakeup :czc.hhh.io/ThreadedTimer
   [co & args]
   (do
@@ -212,9 +226,8 @@
          dw (.getAttr co :delayWhen)
          intv (.getAttr co :intervalMillis)
          loopy (atom true)
-         func (fn []
-                (PU/coroutine (fn []
-                                (while @loopy (loopable-wakeup co intv))))) ]
+         cl (MU/get-cldr)
+         func (fn [] (loopable-schedule co)) ]
     (.setAttr! co :loopy loopy)
     (if (or (number? ds) (instance? Date dw))
       (config-timer (Timer.) [dw ds] func)
