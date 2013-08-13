@@ -26,7 +26,7 @@
 
 (import '(java.util Date Timer TimerTask))
 (import '(com.zotoh.hohenheim.io TimerEvent))
-(import '(com.zotoh.frwk.core Startable))
+(import '(com.zotoh.frwk.core Identifiable Startable))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
@@ -124,9 +124,13 @@
   [co & args]
   (let [ eeid (SN/next-long) ]
     (with-meta
-      (reify TimerEvent
+      (reify 
+        
+        Identifiable
+        (id [_] eeid)
+
+        TimerEvent
         (getSession [_] nil)
-        (getId [_] eeid)
         (emitter [_] co)
         (isRepeating [_] true))
       { :typeid :czc.hhh.io/TimerEvent } )))
@@ -166,9 +170,13 @@
   [co & args]
   (let [ eeid (SN/next-long) ]
     (with-meta
-      (reify TimerEvent
+      (reify 
+        
+        Identifiable
+        (id [_] eeid)
+
+        TimerEvent
         (getSession [_] nil)
-        (getId [_] eeid)
         (emitter [_] co)
         (isRepeating [_] false))
       { :typeid :czc.hhh.io/TimerEvent } )))

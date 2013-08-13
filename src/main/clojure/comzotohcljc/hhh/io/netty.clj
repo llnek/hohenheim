@@ -37,6 +37,11 @@
 (import '(org.jboss.netty.channel.group
   ChannelGroup))
 (import '(org.jboss.netty.bootstrap ServerBootstrap))
+(import '(com.zotoh.frwk.core Identifiable))
+
+
+
+(use '[clojure.tools.logging :only (info warn error debug)])
 
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.io.core])
@@ -64,18 +69,22 @@
     (.setHttpOnly (.isHttpOnly c)) ))
 
 (defmethod ioes-reify-event :czc.hhh.io/NettyIO
-  [co & args]
-  (let [ ^HttpRequest req (nth args 1)
+  [^comzotohcljc.hhh.io.core.EmitterAPI co & args]
+  (let [ ^HTTPResult res (make-http-result)
+         ^HttpRequest req (nth args 1)
          ^XData xdata (nth args 2)
          ^Channel ch (nth args 0)
          ssl (CU/notnil? (.get (.getPipeline ch) "ssl"))
          ^InetSocketAddress laddr (.getLocalAddress ch)
          eeid (SN/next-long) ]
     (with-meta
-      (reify HTTPEvent
+      (reify 
+        
+        Identifiable
+        (id [_] eeid)
+        HTTPEvent
         (getSession [_] nil)
         (emitter [_] co)
-        (getId [_] eeid)
         (getCookies [_]
           (let [ v (SU/nsb (.getHeader req "Cookie"))
                  rc (ArrayList.)
@@ -157,8 +166,12 @@
 
         (getRequestURL [_] (throw (IOException. "not implemented")))
 
-        (getResultObj [_] (make-http-result))
-        (replyResult [_] )
+        (getResultObj [_] res)
+        (replyResult [this]
+          (let [ ^comzotohcljc.hhh.io.core.WaitEventHolder
+                 wevt (.release co this) ]
+            (when-not (nil? wevt)
+              (.resumeOnResult wevt res))))
 
       )
       { :typeid :czc.hhh.io/HTTPEvent } )) )
@@ -172,19 +185,15 @@
 (defn- make-service-io [^comzotohcljc.hhh.io.core.EmitterAPI co]
   (reify comzotohcljc.netty.comms.NettyServiceIO
     (before-send [_ ch msg] nil)
-    (onerror [_ ch msginfo exp] )
+    (onerror [_ ch msginfo exp]  nil)
     (onreq [_ ch req msginfo xdata]
       (let [ evt (ioes-reify-event co ch req xdata)
              ^comzotohcljc.hhh.io.core.WaitEventHolder
-             w (make-async-wait-holder evt
-                 (make-netty-trigger ch evt co)) ]
+             w (make-async-wait-holder (make-netty-trigger ch evt co) evt) ]
         (.timeoutMillis w (.getAttr ^comzotohcljc.hhh.core.sys.Thingy co :waitMillis))
         (.hold co w)
         (.dispatch co evt)))
     (onres [_ ch rsp msginfo xdata] nil)) )
-
-(defn- make-handler [co]
-    (NE/netty-pipe-handler (make-service-io co)))
 
 (defmethod comp-initialize :czc.hhh.io/NettyIO
   [^comzotohcljc.hhh.core.sys.Thingy co]
@@ -195,7 +204,7 @@
          ctx (if ssl (SS/make-sslContext file pwd)) ]
     (doto bs
       (.setPipelineFactory
-        (NE/make-pipeServer ctx  (make-handler co))))
+        (NE/make-pipeServer ctx  (make-service-io co))))
     (.setAttr! co :netty
       (comzotohcljc.netty.comms.NettyServer. bs nil opts))
     co))

@@ -43,6 +43,9 @@
 (import '(java.io IOException))
 (import '(com.zotoh.frwk.io XData))
 (import '(com.zotoh.hohenheim.io IOSession HTTPResult HTTPEvent))
+(import '(com.zotoh.frwk.core Identifiable))
+
+
 
 
 (use '[comzotohcljc.hhh.io.events  :only (make-servlet-event) ])
@@ -76,7 +79,12 @@
   (let [ ^HttpServletRequest req (first args)
          ^HTTPResult result (make-http-result)
          eid (SN/next-long) ]
-    (reify HTTPEvent
+    (reify 
+      
+      Identifiable
+      (id [_] eid)
+
+      HTTPEvent
 
       (getCookie [_ nm]
         (let [ lnm (.toLowerCase nm) cs (.getCookies req) ]
@@ -95,7 +103,6 @@
 
       (getSession [_] nil)
       (emitter [_] co)
-      (getId [_] eid)
       (isKeepAlive [_]
         (= (-> (SU/nsb (.getHeader req "connection")) (.toLowerCase))
         "keep-alive"))

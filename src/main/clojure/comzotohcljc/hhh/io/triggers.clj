@@ -166,7 +166,7 @@
                               :else (XData. data))) ]
           (var-set clen (if (.hasContent dd) (.size dd) 0))
           (var-set xd dd)
-          (.setHeader rsp "content-length" (str "" clen)) ) )
+          (.setHeader rsp "content-length" (str "" @clen)) ) )
       (try
           (let [ cf (.write ch rsp) ]
             (when (= @clen 0) (maybeClose evt cf)))
@@ -186,7 +186,7 @@
   (reify AsyncWaitTrigger
 
     (resumeWithResult [_ res]
-      (CU/Try! (netty-reply ch evt res) ))
+      (CU/Try! (netty-reply res ch evt src) ))
 
     (resumeWithError [_]
       (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1
@@ -209,26 +209,24 @@
     (reify
 
       Identifiable
-      (id [_] (.getId event))
+      (id [_] (.id event))
 
       WaitEventHolder
 
       (resumeOnResult [this res]
         (let [ ^Timer tm (.mm-g impl :timer) 
-               ^comzotohcljc.hhh.io.core.EmitterAPI src (.emitter event) ]
+               ^comzotohcljc.hhh.io.core.EmitterAPI  src (.emitter event) ]
           (when-not (nil? tm) (.cancel tm))
           (.release src this)
-          (.mm-s impl :result res)
-          (eve-unbind event)
+          ;;(.mm-s impl :result res)
           (.resumeWithResult trigger res)
           ))
 
       (timeoutMillis [me millis]
         (let [ tm (Timer. true) ]
           (.mm-s impl :timer tm)
-          (eve-bind event me)
           (.schedule tm (proxy [TimerTask][]
-            (run [_] (.onExpiry me))) ^long millis)))
+            (run [] (.onExpiry me))) ^long millis)))
 
       (timeoutSecs [this secs] 
         (timeoutMillis this (* 1000 secs)))
@@ -238,7 +236,6 @@
                src (.emitter event) ]
           (.release src this)
           (.mm-s impl :timer nil)
-          (eve-unbind event)
           (.resumeWithError trigger) ))
 
       )))

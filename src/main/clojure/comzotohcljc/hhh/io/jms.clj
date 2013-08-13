@@ -23,6 +23,9 @@
 
   comzotohcljc.hhh.io.jms)
 
+(import '(com.zotoh.frwk.core Identifiable))
+
+
 
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.util
@@ -71,9 +74,11 @@
   [co & args]
   (let [ msg (first args)  eeid (SN/next-long) ]
     (with-meta
-      (reify JMSEvent
+      (reify 
+        Identifiable
+        (id [_] eeid)
+        JMSEvent
         (getSession [_] nil)
-        (getId [_] eeid)
         (emitter [_] co)
         (getMsg [_] msg))
       { :typeid :czc.hhh.io/JMSEvent } )))

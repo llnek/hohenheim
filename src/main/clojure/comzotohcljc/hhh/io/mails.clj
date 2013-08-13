@@ -31,6 +31,9 @@
 (import '(java.io IOException))
 (import '(com.zotoh.hohenheim.io EmailEvent))
 
+(import '(com.zotoh.frwk.core Identifiable))
+
+
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
@@ -90,9 +93,13 @@
 (defn- make-email-event [co msg]
   (let [ eeid (SN/next-long) ]
     (with-meta
-      (reify EmailEvent
+      (reify 
+        
+        Identifiable
+        (id [_] eeid)
+
+        EmailEvent
         (getSession [_] nil)
-        (getId [_] eeid)
         (emitter [_] co)
         (getMsg [_] msg))
       { :typeid :czc.hhh.io/EmailEvent } )) )
@@ -100,9 +107,13 @@
 (defn- ctor-email-event [co msg]
   (let [ eeid (SN/next-long) ]
     (with-meta
-      (reify EmailEvent
+      (reify 
+        
+        Identifiable
+        (id [_] eeid)
+
+        EmailEvent
         (getSession [_] nil)
-        (getId [_] eeid)
         (emitter [_] co)
         (getMsg [_] msg))
       { :typeid :czc.hhh.io/EmailEvent } )))

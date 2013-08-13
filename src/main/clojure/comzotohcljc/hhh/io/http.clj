@@ -50,6 +50,7 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
+(use '[comzotohcljc.util.core :only (MuObj) ])
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.io.core])
@@ -186,6 +187,13 @@
     (.mm-s impl :hds (NCMap.))
     (.mm-s impl :cookies (ArrayList.))
     (reify
+
+      MuObj
+      (setf! [_ k v] (.mm-s impl k v) )
+      (seq* [_] (seq (.mm-m* impl)))
+      (getf [_ k] (.mm-g impl k) )
+      (clrf! [_ k] (.mm-r impl k) )
+      (clear! [_] (.mm-c impl))
 
       HTTPResult
       (setRedirect [_ url] (.mm-s impl :redirect url))

@@ -376,7 +376,6 @@
 
 (defn netty-pipe-handler
 
-  ^SimpleChannelHandler
   [^comzotohcljc.netty.comms.NettyServiceIO usercb]
   (proxy [SimpleChannelHandler] []
 
@@ -385,11 +384,13 @@
              attObj (.getAttachment ch)
              msginfo (:info attObj)
              keepAlive (if (nil? msginfo) false (:keep-alive msginfo)) ]
+        (error (.getCause ev) "")
         (.onerror usercb ch msginfo ev)
         (when-not keepAlive (CU/TryC (.close ch)))))
 
     (messageReceived [ctx ev]
       (let [ msg (.getMessage ^MessageEvent ev) ]
+        ;;(debug "typeof of USERCB ===== " (type usercb))
         (cond
           (instance? HttpResponse msg) (nio-pres ctx ev ^HttpResponse msg usercb)
           (instance? HttpRequest msg) (nio-preq ctx ^HttpRequest msg usercb)

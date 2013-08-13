@@ -40,7 +40,7 @@
  FileAlterationMonitor
  FileAlterationObserver))
 (import '(com.zotoh.hohenheim.io FileEvent))
-
+(import '(com.zotoh.frwk.core Identifiable))
 
 
 (use '[comzotohcljc.hhh.core.sys :rename { seq* rego-seq* has? rego-has? } ])
@@ -77,10 +77,12 @@
   [co & args]
   (let [ f (nth args 1)  eeid (SN/next-long) ]
     (with-meta 
-      (reify FileEvent
+      (reify 
+        Identifiable
+        (id [_] eeid)
+        FileEvent
         (getSession [_] nil)
         (emitter [_] co)
-        (getId [_] eeid)
         (getFile [_] f))
       { :typeid :czc.hhh.io/FileEvent } )))
 

@@ -145,12 +145,14 @@
             (when-not (nil? wevt)
               (let [ ^HashMap b (.mm-g impl :backlog)
                      wid (.id ^Identifiable wevt) ]
+                (debug "emitter releasing an event with id: " wid)
                 (.remove b wid))))
 
           (hold [_ wevt]
             (when-not (nil? wevt)
               (let [ ^HashMap b (.mm-g impl :backlog)
                      wid (.id ^Identifiable wevt) ]
+                (debug "emitter holding an event with id: " wid)
                 (.put b wid wevt))))
 
           (dispatch [this ev]
