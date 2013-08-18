@@ -28,6 +28,9 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.webapp.WebAppContext;
 
+import java.io.File;
+import java.io.IOException;
+
 /**
  * @author kenl
  */
@@ -37,8 +40,11 @@ public class JettyUtils {
     return new ServerConnector( svr , new HttpConnectionFactory(conf)) ;
   }
 
-  public static WebAppContext newWebAppContext(final String attr, final Object obj) {
-    return new WebAppContext()  {
+  public static WebAppContext newWebAppContext(
+      final File warPath, final String ctxPath, final String attr, final Object obj) throws IOException {
+    String cp;
+    if (ctxPath==null) { cp= ""; } else { cp = ctxPath; }
+    return new WebAppContext(warPath.toURI().toURL().toString(), cp) {
       public void setContextPath(String s) {
         super.setContextPath(s);
         _scontext.setAttribute(attr, obj);

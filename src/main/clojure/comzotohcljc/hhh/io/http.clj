@@ -23,12 +23,19 @@
 
   comzotohcljc.hhh.io.http )
 
+(use '[clojure.tools.logging :only (info warn error debug)])
+
 (import '(org.eclipse.jetty.server Server Connector))
 (import '(java.net URL))
 (import '(java.util List Map HashMap ArrayList))
 (import '(java.io File))
 (import '(com.zotoh.frwk.util NCMap))
-(import '(javax.servlet.http HttpServletRequest))
+(import '(javax.servlet.http Cookie HttpServletRequest))
+(import '(java.net HttpCookie))
+(import '(org.eclipse.jetty.continuation Continuation ContinuationSupport))
+(import '(com.zotoh.frwk.core 
+  Versioned Hierarchial
+  Identifiable Disposable Startable))
 
 (import '(org.eclipse.jetty.server
   Connector
@@ -41,12 +48,16 @@
 (import '(org.eclipse.jetty.util.ssl SslContextFactory))
 (import '(org.eclipse.jetty.util.thread QueuedThreadPool))
 (import '(org.eclipse.jetty.webapp WebAppContext))
+(import '(com.zotoh.hohenheim.io ServletEmitter Emitter))
+
 
 (import '(com.zotoh.hohenheim.io HTTPResult HTTPEvent JettyUtils))
+(import '(com.zotoh.hohenheim.core Container))
 
 (use '[comzotohcljc.crypto.ssl])
 
 (require '[comzotohcljc.crypto.codec :as CR])
+(require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
@@ -54,10 +65,89 @@
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.io.core])
+(use '[comzotohcljc.hhh.io.triggers])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
+
+(defn make-servlet-emitter "" [^Container parObj]
+  (let [ eeid (SN/next-long)
+         impl (CU/make-mmap) ]
+    (.mm-s impl :backlog (HashMap.))
+    (with-meta
+      (reify
+
+        Thingy
+
+          (setCtx! [_ x] (.mm-s impl :ctx x))
+          (getCtx [_] (.mm-g impl :ctx))
+          (setAttr! [_ a v] (.mm-s impl a v) )
+          (clrAttr! [_ a] (.mm-r impl a) )
+          (getAttr [_ a] (.mm-g impl a) )
+
+        Versioned
+          (version [_] "1.0")
+
+        Hierarchial
+          (parent [_] parObj)
+
+        Identifiable
+          (id [_] eeid)
+
+        ServletEmitter
+          (container [this] (.parent this))
+          (doService [this req rsp]
+            (let [ ^comzotohcljc.hhh.core.sys.Thingy dev this
+                   wm (.getAttr dev :waitMillis) ]
+              (doto (ContinuationSupport/getContinuation req)
+                (.setTimeout wm)
+                (.suspend rsp))
+              (let [ evt (ioes-reify-event this req)
+                     ^comzotohcljc.hhh.io.core.WaitEventHolder
+                       w  (make-async-wait-holder 
+                            (make-servlet-trigger req rsp dev) evt)
+                       ^comzotohcljc.hhh.io.core.EmitterAPI  src this ]
+                  (.timeoutMillis w wm)
+                  (.hold src w)
+                  (.dispatch src evt))) )
+
+        Disposable
+
+          (dispose [this] (ioes-dispose this))
+
+        Startable
+
+          (start [this] (ioes-start this))
+          (stop [this] (ioes-stop this))
+
+        EmitterAPI
+
+          (enabled? [_] (if (false? (.mm-g impl :enabled)) false true ))
+          (active? [_] (if (false? (.mm-g impl :active)) false true))
+
+          (suspend [this] (ioes-suspend this))
+          (resume [this] (ioes-resume this))
+
+          (release [_ wevt]
+            (when-not (nil? wevt)
+              (let [ ^HashMap b (.mm-g impl :backlog)
+                     wid (.id ^Identifiable wevt) ]
+                (debug "emitter releasing an event with id: " wid)
+                (.remove b wid))))
+
+          (hold [_ wevt]
+            (when-not (nil? wevt)
+              (let [ ^HashMap b (.mm-g impl :backlog)
+                     wid (.id ^Identifiable wevt) ]
+                (debug "emitter holding an event with id: " wid)
+                (.put b wid wevt))))
+
+          (dispatch [this ev]
+            (CU/TryC
+                (.notifyObservers parObj ev) )) )
+
+      { :typeid :czc.hhh.io/JettyIO } )))
 
 
 (defn http-basic-config [^comzotohcljc.hhh.core.sys.Thingy co cfg]
@@ -101,6 +191,7 @@
 (defmethod comp-configure :czc.hhh.io/JettyIO
   [^comzotohcljc.hhh.core.sys.Thingy co cfg]
   (let [ c (SU/nsb (:context cfg)) ]
+    (.setAttr! co K_APP_CZLR (get cfg K_APP_CZLR))
     (.setAttr! co :contextPath (SU/strim c))
     (http-basic-config co cfg) ))
 
@@ -129,8 +220,8 @@
          port (.getAttr co :port)
          pwdObj (.getAttr co :pwd)
          ws (.getAttr co :workers)
-         q (QueuedThreadPool. (if (pos? ws) ws 8))
-         svr (Server. q)
+         ;;q (QueuedThreadPool. (if (pos? ws) ws 8))
+         svr (Server.)
          cc  (if (nil? keyfile)
                (doto (JettyUtils/makeConnector svr conf)
                  (.setPort port)
@@ -151,17 +242,21 @@
 
 (defmethod ioes-start :czc.hhh.io/JettyIO
   [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ ^WebAppContext webapp (JettyUtils/newWebAppContext "czchhhiojetty" co)
+  (let [ ^comzotohcljc.util.core.MuObj ctr (.parent co)
          ^Server jetty (.getAttr co :jetty)
-         ^File app (.getAttr co :app-dir)
+         ^File app (.getAttr ctr K_APPDIR)
+         ^String cp (SU/strim (.getAttr co :contextPath))
+         ^WebAppContext 
+         webapp (JettyUtils/newWebAppContext app cp "czchhhiojetty" co)
          logDir (-> (File. app "WEB-INF/logs")(.toURI)(.toURL)(.toString))
          resBase (-> app (.toURI)(.toURL)(.toString)) ]
     ;; static resources are based from resBase, regardless of context
+    (.setClassLoader webapp (.getAttr co K_APP_CZLR))
     (doto webapp
       (.setDescriptor (-> (File. app "WEB-INF/web.xml")(.toURI)(.toURL)(.toString)))
       (.setParentLoaderPriority true)
       (.setResourceBase resBase )
-      (.setContextPath (.getAttr co :contextPath)))
+      (.setContextPath cp))
     ;;webapp.getWebInf()
     (.setHandler jetty webapp)
     (.start jetty)
@@ -175,10 +270,6 @@
       (CU/TryC
           (.stop svr) ))
     (ioes-stopped co)))
-
-(defn isServletKeepAlive [^HttpServletRequest req]
-  (let [ v (.getHeader req "connection") ]
-    (= "keep-alive" (.toLowerCase (SU/nsb v)))))
 
 (defn make-http-result []
   (let [ impl (CU/make-mmap) ]
@@ -236,6 +327,115 @@
           (.mm-s impl :data data)) )
 
       )) )
+
+
+(defn- cookie-to-javaCookie [^Cookie c]
+  (doto (HttpCookie. (.getName c) (.getValue c))
+      (.setDomain (.getDomain c))
+      (.setHttpOnly (.isHttpOnly c))
+      (.setMaxAge (.getMaxAge c))
+      (.setPath (.getPath c))
+      (.setSecure (.getSecure c))
+      (.setVersion (.getVersion c))) )
+
+(defmethod ioes-reify-event :czc.hhh.io/JettyIO
+  [co & args]
+  (let [ ^HttpServletRequest req (first args)
+         ^HTTPResult result (make-http-result)
+         eid (SN/next-long) ]
+    (reify 
+      
+      Identifiable
+      (id [_] eid)
+
+      HTTPEvent
+
+      (getCookie [_ nm]
+        (let [ lnm (.toLowerCase nm) cs (.getCookies req) ]
+          (some (fn [^Cookie c]
+                  (if (= lnm (.toLowerCase (.getName c)))
+                    (cookie-to-javaCookie c)
+                    nil) )
+                  (if (nil? cs) [] (seq cs)))) )
+
+      (getCookies [_]
+        (let [ rc (ArrayList.) cs (.getCookies req) ]
+          (if-not (nil? cs)
+            (doseq [ c (seq cs) ]
+              (.add rc (cookie-to-javaCookie c))))
+          rc))
+
+      (getSession [_] nil)
+      (emitter [_] co)
+      (isKeepAlive [_]
+        (= (-> (SU/nsb (.getHeader req "connection")) (.toLowerCase))
+        "keep-alive"))
+      (data [_] nil)
+      (hasData [_] false)
+      (contentLength [_] (.getContentLength req))
+      (contentType [_] (.getContentType req))
+      (encoding [_] (.getCharacterEncoding req))
+      (contextPath [_] (.getContextPath req))
+
+      (getHeaderValue [_ nm] (.getHeader req nm))
+
+      (getHeaderValues [_ nm]
+        (let [ rc (ArrayList.) ]
+          (doseq [ s (seq (.getHeaders req nm)) ]
+            (.add rc s))))
+
+      (getHeaders [_]
+        (let [ rc (ArrayList.) ]
+          (doseq [ ^String s (seq (.getHeaderNames req)) ]
+            (.add rc s))) )
+
+      (getParameterValue [_ nm] (.getParameter req nm))
+
+      (getParameterValues [_ nm]
+        (let [ rc (ArrayList.) ]
+          (doseq [ s (seq (.getParameterValues req nm)) ]
+            (.add rc s))))
+
+      (getParameters [_]
+        (let [ rc (ArrayList.) ]
+          (doseq [ ^String s (seq (.getParameterNames req)) ]
+            (.add rc s))) )
+
+      (localAddr [_] (.getLocalAddr req))
+      (localHost [_] (.getLocalName req))
+      (localPort [_] (.getLocalPort req))
+
+      (method [_] (.getMethod req))
+      (protocol [_] (.getProtocol req))
+      (queryString [_] (.getQueryString req))
+
+      (remoteAddr [_] (.getRemoteAddr req))
+      (remoteHost [_] (.getRemoteHost req))
+      (remotePort [_] (.getRemotePort req))
+
+      (scheme [_] (.getScheme req))
+
+      (serverName [_] (.getServerName req))
+      (serverPort [_] (.getServerPort req))
+
+      (host [_] (.getHeader req "host"))
+
+
+      (isSSL [_] (= "https" (.getScheme req)))
+
+      (getUri [_] (.getRequestURI req))
+
+      (getRequestURL [_] (.getRequestURL req))
+
+      (getResultObj [_] result)
+      (replyResult [this]
+        (let [ ^comzotohcljc.hhh.io.core.WaitEventHolder
+               wevt (.release co this) ]
+          (when-not (nil? wevt)
+            (.resumeOnResult wevt result))))
+
+
+      )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -8,7 +8,7 @@
   <display-name>WebApp</display-name>
 
     <listener>
-        <listener-class>com.zotoh.hohenheim.io.WebContextListener</listener-class>
+        <listener-class>com.zotoh.hohenheim.io.WEBContextListener</listener-class>
     </listener>
 
 <servlet>
@@ -50,12 +50,13 @@
 
   <servlet>
     <servlet-name>HelloServlet</servlet-name>
-    <servlet-class>comzotohcljc.hhh.io.WebServlet</servlet-class>
+    <servlet-class>com.zotoh.hohenheim.io.WEBServlet</servlet-class>
+    <async-supported>true</async-supported>
   </servlet>
 
   <servlet-mapping>
     <servlet-name>HelloServlet</servlet-name>
-    <url-pattern>/hello</url-pattern>
+    <url-pattern>/hello/*</url-pattern>
   </servlet-mapping>
 
 </web-app>

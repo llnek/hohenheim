@@ -21,6 +21,8 @@
 
 package com.zotoh.hohenheim.io
 
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 import com.zotoh.hohenheim.core.Container
 
 /**
@@ -30,3 +32,11 @@ import com.zotoh.hohenheim.core.Container
 trait Emitter {
   def container() : Container
 }
+
+trait ServletEmitter extends Emitter {
+  def doService(req:HttpServletRequest, rsp:HttpServletResponse) : Unit
+}
+
+
+
+

@@ -51,11 +51,15 @@
 
 (use '[comzotohcljc.hhh.io.events :rename { emitter evt-emitter } ])
 (use '[comzotohcljc.hhh.io.core])
-(use '[comzotohcljc.hhh.io.http :only (isServletKeepAlive) ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
+
+
+(defn isServletKeepAlive [^HttpServletRequest req]
+  (let [ v (.getHeader req "connection") ]
+    (= "keep-alive" (.toLowerCase (SU/nsb v)))))
 
 (defn- cookieToServlet ^Cookie [^HttpCookie c]
   (doto (Cookie. (.getName c) (.getValue c))
@@ -112,10 +116,13 @@
           (.complete))) ) ) )
 
 
-(defn make-servlet-trigger "" [^HttpServletRequest req ^HttpServletResponse rsp src]
+(defn make-servlet-trigger "" 
+  
+  [^HttpServletRequest req ^HttpServletResponse rsp src]
+
   (reify AsyncWaitTrigger
 
-    (resumeWithResult [this res]
+    (resumeWithResult [_ res]
       (replyServlet res req rsp src) )
 
     (resumeWithError [_]

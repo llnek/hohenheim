@@ -148,7 +148,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- make-service-block [^Identifiable bk container cfg]
-  (let [ eid (.id bk) obj (make-emitter container eid)
+  (let [ eid (.id bk)
+         obj (if (= :czc.hhh.io/JettyIO eid)
+               (make-servlet-emitter container)
+               (make-emitter container eid))
          hid (:handler cfg)
          mm (meta obj) ]
     (info "about to synthesize an emitter: " eid)
@@ -284,7 +287,7 @@
          root (.getf ctx K_COMPS)
          apps (.lookup root K_APPS)
          ^URL url (.srcUrl ^comzotohcljc.hhh.impl.defaults.PODMeta pod)
-         ps { K_APPDIR (File. (.toURI  url)) } ]
+         ps { K_APPDIR (File. (.toURI  url)) K_APP_CZLR cl } ]
     (comp-compose c apps)
     (comp-contextualize c ctx)
     (comp-configure c ps)
@@ -316,6 +319,7 @@
     ;;_ftlCfg.setObjectWrapper(new DefaultObjectWrapper())
     (synthesize-component srg {} )
     (doto co
+      (.setAttr! K_APPDIR appDir)
       (.setAttr! K_SVCS srg)
       (.setAttr! K_ENVCONF_FP (File. cfgDir "env.conf"))
       (.setAttr! K_APPCONF_FP (File. cfgDir "app.conf"))

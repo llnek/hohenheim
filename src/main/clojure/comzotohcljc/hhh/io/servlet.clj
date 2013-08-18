@@ -24,11 +24,11 @@
   comzotohcljc.hhh.io.servlet
 
   (:gen-class
-    :name comzotohcljc.hhh.io.WebServlet
+    :name comzotohcljc.hhh.io.WEBServlet
     :extends javax.servlet.http.HttpServlet
     :init myInit
     :constructors {[] []}
-    :exposes-methods { init super-init  getServletName myName}
+    :exposes-methods { init superInit  getServletName myName}
     :state myState
   ))
 
@@ -64,112 +64,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-
-(defn- cookie-to-javaCookie [^Cookie c]
-  (doto (HttpCookie. (.getName c) (.getValue c))
-      (.setDomain (.getDomain c))
-      (.setHttpOnly (.isHttpOnly c))
-      (.setMaxAge (.getMaxAge c))
-      (.setPath (.getPath c))
-      (.setSecure (.getSecure c))
-      (.setVersion (.getVersion c))) )
-
-(defmethod ioes-reify-event :czc.hhh.io/JettyIO
-  [co & args]
-  (let [ ^HttpServletRequest req (first args)
-         ^HTTPResult result (make-http-result)
-         eid (SN/next-long) ]
-    (reify 
-      
-      Identifiable
-      (id [_] eid)
-
-      HTTPEvent
-
-      (getCookie [_ nm]
-        (let [ lnm (.toLowerCase nm) cs (.getCookies req) ]
-          (some (fn [^Cookie c]
-                  (if (= lnm (.toLowerCase (.getName c)))
-                    (cookie-to-javaCookie c)
-                    nil) )
-                  (if (nil? cs) [] (seq cs)))) )
-
-      (getCookies [_]
-        (let [ rc (ArrayList.) cs (.getCookies req) ]
-          (if-not (nil? cs)
-            (doseq [ c (seq cs) ]
-              (.add rc (cookie-to-javaCookie c))))
-          rc))
-
-      (getSession [_] nil)
-      (emitter [_] co)
-      (isKeepAlive [_]
-        (= (-> (SU/nsb (.getHeader req "connection")) (.toLowerCase))
-        "keep-alive"))
-      (data [_] nil)
-      (hasData [_] false)
-      (contentLength [_] (.getContentLength req))
-      (contentType [_] (.getContentType req))
-      (encoding [_] (.getCharacterEncoding req))
-      (contextPath [_] (.getContextPath req))
-
-      (getHeaderValue [_ nm] (.getHeader req nm))
-
-      (getHeaderValues [_ nm]
-        (let [ rc (ArrayList.) ]
-          (doseq [ s (seq (.getHeaders req nm)) ]
-            (.add rc s))))
-
-      (getHeaders [_]
-        (let [ rc (ArrayList.) ]
-          (doseq [ ^String s (seq (.getHeaderNames req)) ]
-            (.add rc s))) )
-
-      (getParameterValue [_ nm] (.getParameter req nm))
-
-      (getParameterValues [_ nm]
-        (let [ rc (ArrayList.) ]
-          (doseq [ s (seq (.getParameterValues req nm)) ]
-            (.add rc s))))
-
-      (getParameters [_]
-        (let [ rc (ArrayList.) ]
-          (doseq [ ^String s (seq (.getParameterNames req)) ]
-            (.add rc s))) )
-
-      (localAddr [_] (.getLocalAddr req))
-      (localHost [_] (.getLocalName req))
-      (localPort [_] (.getLocalPort req))
-
-      (method [_] (.getMethod req))
-      (protocol [_] (.getProtocol req))
-      (queryString [_] (.getQueryString req))
-
-      (remoteAddr [_] (.getRemoteAddr req))
-      (remoteHost [_] (.getRemoteHost req))
-      (remotePort [_] (.getRemotePort req))
-
-      (scheme [_] (.getScheme req))
-
-      (serverName [_] (.getServerName req))
-      (serverPort [_] (.getServerPort req))
-
-      (host [_] (.getHeader req "host"))
-
-
-      (isSSL [_] (= "https" (.getScheme req)))
-
-      (getUri [_] (.getRequestURI req))
-
-      (getRequestURL [_] (.getRequestURL req))
-
-      (getResultObj [_] result)
-      (replyResult [_] )
-
-
-      )))
-
-(defn- dispREQ [ ^comzotohcljc.hhh.io.WebServlet c0
+(defn- dispREQ [ ^comzotohcljc.hhh.io.WEBServlet c0
                  ^Continuation ct evt req rsp]
   (let [ ^comzotohcljc.hhh.core.sys.Thingy dev @(.myState c0)
          wm (.getAttr dev :waitMillis) ]
@@ -177,9 +72,8 @@
       (.setTimeout wm)
       (.suspend rsp))
     (let [ ^comzotohcljc.hhh.io.core.WaitEventHolder
-           w  (make-async-wait-holder evt
-                  (make-servlet-trigger req rsp dev))
-          ^comzotohcljc.hhh.io.core.EmitterAPI src @(.myState c0) ]
+           w  (make-async-wait-holder (make-servlet-trigger req rsp dev) evt)
+          ^comzotohcljc.hhh.io.core.EmitterAPI  src @(.myState c0) ]
       (.timeoutMillis w wm)
       (.hold src w)
       (.dispatch src evt))))
@@ -194,9 +88,10 @@
   (throw (IOException. "No Sync Service!!!!!!")))
 
 (defn -myInit []
-  ([] (atom nil)))
+  [ [] 
+    (atom nil) ] )
 
-(defn -service [ ^comzotohcljc.hhh.io.WebServlet this
+(defn -service [ ^comzotohcljc.hhh.io.WEBServlet this
                  ^HttpServletRequest req rsp]
   (let [ state (.myState this)
          evt (ioes-reify-event @state req) ]
@@ -209,9 +104,9 @@
       (doSyncSvc this evt req rsp))))
 
 
-(defn -init [ ^comzotohcljc.hhh.io.WebServlet this ^ServletConfig cfg]
+(defn -init [ ^comzotohcljc.hhh.io.WEBServlet this ^ServletConfig cfg]
   (do
-    (.super-init this cfg)
+    (.superInit this cfg)
     (let [ ctx (.getServletContext cfg)
            state (.myState this)
            src (.getAttribute ctx "czchhhiojetty") ]

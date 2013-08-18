@@ -28,7 +28,7 @@
   Versioned Hierarchial
   Identifiable Disposable Startable))
 (import '(com.zotoh.hohenheim.core Container))
-(import '(com.zotoh.hohenheim.io Emitter))
+(import '(com.zotoh.hohenheim.io ServletEmitter Emitter))
 
 (import '(java.util HashMap))
 

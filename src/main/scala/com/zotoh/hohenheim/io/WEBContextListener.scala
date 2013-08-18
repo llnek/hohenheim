@@ -41,12 +41,14 @@ class WEBContextListener extends ServletContextListener {
 
   override def contextInitialized(evt:ServletContextEvent) {
 
-    tlog().debug("WEBContextListener: contextInitialized()")
+    tlog().info("WEBContextListener: contextInitialized()")
 
     val x= evt.getServletContext()
     var ctx=""
     val m= x.getMajorVersion()
     val n= x.getMinorVersion()
+
+    tlog.info("Servlet-Context: major version {}, minor version {}", m, n)
 
     if (m > 2 || ( m==2 && n > 4)) {
       ctx= x.getContextPath()
@@ -62,7 +64,7 @@ class WEBContextListener extends ServletContextListener {
   }
 
   override def contextDestroyed(e:ServletContextEvent) {
-    tlog().debug("WEBContextListener: contextDestroyed()")
+    tlog().info("WEBContextListener: contextDestroyed()")
     if (_src!=null) {
       //_src.container.dispose()
     }
@@ -70,6 +72,7 @@ class WEBContextListener extends ServletContextListener {
   }
 
   private def inizAsJ2EE(ctx:ServletContext, ctxPath:String) {
+    tlog().info("inizAsJ2EE - setting up context-path: {}", ctxPath)
   }
 
 }
