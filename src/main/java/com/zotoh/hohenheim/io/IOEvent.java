@@ -25,6 +25,8 @@ package com.zotoh.hohenheim.io;
 public interface IOEvent {
   public Object emitter();
   public long getId();
+
+  public void bindSession(IOSession s);
   public IOSession getSession();
 }
 

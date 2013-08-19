@@ -24,9 +24,10 @@ package com.zotoh.hohenheim.core
 import com.zotoh.frwk.util.Schedulable
 import com.zotoh.hohenheim.io.IOEvent
 import com.zotoh.wflow.IContainer
+import com.zotoh.frwk.core.Disposable
 
-trait Container extends IContainer {
+trait Container extends IContainer with Disposable {
   def notifyObservers(evt:IOEvent ) : Unit
-  def dispose() : Unit
+  def getAppKey() : String
 }
 

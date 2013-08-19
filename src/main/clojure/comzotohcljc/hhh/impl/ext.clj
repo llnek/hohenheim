@@ -162,7 +162,7 @@
     (info "emitter synthesized - OK. handler => " hid)
     obj))
 
-(defn- make-app-container [pod]
+(defn- make-app-container [pod appKey]
   (let [ impl (CU/make-mmap) ]
     (info "about to create an app-container...")
     (with-meta
@@ -181,6 +181,7 @@
             (let [ ^comzotohcljc.hhh.impl.ext.JobCreator
                    jc (.getAttr this K_JCTOR) ]
               (.update jc evt {})))
+          (getAppKey [_] appKey)
           (core [this]
             (.getAttr this K_SCHEDULER))
 
@@ -238,8 +239,6 @@
                 (instance? AppMain main)
                 (.stop ^AppMain main)
                 :else nil)))
-
-        Disposable
 
         ContainerAPI
 

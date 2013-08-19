@@ -83,6 +83,14 @@
     </java>
   </target>
 
+  <target name="clj-hhh-mvc">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="comzotohcljc.hhh.mvc.ios" />
+    </java>
+  </target>
+
   <target name="clj-dbio">
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
@@ -152,6 +160,7 @@
     <antcall target="clj-net"/>
     <antcall target="clj-dbio"/>
     <antcall target="clj-hhh-io"/>
+    <antcall target="clj-hhh-mvc"/>
     <antcall target="clj-hhh-main"/>
     <copy todir="${build.dir}">
       <fileset dir="${src.dir}/clojure">

@@ -27,6 +27,7 @@ import java.io.File
 import org.apache.commons.io.FileUtils
 import org.json.JSONObject
 import org.json.JSONTokener
+import org.apache.commons.lang3.StringUtils
 
 object CoreUtils {
   
@@ -88,7 +89,10 @@ object CoreUtils {
   def readJson(f:File) : JSONObject = readJson( FileUtils.readFileToString(f, "utf-8"))
   
   def readJson(s:String) : JSONObject = new JSONObject( new JSONTokener(s))
-      
+
+  def splitNull(s:String) = {
+    StringUtils.split( nsb(s), "\u0000")
+  }
 }
 
 sealed class CoreUtils {}

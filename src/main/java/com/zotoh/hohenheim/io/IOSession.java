@@ -23,4 +23,5 @@ package com.zotoh.hohenheim.io;
 
 public interface IOSession {
   public void handleResult(IOEvent ev, IOResult res);
+  public void handleEvent(IOEvent ev);
 }
