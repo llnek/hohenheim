@@ -147,10 +147,11 @@
 (defn load-routes [^File file]
   (let [ stat  (-> file (.getName)(.startsWith "static-"))
          cf (WI/parse-inifile file) ]
-    (doseq [ s (seq (.sectionKeys cf)) ]
-      (mkRoute stat s (.getSection cf s)))
+    (with-local-vars [rc (transient []) ]
+      (doseq [ s (seq (.sectionKeys cf)) ]
+        (var-set rc (conj! @rc (mkRoute stat s (.getSection cf s)))))
+      (persistent! @rc))
     ))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
