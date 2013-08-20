@@ -27,35 +27,106 @@
 (import '(jregex Matcher Pattern))
 (import '(java.util StringTokenizer))
 
-(defn- initRoute [rc path]
-  (let [ tknz (StringTokenizer path "/" true) ]
-    (while (.hasMoreTokens tknz)
-      (let [ t (.nextToken tknz) ]
-        (if (= t "/") (.append buff "/")
+(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[comzotohcljc.util.core :only (MuObj) ])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
+(require '[comzotohcljc.util.ini :as WI])
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defprotocol RouteInfo
+  ""
+  (getHandler [_] )
+  (getPath [_] )
+  (getVerbs [_] )
+  (resemble? [_ mtd path] )
+  (collect [_ matcher] ))
+
+
+(defn- make-route-info [path ^String verb handler]
+  (let [ verbList (.toLowerCase verb)
+         impl (CU/make-mmap) ]
+    (with-meta
+      (reify
+
+        MuObj
+
+        (setf! [_ k v] (.mm-s impl k v) )
+        (seq* [_] (seq (.mm-m* impl)))
+        (getf [_ k] (.mm-g impl k) )
+        (clrf! [_ k] (.mm-r impl k) )
+        (clear! [_] (.mm-c impl))
+
+        RouteInfo
+
+        (getHandler [_] handler)
+        (getPath [_] path)
+        (getVerbs [_] verb)
+
+        (resemble? [_ mtd path]
+          (let [ ^Pattern rg (.mm-g impl :regex)
+                 m (.matcher rg path) ]
+            (if (and (.matches m)
+                     (or (= "*" verbList)
+                         (>= (.indexOf verbList 
+                                       (.toLowerCase ^String mtd)) 0)))
+              m
+              nil)))
+
+        (collect [_ mc]
+          (let [ ph (.mm-g impl :placeHolders)
+                 ^Matcher mmc mc
+                 gc (.groupCount mmc) ]
+            (with-local-vars [ rc (transient {}) r2 "" ]
+              (doseq [ h (seq ph) ]
+                (var-set r2 (last h))
+                (var-set rc
+                         (assoc! rc
+                                 @r2
+                                 (SU/nsb (.group mmc ^String @r2)))))
+              (persistent! rc)))) )
+      { :typeid :czc.hhh.mvc/RouteInfo } )) )
+
+
+(defn- initRoute
+
+  [^comzotohcljc.util.core.MuObj rc
+   ^String path]
+
+  (let [ tknz (StringTokenizer. path "/" true)
+         buff (StringBuilder.)
+         phs (transient []) ]
+    (with-local-vars [ cg 0 gn "" ts "" ]
+      (while (.hasMoreTokens tknz)
+        (var-set ts (.nextToken tknz))
+        (if (= @ts "/")
+          (.append buff "/")
           (do
-        if (t.startsWith(":")) {
-          cg += 1
-          gn= t.substring(1)
-          _placeholders.add( ( cg , gn ) )
-          t = "({" + gn + "}[^/]+)"
-        } else {
-          val c= STU.countMatches(t, "(")
-          if (c > 0) {
-            cg += c
-          }
-        }
-        buff.append(t)
-      }
-    }
-    tlog.debug("Route added: {}\ncanonicalized to: {}{}", _path, buff,"")
-    _path=buff.toString
-    _regex= new Pattern(_path)
+            (if (.startsWith ^String @ts ":")
+              (do
+                (var-set gn (.substring ^String @ts 1))
+                (var-set cg (inc @cg))
+                (var-set phs (conj! @phs [ @cg @gn ] ))
+                (var-set ts  (str "({" @gn "}[^/]+)")))
+              (let [ c (StringUtils/countMatches @ts "(") ]
+                (if (> c 0)
+                  (var-set cg (+ @cg c)))))
+            (.append buff @ts)))))
+    (let [ pp (.toString buff) ]
+      (debug "route added: " path " \ncanonicalized to: " pp)
+      (.setf! rc :path pp)
+      (.setf! rc :regex (Pattern. pp)))
+    (.setf! rc :placeHolders (persistent! phs))
+    rc))
 
 (defn- mkRoute [stat path flds]
   (let [ tpl (:template flds)
          verb (:verb flds)
          mpt (:mount flds)
          pipe (:pipe flds)
+         ^comzotohcljc.util.core.MuObj 
          rc (make-route-info path verb pipe) ]
     (if stat
       (do
@@ -70,6 +141,9 @@
     (initRoute rc path)
     rc))
 
+;;
+;; path can be /host.com/abc/:id1/gg/:id2
+;;
 (defn load-routes [^File file]
   (let [ stat  (-> file (.getName)(.startsWith "static-"))
          cf (WI/parse-inifile file) ]
@@ -77,96 +151,10 @@
       (mkRoute stat s (.getSection cf s)))
     ))
 
-(defn make-route-info [path verb handler]
-  (let [ verbList (.toLowerCase verb)
-         impl (CU/make-mmap) ]
-    (with-meta
-      (reify
-        ZZZ
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        (resemble [mtd path]
-          (let [ ^Pattern rg (.mm-g impl :regex)
-                 m (.matcher rg path) ]
-            (if (and (.matches m)
-                     (or (= "*" verbList) (>= (.indexOf verbList (.toLowerCase mtd)) 0)))
-              m
-              nil)))
-
-
-  private def initialize() {
-    val tknz = new StringTokenizer(_path, DELIM, true)
-    val buff= new StringBuilder(512)
-    var t=""
-    var gn= ""
-    var cg=0
-    while (tknz.hasMoreTokens ) {
-      t=tknz.nextToken()
-      if (t == DELIM) { buff.append(DELIM) } else {
-        if (t.startsWith(":")) {
-          cg += 1
-          gn= t.substring(1)
-          _placeholders.add( ( cg , gn ) )
-          t = "({" + gn + "}[^/]+)"
-        } else {
-          val c= STU.countMatches(t, "(")
-          if (c > 0) {
-            cg += c
-          }
-        }
-        buff.append(t)
-      }
-    }
-    tlog.debug("Route added: {}\ncanonicalized to: {}{}", _path, buff,"")
-    _path=buff.toString
-    _regex= new Pattern(_path)
-  }
-
-  def setStatic(b:Boolean): this.type = {
-    _staticFile=b
-    this
-  }
-  def isStatic() = _staticFile
-
-  def resemble(mtd:String, path:String): Option[Matcher] = {
-    val m=_regex.matcher(path)
-    if (m.matches() &&
-      _verbArr.find { (s) =>s=="*" || s == mtd.uc }.isDefined ) {
-      Some(m)
-    } else {
-      None
-    }
-  }
-
-  def mountPoint_=(s:String) {   _mountPt = nsb(s) }
-  def mountPoint = _mountPt
-
-  def template_=(s:String) {   _tpl = nsb(s) }
-  def template = _tpl
-
-  def pattern() = _regex
-  def pipeline() = _pipe
-  def path() = _path
-  def verb() = _verb
-
-  def resolveMatched(mc:Matcher) = {
-    val rc= mutable.HashMap[String,String]()
-    val gc = mc.groupCount()
-    _placeholders.foreach { (t) =>
-      rc.put( t._2, nsb ( mc.group(t._2) ) )
-//      if (t._1 <= gc) {
-//        rc.put( t._2, mc.group(t._1) )
-//      }
-    }
-    rc.toMap
-  }
-
-  /*
-   *  path can be /host.com/abc/:id1/gg/:id2
-   */
-}
-
-
+(def ^:private routes-eof nil)
 
 
 
