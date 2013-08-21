@@ -22,8 +22,8 @@
                          (.canRead f)) fp nil)))
             (seq fs)))))
 
-(defn- doStatic [co ri ^Matcher mc ctx req evt]
-  (let [ appDir (->  co (.container)(.appDir))
+(defn- doStatic [src ri ^Matcher mc ctx req evt]
+  (let [ appDir (->  src (.container)(.appDir))
          uri (.uri evt)
          gc (.groupCount mc) ]
     (with-local-vars [ mp "" ]
@@ -37,11 +37,20 @@
       ;; serve all static assets from *public folder*
     (let [ ps (CU/nice-fpath (File. appDir DN_PUBLIC)) ]
       (var-set mp (CU/nice-fpath (File. @mp)))
-      (if (.startsWith mp ps))
-        (handleStatic src ctx req (File. mp))
-        (tlog.warn "Attempt to access non public file-system: {}", mp)
-      serve403(ctx)
-    }
+      (if (.startsWith @mp ps)
+        (handleStatic src ctx req (File. @mp))
+        (do
+          (warn "Attempt to access non public file-system: " @mp)
+          (serve403 ctx)))))))
+
+(defn- doRoute [ src ri ^Matcher mc ctx evt]
+    val pms = ri.resolveMatched(mc)
+    pms.foreach { (en) =>      evt.addParam(en._1, en._2) }
+    w.timeoutMillis( _src.waitMillis)
+    evt.addAttr( PF_ROUTE_INFO, ri)
+    evt.routerClass = ri.pipeline()
+    _src.hold(w)
+    _src.dispatch(evt)
   }
 
 (defn make-mvc-handler []

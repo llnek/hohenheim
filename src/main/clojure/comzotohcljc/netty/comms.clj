@@ -98,6 +98,10 @@
 ;; main netty classes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn closeCF [doit ^ChannelFuture cf]
+  (if (and doit (CU/notnil? cf))
+    (.addListener cf ChannelFutureListener/CLOSE)))
+
 (defmulti ^:private add-listener (fn [a & more ] (class a)))
 
 (defprotocol NettyServiceIO ""

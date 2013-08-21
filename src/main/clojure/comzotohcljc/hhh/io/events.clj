@@ -152,6 +152,7 @@
 (derive :czc.hhh.io/EmailEvent :czc.hhh.io/EmEvent)
 (derive :czc.hhh.io/FileEvent :czc.hhh.io/EmEvent)
 (derive :czc.hhh.io/HTTPEvent :czc.hhh.io/EmEvent)
+;;(derive :czc.hhh.io/MVCEvent :czc.hhh.io/HTTPEvent)
 
 (def ^:private events-eof nil)
 

@@ -42,6 +42,7 @@
 
 
 (use '[clojure.tools.logging :only (info warn error debug)])
+(use '[comzotohcljc.util.core :only (MuObj) ])
 
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.io.core])
@@ -76,10 +77,19 @@
          ^Channel ch (nth args 0)
          ssl (CU/notnil? (.get (.getPipeline ch) "ssl"))
          ^InetSocketAddress laddr (.getLocalAddress ch)
+         impl (CU/make-mmap)
          eeid (SN/next-long) ]
     (with-meta
-      (reify 
-        
+      (reify
+
+        MuObj
+
+          (setf! [_ k v] (.mm-s impl k v) )
+          (seq* [_] (seq (.mm-m* impl)))
+          (getf [_ k] (.mm-g impl k) )
+          (clrf! [_ k] (.mm-r impl k) )
+          (clear! [_] (.mm-c impl))
+
         Identifiable
         (id [_] eeid)
         HTTPEvent
@@ -182,21 +192,104 @@
     (.setAttr! co :contextPath (SU/strim c))
     (http-basic-config co cfg) ))
 
-(defn- make-service-io [^comzotohcljc.hhh.io.core.EmitterAPI co]
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;MVC stuff
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- serve-xxx
+  [^comzotohcljc.hhh.core.sys.Thingy src 
+   ^Channel ch
+   code
+   fkey
+   file ]
+  (let [ rsp (DefaultHttpResponse.  HttpVersion/HTTP_1_1 code)
+         nf (.getf src fkey) ]
+    (try
+      (let [ tp (WebPage/getTemplate (if (SU/hgl? nf) nf file))
+             bits (if (nil? tp) nil (CU/bytesify (.body tp))) ]
+        (if-not (nil? tp)
+          (.setHeader rsp Names/CONTENT_TYPE (.contentType tp))
+          (HttpHeaders/setContentLength rsp (alength bits))
+          (.setContent rsp (ChannelBuffers/copiedBuffer bits))))
+      (NE/closeCF true (.write ch rsp))
+      (catch Throwable e#
+        (warn e# "")
+        (.close ch)))))
+
+(defn- serve-500 [src ch]
+  (serve-xxx src ch HttpResponseStatus/INTERNAL_SERVER_ERROR :500 "500.html"))
+
+(defn- serve-404 [src ch]
+  (serve-xxx src ch HttpResponseStatus/NOT_FOUND :404 "404.html"))
+
+(defn- serve-403 [src ch]
+  (serve-xxx src ch HttpResponseStatus/FORBIDDEN :403 "403.html"))
+
+(defn- mvc-redirect [src ch perm targetUrl]
+    val rsp=new DefaultHttpResponse(HttpVersion.HTTP_1_1,
+        if (perm) HttpResponseStatus.MOVED_PERMANENTLY else HttpResponseStatus.TEMPORARY_REDIRECT
+        )
+    tlog.debug("Reroute {} to {}{}", asJObj(rsp.getStatus.getCode), targetUrl, "")
+    rsp.setHeader("location", targetUrl)
+    closeCF(true, ctx.getChannel().write(rsp) )
+  }
+
+(defn- serve-route [src ri ^Matcher mc ch req evt]
+  (let [ ^comzotohcljc.hhh.io.core.WaitEventHolder
+         w (make-async-wait-holder
+             (make-netty-trigger ch evt co) evt)
+         pms (.collect ri mc) ]
+    (.timeoutMillis w (.getAttr ^comzotohcljc.hhh.core.sys.Thingy co :waitMillis))
+    (.setf! evt :params (merge {} pms))
+    (.setf! evt :router (.pipeline ri))
+    (.hold co w)
+    (.dispatch co evt)))
+
+(defn- mvc-req
+  [^comzotohcljc.hhh.io.core.EmitterAPI co
+   ch req msginfo xdata]
+  (let [ evt (ioes-reify-event co ch req xdata)
+         [r1 r2 r3 r4] (crack-route evt) ]
+    (cond
+      (and r1 (SU/hgl? r4))
+      (mvc-redirect co ch false r4)
+
+      (= r1 true)
+      (do
+        (debug "matched one route: " (.getPath r2))
+        (if (.isStatic r2)
+          (serve-static r2 r3 ch req evt)
+          (serve-route r2 r3 ch req evt)))
+
+      :else
+      (let [ fp (serveWelcomeFile req evt) ]
+        (if (nil? fp)
+          (do
+            (warn "failed to match uri: " (.getUri evt))
+            (server-404 ch))
+          (handle-static src ch req evt fp))))))
+
+
+(defn- io-req
+  [^comzotohcljc.hhh.io.core.EmitterAPI co
+   ch req msginfo xdata]
+  (let [ evt (ioes-reify-event co ch req xdata)
+         ^comzotohcljc.hhh.io.core.WaitEventHolder
+         w (make-async-wait-holder (make-netty-trigger ch evt co) evt) ]
+    (.timeoutMillis w (.getAttr ^comzotohcljc.hhh.core.sys.Thingy co :waitMillis))
+    (.hold co w)
+    (.dispatch co evt)))
+
+(defn- make-service-io [^comzotohcljc.hhh.io.core.EmitterAPI co reqcb]
   (reify comzotohcljc.netty.comms.NettyServiceIO
     (before-send [_ ch msg] nil)
     (onerror [_ ch msginfo exp]  nil)
     (onreq [_ ch req msginfo xdata]
-      (let [ evt (ioes-reify-event co ch req xdata)
-             ^comzotohcljc.hhh.io.core.WaitEventHolder
-             w (make-async-wait-holder (make-netty-trigger ch evt co) evt) ]
-        (.timeoutMillis w (.getAttr ^comzotohcljc.hhh.core.sys.Thingy co :waitMillis))
-        (.hold co w)
-        (.dispatch co evt)))
+      (reqcb co ch req msginfo xdata))
     (onres [_ ch rsp msginfo xdata] nil)) )
 
-(defmethod comp-initialize :czc.hhh.io/NettyIO
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+(defn- init-netty
+  [^comzotohcljc.hhh.core.sys.Thingy co reqcb]
   (let [ [^ServerBootstrap bs opts] (NE/server-bootstrap)
          file (.getAttr co :serverKey)
          ssl (CU/notnil? file)
@@ -204,7 +297,7 @@
          ctx (if ssl (SS/make-sslContext file pwd)) ]
     (doto bs
       (.setPipelineFactory
-        (NE/make-pipeServer ctx  (make-service-io co))))
+        (NE/make-pipeServer ctx  (make-service-io co reqcb))))
     (.setAttr! co :netty
       (comzotohcljc.netty.comms.NettyServer. bs nil opts))
     co))
@@ -235,6 +328,13 @@
     (NE/finz-server nes)
     (ioes-stopped co)))
 
+(defmethod comp-initialize :czc.hhh.io/NettyIO
+  [^comzotohcljc.hhh.core.sys.Thingy co]
+  (init-netty co io-req))
+
+(defmethod comp-initialize :czc.hhh.io/NettyMVC
+  [^comzotohcljc.hhh.core.sys.Thingy co]
+  (init-netty co mvc-req))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
