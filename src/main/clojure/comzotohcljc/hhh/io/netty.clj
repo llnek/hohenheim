@@ -332,9 +332,6 @@
   [^comzotohcljc.hhh.core.sys.Thingy co]
   (init-netty co io-req))
 
-(defmethod comp-initialize :czc.hhh.io/NettyMVC
-  [^comzotohcljc.hhh.core.sys.Thingy co]
-  (init-netty co mvc-req))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

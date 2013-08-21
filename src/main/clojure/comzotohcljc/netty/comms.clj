@@ -98,10 +98,6 @@
 ;; main netty classes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn closeCF [doit ^ChannelFuture cf]
-  (if (and doit (CU/notnil? cf))
-    (.addListener cf ChannelFutureListener/CLOSE)))
-
 (defmulti ^:private add-listener (fn [a & more ] (class a)))
 
 (defprotocol NettyServiceIO ""
@@ -109,6 +105,10 @@
   (onerror [_ ^Channel ch msginfo ^MessageEvent evt] )
   (onreq [_ ^Channel ch req msginfo ^XData xdata] )
   (onres [_ ^Channel ch rsp msginfo ^XData xdata] ))
+
+(defn closeCF [doit ^ChannelFuture cf]
+  (if (and doit (CU/notnil? cf))
+    (.addListener cf ChannelFutureListener/CLOSE)))
 
 (defn make-nilServiceIO ""
 
