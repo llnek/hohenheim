@@ -28,6 +28,7 @@
 (import'(com.zotoh.frwk.io XData))
 
 (import '(com.zotoh.hohenheim.io HTTPEvent Emitter))
+(import '(com.zotoh.hohenheim.mvc MVCUtils))
 (import '(org.jboss.netty.channel Channel))
 (import '(org.jboss.netty.buffer ChannelBuffers))
 (import '(org.jboss.netty.handler.codec.http
@@ -44,7 +45,6 @@
 (require '[comzotohcljc.hhh.mvc.tpls :as WP])
 (require '[comzotohcljc.netty.comms :as NE])
 (require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.dates :as DU])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -58,7 +58,7 @@
       (.containsHeader req "If-Unmodified-Since")
       (let [ s (.getHeader req "If-Unmodified-Since") ]
         (when (SU/hgl? s)
-          (CU/Try! (when (>= (.getTime (DU/parse s)) lastTm)
+          (CU/Try! (when (>= (.getTime (.parse MVCUtils/getSDF s)) lastTm)
                      (var-set modd false)))))
       :else nil)
     @modd))
@@ -72,7 +72,7 @@
            lastTm (.lastModified file)
            eTag  (str "\""  lastTm  "-"  (.hashCode file)  "\"") ]
       (if (isModified eTag lastTm req)
-        (.setHeader rsp "Last-Modified" (DU/format (Date. lastTm)))
+        (.setHeader rsp "Last-Modified" (.format MVCUtils/getSDF (Date. lastTm)))
         (if (= "GET" (.method evt))
           (.setStatus rsp HttpResponseStatus/NOT_MODIFIED)))
       (.setHeader rsp "Cache-Control"
@@ -112,7 +112,7 @@
           (addETag src evt req rsp file)
           (if (= (-> rsp (.getStatus)(.getCode)) 304)
             (NE/closeCF (not (.isKeepAlive evt)) (.write ch rsp))
-            (getFile src ch evt rsp file))))
+            (WP/getFileAsset src ch req rsp file))))
       (catch Throwable e#
         (error "failed to get static resource " (.getUri evt) e)
         (CU/Try!  (serve-error src ch 500)))) ))

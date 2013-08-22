@@ -32,21 +32,23 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.util.core :only (MuObj) ])
+
 (require '[comzotohcljc.crypto.core :as CE])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.guids :as GU])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
-(def ^:private SESSION_COOKIE "hhh_ssref" )
-(def ^:private SSID_FLAG "f_01ecf22f")
-(def ^:private TS_FLAG "f_684f11a0" )
 
+(def ^:private SESSION_COOKIE "hhh_ssid" )
+(def ^:private SSID_FLAG "f_01ec")
+(def ^:private TS_FLAG "f_684f" )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol HttpSession
+(defprotocol WebSession
   ""
   (setAttribute [_ k v] )
   (getAttribute [_ k] )
@@ -61,19 +63,17 @@
   (getMaxInactiveInterval [_] ))
 
 
-(defn- resurrect [^comzotohcljc.hhh.mvc.ios.HttpSession mvs ^HTTPEvent evt]
-
-  (let [ ^Emitter em (.emitter evt) ^Container ctr (.container em)
+(defn- resurrect [^comzotohcljc.hhh.mvc.ios.WebSession mvs
+                  ^HTTPEvent evt]
+  (let [ ctr (.container ^Emitter (.emitter evt))
          pkey (-> ctr (.getAppKey)(CU/bytesify))
          ck (.getCookie evt SESSION_COOKIE)
          cookie (SU/nsb (if-not (nil? ck) (.getValue ck)))
-         ^comzotohcljc.hhh.core.sys.Thingy
-         netty (.emitter evt)
-         idleSecs (.getAttr netty :cacheMaxAgeSecs)
          pos (.indexOf cookie (int \-))
          [rc1 rc2] (if (< pos 0)
                      ["" ""]
-                     [ (.substring cookie 0 pos) (.substring cookie (+ pos 1) )] ) ]
+                     [(.substring cookie 0 pos)
+                      (.substring cookie (+ pos 1) )] ) ]
     (when (and (SU/hgl? rc1)
              (SU/hgl? rc2)
              (= (CE/gen-mac pkey rc2) rc1))
@@ -82,18 +82,22 @@
           (let [ [n v] (StringUtils/split ^String s ":") ]
             (.setAttribute mvs n v)))))
     (let [ ts (SU/nsb (.getAttribute mvs TS_FLAG))
+           ^comzotohcljc.hhh.core.sys.Thingy
+           netty (.emitter evt)
+           idleSecs (.getAttr netty :cacheMaxAgeSecs)
            expired (if (SU/hgl? ts)
                      (< (CU/conv-long ts 0) (System/currentTimeMillis))
                      (and (number? idleSecs) (> idleSecs 0))) ]
       (if (and expired (number? idleSecs) (> idleSecs 0))
-        (.setAttribute mvs TS_FLAG (+ (System/currentTimeMillis)  (* idleSecs 1000)))))
+        (.setAttribute mvs TS_FLAG (+ (System/currentTimeMillis)
+                                      (* idleSecs 1000)))))
 
     (.bindSession evt mvs)
     mvs))
 
-
 (defn make-session []
-  (let [ impl (CU/make-mmap) now (System/currentTimeMillis) ]
+  (let [ now (System/currentTimeMillis)
+         impl (CU/make-mmap) ]
     (.mm-s impl SSID_FLAG (GU/new-uuid))
     (.mm-s impl :createTS now)
     (.mm-s impl :lastTS now)
@@ -103,13 +107,15 @@
     (with-meta
       (reify
 
-        HttpSession
+        WebSession
           (setAttribute [_ k v] (.mm-s impl k v) )
           (getAttribute [_ k] (.mm-g impl k) )
           (removeAttribute [_ k] (.mm-r impl k) )
           (clear [_] (.mm-c impl))
           (setMaxInactiveInterval [_ idleSecs]
-            (.mm-s impl :maxInactiveInterval (if (and (number? idleSecs)(> idleSecs 0)) idleSecs -1)))
+            (.mm-s impl
+                   :maxInactiveInterval
+                   (if (and (number? idleSecs)(> idleSecs 0)) idleSecs -1)))
           (isNew [_] (.mm-g impl :newOne))
           (invalidate [_]
             (.mm-s impl :createTS 0)
@@ -121,14 +127,12 @@
           (getLastAccessedTime [_] (.mm-g impl :lastTS))
           (getMaxInactiveInterval [_] (* 1000 (.mm-g impl :maxIdleSecs)))
 
-
         IOSession
-          (handleResult [_ evt res] )
+          (handleResult [_ evt res] nil)
           (handleEvent [this evt]
             (resurrect this evt)))
 
       { :typeid :czc.hhh.io/Session } )))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

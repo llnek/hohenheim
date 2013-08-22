@@ -1,5 +1,5 @@
 /*??
- * COPYRIGHT (C) 2012-2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
+ * COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
  *
  * THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
  * MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE,
@@ -19,23 +19,23 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.mvc;
 
-import java.util.HashMap;
+package com.zotoh.hohenheim.mvc
 
-/**
- * @author kenl
- */
-public enum AssetCache {
-;
+import java.text.SimpleDateFormat
+import java.util.{TimeZone, Locale}
 
 
-  private static HashMap<String, Object> _cache=  new HashMap<String, Object>();
+object MVCUtils {
 
-  public static HashMap<String,Object> get() {
-    return _cache;
+  private val _fmt = new ThreadLocal[SimpleDateFormat]() {
+    override def initialValue() = {
+      val f=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US)
+      f.setTimeZone(TimeZone.getTimeZone("GMT"))
+      f
+    }
   }
 
+  def getSDF() = _fmt.get
+
 }
-
-

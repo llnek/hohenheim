@@ -29,12 +29,14 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.util.core :only (MuObj) ])
+
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.ini :as WI])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;(set! *warn-on-reflection* true)
 
 (defprotocol RouteInfo
   ""
@@ -46,8 +48,8 @@
   (collect [_ matcher] ))
 
 
-(defn- make-route-info [path ^String verb handler]
-  (let [ verbList (.toLowerCase verb)
+(defn- make-route-info [route ^String verb handler]
+  (let [ verbList (.toUpperCase verb)
          impl (CU/make-mmap) ]
     (with-meta
       (reify
@@ -62,19 +64,18 @@
 
         RouteInfo
 
+        (isStatic? [_] (.mm-g impl :static))
         (getHandler [_] handler)
-        (getPath [_] path)
-        (getVerbs [_] verb)
-        (isStatic? [_]
-          (.mm-g impl :static))
+        (getPath [_] route)
+        (getVerbs [_] verbList)
 
         (resemble? [_ mtd path]
-          (let [ ^Pattern rg (.mm-g impl :regex)
-                 m (.matcher rg path) ]
+          (let [ rg (.mm-g impl :regex)
+                 m (.matcher ^Pattern rg path) ]
             (if (and (.matches m)
                      (or (= "*" verbList)
-                         (>= (.indexOf verbList 
-                                       (.toLowerCase ^String mtd)) 0)))
+                         (>= (.indexOf verbList
+                                       (.toUpperCase ^String mtd)) 0)))
               m
               nil)))
 
@@ -90,8 +91,8 @@
                                  @r2
                                  (SU/nsb (.group mmc ^String @r2)))))
               (persistent! rc)))) )
-      { :typeid :czc.hhh.mvc/RouteInfo } )) )
 
+      { :typeid :czc.hhh.mvc/RouteInfo } )) )
 
 (defn- initRoute
 
@@ -119,8 +120,8 @@
             (.append buff @ts)))))
     (let [ pp (.toString buff) ]
       (debug "route added: " path " \ncanonicalized to: " pp)
-      (.setf! rc :path pp)
-      (.setf! rc :regex (Pattern. pp)))
+      (.setf! rc :regex (Pattern. pp))
+      (.setf! rc :path pp))
     (.setf! rc :placeHolders (persistent! phs))
     rc))
 
@@ -129,7 +130,7 @@
          verb (:verb flds)
          mpt (:mount flds)
          pipe (:pipe flds)
-         ^comzotohcljc.util.core.MuObj 
+         ^comzotohcljc.util.core.MuObj
          rc (make-route-info path verb pipe) ]
     (if stat
       (do
