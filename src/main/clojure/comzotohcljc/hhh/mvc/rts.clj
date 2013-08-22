@@ -20,7 +20,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
-  comzotohcljc.hhh.mvc.routes )
+  comzotohcljc.hhh.mvc.rts )
 
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.io File))
@@ -40,6 +40,7 @@
   ""
   (getHandler [_] )
   (getPath [_] )
+  (isStatic? [_] )
   (getVerbs [_] )
   (resemble? [_ mtd path] )
   (collect [_ matcher] ))
@@ -64,6 +65,8 @@
         (getHandler [_] handler)
         (getPath [_] path)
         (getVerbs [_] verb)
+        (isStatic? [_]
+          (.mm-g impl :static))
 
         (resemble? [_ mtd path]
           (let [ ^Pattern rg (.mm-g impl :regex)
@@ -155,7 +158,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private routes-eof nil)
+(def ^:private rts-eof nil)
 
 
 

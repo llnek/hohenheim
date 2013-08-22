@@ -19,17 +19,25 @@
  *
  ??*/
 
-package com.zotoh.hohenheim.core
+package com.zotoh.hohenheim.mvc;
 
-import com.zotoh.frwk.util.Schedulable
-import com.zotoh.hohenheim.io.IOEvent
-import com.zotoh.wflow.IContainer
-import com.zotoh.frwk.core.Disposable
-import java.io.File
+import java.util.HashMap;
 
-trait Container extends IContainer with Disposable {
-  def notifyObservers(evt:IOEvent ) : Unit
-  def getAppKey() : String
-  def getAppDir() : File
+/**
+ * @author kenl
+ */
+public class AssetCache {
+  private static ThreadLocal<HashMap<String,Object>> _cache=
+          new ThreadLocal<HashMap<String,Object>>() {
+       protected HashMap<String,Object> initialValue() {
+          return new HashMap<String, Object>();
+        }
+    };
+
+  public static HashMap<String,Object> get() {
+    return _cache.get();
+  }
+
 }
+
 

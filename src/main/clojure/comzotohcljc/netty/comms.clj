@@ -106,9 +106,20 @@
   (onreq [_ ^Channel ch req msginfo ^XData xdata] )
   (onres [_ ^Channel ch rsp msginfo ^XData xdata] ))
 
+(defn chKeepAlive [^HttpMessage msg]
+  (HttpHeaders/isKeepAlive msg))
+
 (defn closeCF [doit ^ChannelFuture cf]
   (if (and doit (CU/notnil? cf))
     (.addListener cf ChannelFutureListener/CLOSE)))
+
+(defn sendRedirect [ ^Channel ch perm ^String targetUrl]
+  (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1
+                                   (if perm HttpResponseStatus/MOVED_PERMANENTLY
+                                     HttpResponseStatus/TEMPORARY_REDIRECT)) ]
+    (debug "redirecting to " targetUrl)
+    (.setHeader rsp "location" targetUrl)
+    (closeCF true (.write ch rsp))))
 
 (defn make-nilServiceIO ""
 
@@ -171,14 +182,15 @@
 
 (defn make-resp-status ""
 
-  (^HttpResponse [] (make-resp-status HttpResponseStatus/OK))
+  (^HttpResponse [] (make-resp-status 200))
 
-  (^HttpResponse [^HttpResponseStatus status]
-    (DefaultHttpResponse. HttpVersion/HTTP_1_1 status)))
+  (^HttpResponse [status]
+    (DefaultHttpResponse. HttpVersion/HTTP_1_1
+                          (get *HTTP-CODES* status))))
 
 (defn send-100-cont [^ChannelHandlerContext ctx]
   (let [ ch (.getChannel ctx) ]
-    (.write ch (make-resp-status HttpResponseStatus/CONTINUE))))
+    (.write ch (make-resp-status 100))))
 
 (defrecord NettyServer [^ServerBootstrap server ^ChannelGroup cgroup options] )
 (defrecord NettyClient [^ClientBootstrap client ^ChannelGroup cgroup options] )
@@ -465,7 +477,7 @@
   (netty-xxx-server host port usercb options ))
 
 
-(defn- reply-xxx [^Channel ch ^HttpResponseStatus status]
+(defn- reply-xxx [^Channel ch status]
   (let [ res (make-resp-status status)
          attObj (.getAttachment ch)
          info (if (nil? attObj) nil (:info attObj))
@@ -493,21 +505,21 @@
   (let [ putter (fn [^Channel ch ^String fname ^XData xdata]
                   (try
                       (FU/save-file vdir fname xdata)
-                      (reply-xxx ch (HttpResponseStatus/OK))
+                      (reply-xxx ch 200)
                     (catch Throwable e#
-                      (reply-xxx ch (HttpResponseStatus/INTERNAL_SERVER_ERROR)))))
+                      (reply-xxx ch 500))))
 
          getter (fn [^Channel ch ^String fname]
                   (let [ xdata (FU/get-file vdir fname) ]
                     (if (.hasContent xdata)
                       (reply-get-vfile ch xdata)
-                      (reply-xxx ch (HttpResponseStatus/NO_CONTENT))))) ]
+                      (reply-xxx ch 204)))) ]
     (reify NettyServiceIO
       (before-send [_ ch msg] nil)
       (onerror [_ ch msginfo evt]
         (do
           (if (instance? ExceptionEvent evt) (error (.getCause ^ExceptionEvent evt) ""))
-          (reply-xxx ch (HttpResponseStatus/INTERNAL_SERVER_ERROR))))
+          (reply-xxx ch 500)))
       (onres [_ ch rsp msginfo xdata] nil)
       (onreq [_ ch req msginfo xdata]
         (let [ mtd (.toUpperCase (SU/nsb (:method msginfo)))
@@ -518,7 +530,7 @@
           (cond
             (or (= mtd "POST")(= mtd "PUT")) (putter ^Channel ch p xdata)
             (= mtd "GET") (getter ^Channel ch p)
-            :else (reply-xxx ch (HttpResponseStatus/METHOD_NOT_ALLOWED))))))
+            :else (reply-xxx ch 405)))))
       ))
 
 (defn make-mem-filer ""
