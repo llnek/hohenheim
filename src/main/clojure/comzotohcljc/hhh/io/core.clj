@@ -183,6 +183,7 @@
 (derive :czc.hhh.io/POP3 :czc.hhh.io/ThreadedTimer)
 
 (derive :czc.hhh.io/JMS :czc.hhh.io/Emitter)
+(derive :czc.hhh.io/SocketIO :czc.hhh.io/Emitter)
 
 
 
