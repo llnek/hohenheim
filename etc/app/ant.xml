@@ -320,14 +320,14 @@
       <copy todir="${app.dir}/conf" file="${hohenheim.home}/etc/netty/static-routes.conf" overwrite="true"/>
       <copy todir="${app.dir}/conf" file="${hohenheim.home}/etc/netty/routes.conf" overwrite="true"/>
       <copy todir="${app.dir}/public/images" file="${hohenheim.home}/etc/web/favicon.png"/>
-      <mkdir dir="${app.dir}/pages/templates"/>
+      <mkdir dir="${app.dir}/pages/errors"/>
       <mkdir dir="${app.dir}/pages/views"/>
-      <copy todir="${app.dir}/pages/templates" >
+      <copy todir="${app.dir}/pages/views" >
         <fileset dir="${hohenheim.home}/etc/netty">
           <include name="*.ftl"/>
         </fileset>
       </copy>
-      <copy todir="${app.dir}/pages/views" >
+      <copy todir="${app.dir}/pages" >
         <fileset dir="${hohenheim.home}/etc/netty">
           <exclude name="index.html"/>
           <include name="*.html"/>

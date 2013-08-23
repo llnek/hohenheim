@@ -455,20 +455,18 @@
 
 (deftype MutableMap [ ^:unsynchronized-mutable data ] MutableMapAPI
   (mm-r [_ k]
-    (set! data (dissoc! data k)))
-  (mm-m* [_] data)
+    (set! data (dissoc data k)))
+  (mm-m* [_] (seq data))
   (mm-g [_ k] (get data k))
-  (mm-c [_ ] (set! data (transient {}) ))
+  (mm-c [_ ] (set! data {} ))
   (mm-s [_ k v]
-    (set! data (assoc! data k v))))
+    (set! data (assoc data k v))))
 
 
 (defn make-mmap ""
   ^comzotohcljc.util.core.MutableMapAPI
   []
-  (MutableMap. (transient {}) ))
-
-
+  (MutableMap. {} ))
 
 
 (defn print-mutableObj

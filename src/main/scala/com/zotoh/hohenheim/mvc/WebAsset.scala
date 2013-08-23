@@ -30,6 +30,7 @@ trait WebAsset {
 
   def contentType() : String
   def getFile() :File
+  def getTS(): Long
   def size() : Long
   def getBytes() :Array[Byte]
 

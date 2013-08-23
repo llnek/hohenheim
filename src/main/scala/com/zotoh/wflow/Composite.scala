@@ -23,7 +23,6 @@ package com.zotoh.wflow
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import com.zotoh.wlow.Iter
 
 /**
  * @author kenl

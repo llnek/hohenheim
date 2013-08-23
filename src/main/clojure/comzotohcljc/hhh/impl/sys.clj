@@ -186,7 +186,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-podmeta "" [app ver parObj podType pathToPOD]
+(defn make-podmeta "" [app ver parObj podType appid pathToPOD]
   (let [ pid (str podType "#" (SN/next-long))
          impl (CU/make-mmap) ]
     (with-meta
@@ -212,6 +212,7 @@
         PODMeta
 
           (srcUrl [_] pathToPOD)
+          (appKey [_] appid)
           (typeof [_] podType))
 
       { :typeid (keyword "czc.hhh.impl/PODMeta") } )))

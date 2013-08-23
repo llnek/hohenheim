@@ -81,13 +81,13 @@
 
 
 (defmethod ioes-started :default [co]
-  (info "Emitter " co " started - OK"))
+  (info "Emitter " (:typeid (meta co)) " started - OK"))
 
 (defmethod ioes-stopped :default [co]
-  (info "Emitter " co " stopped - OK"))
+  (info "Emitter "  (:typeid (meta co))  " stopped - OK"))
 
 (defmethod ioes-dispose :default [co]
-  (info "Emitter " co " disposed - OK"))
+  (info "Emitter "  (:typeid (meta co))  " disposed - OK"))
 
 (defmethod ioes-suspend :default [co]
   (throw (Exception. "Not Implemented")))

@@ -61,6 +61,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
+(defmulti netty-service-req "" (fn [a & args] (:typeid (meta a))))
+
 (defn- cookieToJava [^Cookie c]
   (doto (HttpCookie. (.getName c)(.getValue c))
     (.setComment (.getComment c))
@@ -193,13 +195,16 @@
     (.setAttr! co :contextPath (SU/strim c))
     (http-basic-config co cfg) ))
 
-(defn- io-req
+(defmethod netty-service-req :czc.hhh.io/NettyIO
   [^comzotohcljc.hhh.io.core.EmitterAPI co
    ch req msginfo xdata]
   (let [ evt (ioes-reify-event co ch req xdata)
          ^comzotohcljc.hhh.io.core.WaitEventHolder
          w (make-async-wait-holder (make-netty-trigger ch evt co) evt) ]
-    (.timeoutMillis w (.getAttr ^comzotohcljc.hhh.core.sys.Thingy co :waitMillis))
+    (.timeoutMillis w
+                    (.getAttr
+                      ^comzotohcljc.hhh.core.sys.Thingy co
+                      :waitMillis))
     (.hold co w)
     (.dispatch co evt)))
 
@@ -243,6 +248,7 @@
       (comzotohcljc.netty.comms.NettyServer. (.server nes)
                                            cg
                                            (.options nes)) )
+    (debug "netty-io running on port: " port ", host: " host ", ip: " ip)
     (ioes-started co)))
 
 (defmethod ioes-stop :czc.hhh.io/NettyIO
@@ -253,7 +259,7 @@
 
 (defmethod comp-initialize :czc.hhh.io/NettyIO
   [^comzotohcljc.hhh.core.sys.Thingy co]
-  (init-netty co io-req))
+  (init-netty co netty-service-req))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

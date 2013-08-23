@@ -19,11 +19,9 @@
  *
  ??*/
 
-package com.zotoh.wlow
+package com.zotoh.wflow
 
-import scala.collection.JavaConversions._
 import scala.collection.mutable
-import com.zotoh.wflow.{Activity, FlowPoint}
 
 /**
  * @author kenl

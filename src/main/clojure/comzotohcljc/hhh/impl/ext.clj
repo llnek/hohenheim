@@ -51,9 +51,10 @@
 (use '[comzotohcljc.hhh.io.http])
 (use '[comzotohcljc.hhh.io.netty])
 (use '[comzotohcljc.hhh.io.events])
+(use '[comzotohcljc.hhh.mvc.handler])
 
 (use '[comzotohcljc.hhh.core.constants])
-(use '[comzotohcljc.hhh.impl.defaults 
+(use '[comzotohcljc.hhh.impl.defaults
        :rename {enabled? blockmeta-enabled?
                 start kernel-start
                 stop kernel-stop } ])
@@ -163,7 +164,7 @@
     (info "emitter synthesized - OK. handler => " hid)
     obj))
 
-(defn- make-app-container [pod appKey]
+(defn- make-app-container [pod]
   (let [ impl (CU/make-mmap) ]
     (info "about to create an app-container...")
     (with-meta
@@ -182,7 +183,8 @@
             (let [ ^comzotohcljc.hhh.impl.ext.JobCreator
                    jc (.getAttr this K_JCTOR) ]
               (.update jc evt {})))
-          (getAppKey [_] appKey)
+          (getAppKey [_] (.appKey ^comzotohcljc.hhh.impl.defaults.PODMeta pod))
+          (getAppDir [this] (.getAttr this K_APPDIR))
           (core [this]
             (.getAttr this K_SCHEDULER))
 

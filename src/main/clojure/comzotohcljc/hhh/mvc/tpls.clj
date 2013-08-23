@@ -45,18 +45,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- make-web-page [^String text ^String cType]
+(defn- make-webcontent [^String cType bits]
   (reify
     WebContent
     (contentType [_] cType)
-    (body [_] text)))
+    (body [_] bits)))
 
-(defn getTemplate [^File appDir ^String fname]
+(defn getLocalFile [^File appDir ^String fname]
   (let [ f (File. appDir fname) ]
     (if (.canRead f)
-      (make-web-page
-        (FileUtils/readFileToString f "utf-8")
-        (MM/guess-contenttype f "utf-8"))
+      (make-webcontent
+        (MM/guess-contenttype f "utf-8")
+        (FileUtils/readFileToByteArray f))
       nil)))
 
 (defn- maybeCache [^File fp]
@@ -70,12 +70,14 @@
 
 (defn- make-web-asset [^File file]
   (let [ ct (MM/guess-contenttype file "utf-8" "text/plain")
+         ts (.lastModified file)
          bits (FileUtils/readFileToByteArray file) ]
     (reify
       WebAsset
 
       (contentType [_] ct)
       (getFile [_] file)
+      (getTS [_] ts)
       (size [_] (alength bits))
       (getBytes [_] bits) )))
 
@@ -99,7 +101,7 @@
          ^File cf (if (nil? wa) nil (.getFile wa)) ]
     (if (or (nil? cf)
             (> (.lastModified file)
-               (.lastModified cf)))
+               (.getTS wa)))
       (fetchAndSetAsset cache fp file)
       wa)))
 

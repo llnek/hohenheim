@@ -85,6 +85,7 @@
          apps (.lookup root K_APPS)
          ps (CU/load-javaprops mf)
          ver (.getProperty ps "Implementation-Version" "")
+         vid (.getProperty ps "Implementation-Vendor-Id")
          cz (.getProperty ps "Main-Class" "") ]
 
     (CU/test-nestr "POD-MainClass" cz)
@@ -96,10 +97,9 @@
     ;;.gets("Implementation-Title")
     ;;.gets("Implementation-Vendor-URL")
     ;;.gets("Implementation-Vendor")
-    ;;.gets("Implementation-Vendor-Id")
 
     (let [ ^comzotohcljc.hhh.core.sys.Thingy
-           m (-> (make-podmeta app ver nil cz (-> des (.toURI) (.toURL)))
+           m (-> (make-podmeta app ver nil cz vid (-> des (.toURI) (.toURL)))
                  (synthesize-component { :ctx ctx })) ]
       (.setf! ^comzotohcljc.util.core.MuObj (.getCtx m) K_EXECV execv)
       (.reg apps m)

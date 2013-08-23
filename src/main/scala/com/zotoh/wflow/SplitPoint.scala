@@ -22,7 +22,6 @@
 package com.zotoh.wflow
 
 import com.zotoh.wflow.core.Job
-import com.zotoh.wlow.Iter
 
 /**
  * @author kenl

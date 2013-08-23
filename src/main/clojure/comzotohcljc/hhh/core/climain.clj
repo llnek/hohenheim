@@ -186,7 +186,7 @@
   (do
     (CU/print-mutableObj ctx)
     (info "applications are now running...")
-    (info "system thread paused on promise - awwaits delivery.")
+    (info "system thread paused on promise - awaits delivery.")
     (deref CLI-TRIGGER) ;; pause here
     (info "promise delivered!")
     (PU/safe-wait 5000) ;; give some time for stuff to wind-down.

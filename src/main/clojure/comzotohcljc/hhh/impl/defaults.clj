@@ -45,11 +45,11 @@
 ;;(set! *warn-on-reflection* false)
 
 (defn precondDir "" [d]
-  (CU/test-cond (str "Directory " d " must be read-writable.") 
+  (CU/test-cond (str "Directory " d " must be read-writable.")
                 (FU/dir-readwrite? d)))
 
 (defn precondFile "" [f]
-  (CU/test-cond (str "File " f " must be readable.") 
+  (CU/test-cond (str "File " f " must be readable.")
                 (FU/file-read? f)))
 
 (defn maybeDir "" ^File [^comzotohcljc.util.core.MuObj m kn]
@@ -72,18 +72,18 @@
   (undeploy [_ app] )
   (deploy [_ src] ))
 
-(defprotocol BlockMeta ""
+(defprotocol BlockMeta
+  ""
   (enabled? [_] )
   (metaUrl [_] ))
 
-(defprotocol PODMeta 
+(defprotocol PODMeta
   ""
-  (typeof [_ ])
+  (typeof [_ ] )
+  (appKey [_ ] )
   (srcUrl [_ ]))
 
-(defprotocol Kernel 
-  ""              )
-
+(defprotocol Kernel "")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

@@ -45,6 +45,7 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.util.core :only (MuObj) ])
 (use '[comzotohcljc.hhh.io.triggers])
+(use '[comzotohcljc.hhh.io.netty])
 (use '[comzotohcljc.hhh.io.core])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.core.constants])
@@ -89,6 +90,11 @@
       (when (.getAttr src :useETag)
         (.setHeader rsp HttpHeaders$Names/ETAG eTag)) ))
 
+(defn- reply-error [^Emitter src code]
+  (let [ ctr (.container src)
+         appDir (.getAppDir ctr) ]
+    (WP/getLocalFile appDir (str "pages/errors/" code ".html"))))
+
 (defn- serve-error
   [^comzotohcljc.hhh.core.sys.Thingy src
    ^Channel ch
@@ -96,11 +102,15 @@
   (let [ rsp (NE/make-resp-status code) ]
     (try
       (let [ h (.getAttr src :errorHandler)
-             ^HTTPErrorHandler cb (if (SU/hgl? h) (MU/make-obj h) nil)
-             ^WebContent rc (if (CU/notnil? cb) (.getErrorResponse cb code) nil) ]
+             ^HTTPErrorHandler
+             cb (if (SU/hgl? h) (MU/make-obj h) nil)
+             ^WebContent
+             rc (if (nil? cb)
+                  (reply-error src code)
+                  (.getErrorResponse cb code)) ]
         (when-not (nil? rc)
           (.setHeader rsp "content-type" (.contentType rc))
-          (let [ bits (CU/bytesify (.body rc)) ]
+          (let [ bits (.body rc) ]
             (HttpHeaders/setContentLength rsp (alength bits))
             (.setContent rsp (ChannelBuffers/copiedBuffer bits)))))
       (NE/closeCF true (.write ch rsp))
@@ -156,7 +166,7 @@
     (let [ ^Emitter src (.emitter evt)
            ctr (.container src)
            appDir (.getAppDir ctr)
-           fs (.getAttr ^comzotohcljc.hhh.core.sys.Thingy src :welcome-files) ]
+           fs (.getAttr ^comzotohcljc.hhh.core.sys.Thingy src :welcomeFiles) ]
       (some (fn [^String f]
               (let [ file (File. appDir (str DN_PUBLIC "/" f)) ]
                 (if (and (.exists file)
@@ -235,6 +245,11 @@
             (serve-error co ch 404)
             ))) )))
 
+
+(defmethod netty-service-req :czc.hhh.io/NettyMVC
+  [^comzotohcljc.hhh.io.core.EmitterAPI co
+   ch req msginfo xdata]
+  (handleOneNettyREQ co ch req xdata))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
