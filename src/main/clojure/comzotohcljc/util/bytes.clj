@@ -69,7 +69,7 @@
   [nnum]
   (with-open [ baos (ByteArrayOutputStream. (int 4096)) ]
     (let [ ds (DataOutputStream. baos ) ]
-      (.writeInt ds nnum)
+      (.writeInt ds (int nnum))
       (.flush ds )
       (.toByteArray baos ) )))
 
@@ -78,7 +78,7 @@
   [nnum]
   (with-open [ baos (ByteArrayOutputStream. (int 4096)) ]
     (let [ ds (DataOutputStream. baos ) ]
-      (.writeLong ds nnum)
+      (.writeLong ds ^long nnum)
       (.flush ds )
       (.toByteArray baos ) )))
 
