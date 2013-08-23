@@ -90,7 +90,7 @@
                          (assoc! rc
                                  @r2
                                  (SU/nsb (.group mmc ^String @r2)))))
-              (persistent! rc)))) )
+              (persistent! @rc)))) )
 
       { :typeid :czc.hhh.mvc/RouteInfo } )) )
 
@@ -119,17 +119,17 @@
                   (var-set cg (+ @cg c)))))
             (.append buff @ts)))))
     (let [ pp (.toString buff) ]
-      (debug "route added: " path " \ncanonicalized to: " pp)
+      (info "route added: " path " \ncanonicalized to: " pp)
       (.setf! rc :regex (Pattern. pp))
       (.setf! rc :path pp))
     (.setf! rc :placeHolders (persistent! phs))
     rc))
 
-(defn- mkRoute [stat path flds]
-  (let [ tpl (:template flds)
-         verb (:verb flds)
-         mpt (:mount flds)
-         pipe (:pipe flds)
+(defn- mkRoute [stat path ^comzotohcljc.util.ini.IWin32Conf cfile]
+  (let [ tpl (.optString cfile path :template "")
+         verb (.optString cfile path :verb "")
+         mpt (.optString cfile path :mount "")
+         pipe (.optString cfile path :pipe "")
          ^comzotohcljc.util.core.MuObj
          rc (make-route-info path verb pipe) ]
     (if stat
@@ -153,7 +153,7 @@
          cf (WI/parse-inifile file) ]
     (with-local-vars [rc (transient []) ]
       (doseq [ s (seq (.sectionKeys cf)) ]
-        (var-set rc (conj! @rc (mkRoute stat s (.getSection cf s)))))
+        (var-set rc (conj! @rc (mkRoute stat s cf))))
       (persistent! @rc))
     ))
 

@@ -70,6 +70,8 @@
 (require '[ comzotohcljc.util.str :as SU ] )
 (require '[ comzotohcljc.util.meta :as MU ] )
 
+(require '[ comzotohcljc.hhh.mvc.rts :as RO])
+
 (require '[clojure.data.json :as JS])
 
 
@@ -345,7 +347,8 @@
 
 (defmethod comp-initialize :czc.hhh.ext/Container
   [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ env (.getAttr co K_ENVCONF)
+  (let [ appDir (.getAttr co K_APPDIR)
+         env (.getAttr co K_ENVCONF)
          app (.getAttr co K_APPCONF)
          ^Properties mf (.getAttr co K_MFPROPS)
          mCZ (SU/strim (.get mf "Main-Class"))
@@ -371,6 +374,11 @@
           :else (throw (ConfigError. (str "Invalid Main Class " mCZ))))
         (.setAttr! co :main-app obj)
         (info "application main-class " mCZ " created and invoked")))
+
+    (let [ sf (File. appDir (str DN_CONF "/static-routes.conf"))
+           rf (File. appDir (str DN_CONF "/routes.conf")) ]
+      (.setAttr! co :routes
+                 (vec (concat (RO/load-routes sf) (RO/load-routes rf)))) )
 
     (let [ svcs (:services env) ]
       (if (empty? svcs)

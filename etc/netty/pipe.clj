@@ -13,8 +13,8 @@
                 (let [ ^HTTPEvent evt (.event job)
                        ^HTTPResult res (.getResultObj evt) ]
                   (.setStatus res 200)
-                  (.setContent "hello world")
-                  (.setHeader "content-type" "text/plain")
+                  (.setContent res "hello world")
+                  (.setHeader res "content-type" "text/plain")
                   (.replyResult evt))))))
 
   (onStop [_ pipe]
