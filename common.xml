@@ -146,11 +146,9 @@
     <mkdir dir="${pack.dir}/docs/src"/>
     <mkdir dir="${pack.dir}/lics"/>
     <mkdir dir="${pack.dir}/tmp"/>
-    <mkdir dir="${pack.dir}/exec"/>
     <mkdir dir="${pack.dir}/apps"/>
     <mkdir dir="${pack.dir}/blocks"/>
     <mkdir dir="${pack.dir}/pods"/>
-    <mkdir dir="${pack.dir}/dbs"/>
     <touch file="${pack.dir}/VERSION"/>
     <echo message="${build.version}" file="${pack.dir}/VERSION"/>
     <copy todir="${pack.dir}/etc">
