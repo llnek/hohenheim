@@ -149,6 +149,7 @@
 
 (defn- make-service-block [^Identifiable bk container cfg]
   (let [ eid (.id bk)
+         ^comzotohcljc.hhh.core.sys.Thingy
          obj (if (= :czc.hhh.io/JettyIO eid)
                (make-servlet-emitter container)
                (make-emitter container eid))

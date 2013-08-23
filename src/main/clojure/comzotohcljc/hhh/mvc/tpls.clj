@@ -22,31 +22,32 @@
        :author "kenl" }
   comzotohcljc.hhh.mvc.tpls)
 
+(import '(org.jboss.netty.handler.codec.http 
+  HttpMethod HttpHeaders HttpResponseStatus
+  HttpRequest HttpResponse))
+(import '(org.jboss.netty.handler.stream
+  ChunkedFile ChunkedStream ChunkedInput ))
+(import '(org.jboss.netty.channel Channel))
+
 (import '(org.apache.commons.io FileUtils))
-(import '(com.zotoh.hohenheim.mvc AssetCache))
-(import '(java.io File))
+(import '(com.zotoh.hohenheim.mvc 
+  WebContent WebAsset
+  HTTPRangeInput AssetCache))
+(import '(java.io RandomAccessFile File))
+(import '(java.util HashMap))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
+(require '[comzotohcljc.netty.comms :as NE])
 (require '[comzotohcljc.util.mime :as MM])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.io :as IO])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol WebPage
-  ""
-  (contentType [_] )
-  (body [_] ))
-
-(defprotocol WebAsset
-  ""
-  (contentType [_] )
-  (getFile [_] )
-  (size [_] )
-  (getBytes [_] ))
-
 (defn- make-web-page [^String text ^String cType]
   (reify
-    WebPage
+    WebContent
     (contentType [_] cType)
     (body [_] text)))
 
@@ -55,11 +56,11 @@
     (if (.canRead f)
       (make-web-page
         (FileUtils/readFileToString f "utf-8")
-        (MM/guessContentType f "utf-8"))
+        (MM/guess-contenttype f "utf-8"))
       nil)))
 
 (defn- maybeCache [^File fp]
-  (let [ fpath (.toLowerCase (CU/nice-fpath fp)) ]
+  (let [ ^String fpath (.toLowerCase (CU/nice-fpath fp)) ]
     (or (.endsWith fpath ".css")
         (.endsWith fpath ".gif")
         (.endsWith fpath ".jpg")
@@ -68,7 +69,7 @@
         (.endsWith fpath ".js"))))
 
 (defn- make-web-asset [^File file]
-  (let [ ct (MM/guessContentType file "utf-8" "text/plain")
+  (let [ ct (MM/guess-contenttype file "utf-8" "text/plain")
          bits (FileUtils/readFileToByteArray file) ]
     (reify
       WebAsset
@@ -78,7 +79,7 @@
       (size [_] (alength bits))
       (getBytes [_] bits) )))
 
-(defn- fetchAndSetAsset [cache fp file]
+(defn- fetchAndSetAsset [^HashMap cache fp ^File file]
   (let [ wa (if (and (.exists file)
                     (.canRead file))
               (make-web-asset file)) ]
@@ -94,13 +95,13 @@
 (defn- getAsset [^File file]
   (let [ cache (AssetCache/get)
          fp (CU/nice-fpath file)
-         rc (.get cache fp)
-         cf (if (nil? rc) nil (.getFile rc)) ]
+         ^WebAsset wa (.get cache fp)
+         ^File cf (if (nil? wa) nil (.getFile wa)) ]
     (if (or (nil? cf)
             (> (.lastModified file)
                (.lastModified cf)))
       (fetchAndSetAsset cache fp file)
-      cf)))
+      wa)))
 
 (defn- getFileInput
 
@@ -115,22 +116,22 @@
         inp)
       (ChunkedFile. raf)))
 
-(defn getFileAsset
+(defn replyFileAsset
   [ src ^Channel ch ^HttpRequest req ^HttpResponse rsp ^File file]
-  (let [ asset (if (not (maybeCache file))
+  (let [ ^WebAsset asset (if (not (maybeCache file))
                  nil
                  (getAsset file)) ]
     (with-local-vars [raf nil clen 0 inp nil ct ""]
       (if (nil? asset)
         (do
-          (var-set ct (MM/guessContentType file "utf-8" "text/plain"))
+          (var-set ct (MM/guess-contenttype file "utf-8" "text/plain"))
           (var-set raf (RandomAccessFile. file "r"))
-          (var-set clen (.length @raf))
+          (var-set clen (.length ^RandomAccessFile @raf))
           (var-set inp (getFileInput @raf @ct req rsp)))
         (do
-          (var-set ct (contentType asset))
+          (var-set ct (.contentType asset))
           (var-set clen (.size asset))
-          (var-set inp (ChunkedStream. (CU/streamify (.getBytes asset))))) )
+          (var-set inp (ChunkedStream. (IO/streamify (.getBytes asset))))) )
       (debug "serving file: " (.getName file)
              " with clen= " @clen
              ", ctype= " @ct)
@@ -139,20 +140,20 @@
           (.setHeader rsp "Content-Length" (str "" @clen)))
         (.addHeader rsp "Accept-Ranges" "bytes")
         (.setHeader rsp "Content-Type" @ct)
-        (if (= (.method evt) "HEAD")
+        (if (= (.getMethod req) HttpMethod/HEAD)
           (try
             (.write ch rsp)
             (finally
-              (CU/Try! (when (CU/notnil? @raf)(.close @raf)))
+              (CU/Try! (when (CU/notnil? @raf)(.close ^RandomAccessFile @raf)))
               (var-set raf nil)))
           (NE/closeCF
-            (not (.isKeepAlive evt))
+            (not (HttpHeaders/isKeepAlive req))
             (do
               (.write ch rsp)
-              (.write ch inp))) )
+              (.write ch @inp))) )
         (catch Throwable e#
           (error e# "")
-          (CU/Try! (when (CU/notnil? @raf)(.close @raf)))
+          (CU/Try! (when (CU/notnil? @raf)(.close ^RandomAccessFile @raf)))
           (CU/Try! (.close ch))) ) )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

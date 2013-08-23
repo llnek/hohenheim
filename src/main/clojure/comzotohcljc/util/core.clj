@@ -41,7 +41,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defmulti nice-fpath "Convert the path into nice format (no) backslashes." class)
+(defmulti ^String nice-fpath "Convert the path into nice format (no) backslashes." class)
 (defmulti ^Properties load-javaprops "Load java properties from input-stream." class)
 
 (def ^:private _BOOLS #{ "true" "yes"  "on"  "ok"  "active"  "1"} )

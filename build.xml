@@ -90,6 +90,7 @@
       <arg value="comzotohcljc.hhh.mvc.ios" />
       <arg value="comzotohcljc.hhh.mvc.rts" />
       <arg value="comzotohcljc.hhh.mvc.tpls" />
+      <arg value="comzotohcljc.hhh.mvc.handler" />
     </java>
   </target>
 
