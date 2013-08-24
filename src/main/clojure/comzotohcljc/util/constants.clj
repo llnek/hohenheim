@@ -22,14 +22,15 @@
 
 (def TS_REGEX "^\\d\\d\\d\\d-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])\\s\\d\\d:\\d\\d:\\d\\d")
 (def DT_REGEX "^\\d\\d\\d\\d-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$")
+
 (def TS_FMT_NANO "yyyy-MM-dd HH:mm:ss.fffffffff" )
 (def TS_FMT "yyyy-MM-dd HH:mm:ss")
 
-(def DT_FMT_MICRO "yyyy-MM-dd' 'HH:mm:ss.SSS" )
-(def DT_FMT "yyyy-MM-dd' 'HH:mm:ss" )
+(def DT_FMT_MICRO "yyyy-MM-dd'T'HH:mm:ss.SSS" )
+(def DT_FMT "yyyy-MM-dd'T'HH:mm:ss" )
 (def DATE_FMT "yyyy-MM-dd" )
 
-(def ISO8601_FMT "yyyy-MM-dd' 'HH:mm:ss.SSSZ" )
+(def ISO8601_FMT "yyyy-MM-dd'T'HH:mm:ss.SSSZ" )
 
 (def USASCII "ISO-8859-1" )
 (def UTF16 "UTF-16" )

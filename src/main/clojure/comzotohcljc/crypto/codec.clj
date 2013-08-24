@@ -88,8 +88,8 @@
       (CU/throw-badarg "Encryption key length must be 24, when using TripleDES"))
     keystr))
 
-(defn- keyAsBits 
-  
+(defn- keyAsBits
+
   ^bytes
   [^String pwd ^String algo]
 
@@ -213,9 +213,9 @@
     (doto (Cipher/getInstance algo)
       (.init ^long mode spec))))
 
-(defn- jcEncr 
+(defn- jcEncr
 
-  ^String 
+  ^String
   [^String pkey ^String text ^String algo]
 
   (if (StringUtils/isEmpty text)
@@ -230,8 +230,8 @@
         (when (> n2 0) (.write baos out 0 n2)))
       (Base64/encodeBase64URLSafeString (.toByteArray baos)))) )
 
-(defn- jcDecr 
-  
+(defn- jcDecr
+
   ^String
   [^String pkey ^String encoded ^String algo]
 
@@ -270,8 +270,8 @@
 ;; BC cryptor
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- bcDecr 
-  
+(defn- bcDecr
+
   ^String
   [^String pkey ^String text ^String algo]
 

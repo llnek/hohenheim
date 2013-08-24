@@ -18,22 +18,24 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.util.dateutils)
+(ns test.util.dateutils)
 
+(import '(java.util Date))
 (use '[clojure.test])
-(require '[comzotohcljc.util.dateutils :as DU])
-  
+(require '[comzotohcljc.util.dates :as DU])
 
-(deftest test-dateutils-module
+(deftest testutil-dateutils
 
 (is (false? (DU/leap-year? 1999)))
 (is (true? (DU/leap-year? 2000)))
 (is (true? (DU/leap-year? 2020)))
+(is (instance? Date (DU/parse-date "1999/12/12 13:13:13" "yyyy/MM/dd HH:mm:ss")))
+(is (instance? String (DU/fmt-date (Date.) "yyyy/MM/dd HH:mm:ss Z")))
 
 
 )
 
 (def ^:private dateutils-eof nil)
 
-;;(clojure.test/run-tests 'testzotohcljc.util.dateutils)
+;;(clojure.test/run-tests 'test.util.dateutils)
 

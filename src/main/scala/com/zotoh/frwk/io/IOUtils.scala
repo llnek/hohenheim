@@ -27,11 +27,12 @@ import org.slf4j._
 import org.apache.commons.io.FileUtils
 
 object IOUtils {
-  
-  private var _streamLimit= 1L * 1024 * 1024 * 10 // 10M
+  private val _DFT= 1L * 1024 * 1024 * 10 // 10M
+  private var _streamLimit= _DFT
+
   def streamLimit() = _streamLimit
   def setStreamLimit(n:Long) {
-    _streamLimit=n
+    _streamLimit= if (n <= 0) _DFT else n
   }
   
   private var _wd = new File( System.getProperty("java.io.tmpdir"))

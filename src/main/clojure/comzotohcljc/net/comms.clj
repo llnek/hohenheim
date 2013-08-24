@@ -25,7 +25,6 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(import '(org.jboss.netty.handler.codec.http HttpMessage))
 (import '(java.security.cert
   X509Certificate
   CertificateException))
@@ -51,7 +50,6 @@
 (import '(org.apache.http.params HttpConnectionParams))
 (import '(org.apache.http.entity InputStreamEntity))
 (import '(com.zotoh.frwk.io XData))
-(import '(org.jboss.netty.handler.codec.http HttpResponseStatus))
 
 
 (use '[comzotohcljc.util.core :only (MutableMapAPI) ])
@@ -75,32 +73,9 @@
 (def ^:dynamic  *WP_FTP* "FTP")
 (def ^:dynamic  *WP_FILE* "FILE")
 
-(defprotocol NetResult ""
-  (hasError? [_] ) )
-
-(defprotocol HTTPResultAPI ""
-  (getStatus [_] )
-  (getCookies [_] )
-  (getData [_] )
-  (getHeaders [_] ) )
-
-(defn http-response [ ^HttpResponseStatus status]
-
-  (let [ impl (CU/make-mmap) ]
-    (reify HTTPResultAPI
-      (getStatus [_] status)
-      (getCookies [_] )
-      (getData [_] (.mm-g impl :data))
-      (getHeaders [_] )
-
-      NetResult
-        (hasError? [_] ) )))
-
-
 (defrecord HTTPMsgInfo [^String protocol ^String method ^String uri
                         is-chunked keep-alive
                         clen headers params] )
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal functions to support apache http client.
@@ -122,13 +97,13 @@
          cv (if (nil? ct) "" (SU/strim (.getValue ct)))
          cl (.toLowerCase ^String cv) ]
     (CU/Try!
-      (debug "content-encoding: " (.getContentEncoding ent) "\n" 
+      (debug "http-response: " "content-encoding: " (.getContentEncoding ent) "\n"
              "content-type: " cv))
     (let [ bits (get-bits ent)
            clen (if (nil? bits) 0 (alength bits)) ]
-      { :content-type (SU/nsb cv)
-        :encoding (MM/get-charset cv)
-        :data (if (= clen 0) nil (XData. bits)) } )))
+      { :encoding (MM/get-charset cv)
+        :content-type cv
+        :data (if (== clen 0) nil (XData. bits)) } )))
     ;;(cond
       ;;(or (.startsWith cl "text/")
           ;;(.startsWith cl "application/xml")
@@ -171,16 +146,6 @@
     (finally
         (.. cli getConnectionManager shutdown))) )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(defn sync-post "Perform a http-post on the target url."
-  ([^URL targetUrl contentType ^XData xdata] (sync-post targetUrl contentType xdata nil))
-  ([^URL targetUrl contentType ^XData xdata beforeSendFunc]
-    (let [ cli (mkApacheClientHandle) ]
-      (do-post cli targetUrl contentType xdata beforeSendFunc))) )
-
 (defn- do-get [^HttpClient cli ^URL targetUrl beforeSendFunc]
   (try
     (let [ g (HttpGet. (.toURI targetUrl)) ]
@@ -189,11 +154,17 @@
     (finally
       (.. cli getConnectionManager shutdown))) )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn sync-post "Perform a http-post on the target url."
+  ([^URL targetUrl contentType ^XData xdata] (sync-post targetUrl contentType xdata nil))
+  ([^URL targetUrl contentType ^XData xdata beforeSendFunc]
+    (do-post (mkApacheClientHandle) targetUrl contentType xdata beforeSendFunc)))
+
 (defn sync-get "Perform a http-get on the target url."
   ([^URL targetUrl] (sync-get targetUrl nil))
   ([^URL targetUrl beforeSendFunc]
-    (let [ cli (mkApacheClientHandle) ]
-      (do-get cli targetUrl beforeSendFunc))) )
+    (do-get (mkApacheClientHandle) targetUrl beforeSendFunc)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

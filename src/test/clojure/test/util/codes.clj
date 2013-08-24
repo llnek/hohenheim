@@ -18,29 +18,29 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.util.codes)
+(ns test.util.codes)
 
 (use '[clojure.test])
 (require '[comzotohcljc.util.countrycode :as CC])
 (require '[comzotohcljc.util.usastate :as SC])
 
-(deftest test-codes-module
+(deftest testutil-codes
 
 (is (= (CC/find-country "AU") (CC/find-country "au")))
 (is (= "Australia" (CC/find-country "AU")))
 (is (= "AU" (CC/find-code "Australia")))
 (is (false? (CC/usa? "aa")))
 (is (and (CC/usa? "US") (= (CC/usa? "US") (CC/usa? "us"))))
-(is (> (.size (CC/list-codes)) 0))
+(is (> (count (CC/list-codes)) 0))
 
 (is (= (SC/find-state "CA") (SC/find-state "ca")))
 (is (= "California" (SC/find-state "ca")))
 (is (= "CA" (SC/find-code "California")))
-(is (> (.size (SC/list-codes)) 0))
+(is (> (count (SC/list-codes)) 0))
 
 )
 
 (def ^:private codes-eof nil)
 
-;;(clojure.test/run-tests 'testzotohcljc.util.codes)
+;;(clojure.test/run-tests 'test.util.codes)
 

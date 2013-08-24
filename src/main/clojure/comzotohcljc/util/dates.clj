@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns ^{ :doc "Date related utilities." 
+(ns ^{ :doc "Date related utilities."
        :author "kenl" }
 
   comzotohcljc.util.dates)
@@ -41,7 +41,7 @@
 
 (defn leap-year? "Return true if this is a leap year."
   [year]
-  (cond 
+  (cond
     (zero? (mod year 400))
     true
 
@@ -51,13 +51,32 @@
     :else
     (zero? (mod year 4))) )
 
-(defn has-tz? "Returns true if this datetime string contains some timezone info."
+(defn- hastzpart [^String s]
+  (let [ pos (StringUtils/indexOf s ",; \t\r\n\f")
+         ss (if (> pos 0) (.substring s (inc pos)) "") ]
+    (or (SU/has-any? ss ["+" "-"])
+        (.matches ss "\\s*[a-zA-Z]+\\s*")) ) )
+
+(defn- has-tz? "Returns true if this datetime string contains some timezone info."
   [^String dateStr]
-  (let [ tkns (.split (SU/nsb dateStr)
-                      (if (SU/has? dateStr \:) CS/TS_REGEX CS/DT_REGEX )) ]
-    (some (fn [s]
-            (or (SU/has-any? (SU/nsb s) ["+" "-"])
-            (.matches (SU/nsb s) "\\s*[A-Z]+\\s*"))) tkns)) )
+  (let [ p1 (.lastIndexOf dateStr (int \.))
+         p2 (.lastIndexOf dateStr (int \:))
+         p3 (.lastIndexOf dateStr (int \-))
+         p4 (.lastIndexOf dateStr (int \/)) ]
+    (cond
+      (> p1 0)
+      (hastzpart (.substring dateStr (inc p1)))
+
+      (> p2 0)
+      (hastzpart (.substring dateStr (inc p2)))
+
+      (> p3 0)
+      (hastzpart (.substring dateStr (inc p3)))
+
+      (> p4 0)
+      (hastzpart (.substring dateStr (inc p4)))
+
+      :else false)))
 
 (defn parse-timestamp "Convert string into a valid Timestamp object.
   *tstr* conforming to the format \"yyyy-mm-dd hh:mm:ss.[fff...]\""
@@ -71,15 +90,14 @@
     nil
     (.parse (SimpleDateFormat. fmt) tstr)))
 
-(defn parse-iso8601 "Parses datetime in ISO8601 format."
+(defn- parse-iso8601 "Parses datetime in ISO8601 format."
   ^Date [^String tstr]
-  (if (StringUtils/isEmpty tstr)
+  (if (SU/nichts? tstr)
     nil
     (let [ fmt (if (SU/has? tstr \:)
-                  (let [ s (if (SU/has? tstr \.) CS/DT_FMT_MICRO CS/DT_FMT ) ]
-                      (if (has-tz? tstr) (str s "Z") s))
-                          CS/DATE_FMT ) ]
-      (parse-date tstr fmt))))
+                 (if (SU/has? tstr \.) CS/DT_FMT_MICRO CS/DT_FMT )
+                 CS/DATE_FMT ) ]
+      (parse-date tstr (if (has-tz? tstr) (str fmt "Z") fmt)))))
 
 (defn fmt-timestamp "Convert Timestamp into a string value."
   ^String [^Timestamp ts]
@@ -100,16 +118,15 @@
   (do
     (fmt-date dt CS/DT_FMT_MICRO (SimpleTimeZone. 0 "GMT")) ))
 
-
 (defn- add
   ^Calendar [^Calendar cal calendarField amount]
   (if (nil? cal)
     nil
     (doto (GregorianCalendar. (.getTimeZone cal))
       (.setTime (.getTime cal))
-      (.add calendarField amount))))
+      (.add (int calendarField) ^long amount))))
 
-(defn make-cal "" 
+(defn make-cal ""
   ^Calendar [date]
   (doto (GregorianCalendar.) (.setTime date)))
 
@@ -146,10 +163,10 @@
     (-> (add-days now days)
       (.getTime))))
 
-(defn fmt-cal "Formats time to yyyyMMdd-hhmmss."
+(defn fmt-cal "Formats time to yyyy-MM-ddThh:mm:ss."
   ^String [^Calendar cal]
   (do
-    (java.lang.String/format (Locale/getDefault) "%1$04d%2$02d%3$02d-%4$02d%5$02d%6$02d"
+    (java.lang.String/format (Locale/getDefault) "%1$04d-%2$02d-%3$02dT%4$02d:%5$02d:%6$02d"
        (into-array Object [
             (.get cal Calendar/YEAR)
             (+ 1 (.get cal Calendar/MONTH))

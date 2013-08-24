@@ -57,13 +57,11 @@
 
 
 (deftype NICHTS [])
-(def ^:dynamic *NICHTS* (->NICHTS))
-
+(def ^:dynamic *NICHTS* (NICHTS.) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-(defn- nsb ^String [^Object s] (if (nil? s) "" (.toString s)))
+(defn- nsb ^String [s] (if (nil? s) "" (.toString ^Object s)))
 
 (defn- get-czldr
   (^ClassLoader [] (get-czldr nil) )

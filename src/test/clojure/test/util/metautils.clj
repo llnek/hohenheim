@@ -18,13 +18,13 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.util.metautils)
+(ns test.util.metautils)
 
 (use '[clojure.test])
-(require '[comzotohcljc.util.metautils :as MU])
+(require '[comzotohcljc.util.meta :as MU])
 
 
-(deftest test-metautils-module
+(deftest testutil-metautils
 
 (is (true? (MU/is-child (Class/forName "java.lang.Number") (Class/forName "java.lang.Integer"))))
 (is (true? (MU/is-child (Class/forName "java.lang.Number") (Integer. 3))))
@@ -61,5 +61,5 @@
 
 (def ^:private metautils-eof nil)
 
-;;(clojure.test/run-tests 'testzotohcljc.util.metautils)
+;;(clojure.test/run-tests 'test.util.metautils)
 

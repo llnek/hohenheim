@@ -18,20 +18,20 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.net.netstuff)
+(ns test.net.netstuff)
 
-(require '[comzotohcljc.net.netutils :as NU])
+(require '[comzotohcljc.net.comms :as NU])
 (import '(java.net URL URI))
 (use '[clojure.test])
 
 
-(deftest test-netstuff-module
+(deftest testnet-netstuff
 
-(is (= (do (NU/sync-get (URL. "http://www.google.com")) true)))
+(is (map? (NU/sync-get (URL. "http://www.google.com"))))
 
 )
 
 (def ^:private netstuff-eof nil)
 
-(clojure.test/run-tests 'testzotohcljc.net.netstuff)
+;;(clojure.test/run-tests 'test.net.netstuff)
 

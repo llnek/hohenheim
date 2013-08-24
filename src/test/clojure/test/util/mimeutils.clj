@@ -18,18 +18,18 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.util.mimeutils)
+(ns test.util.mimeutils)
 
 (use '[clojure.test])
 (import '(java.io File InputStream))
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.ioutils :as IO])
-(require '[comzotohcljc.util.mimeutils :as MU])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.io :as IO])
+(require '[comzotohcljc.util.mime :as MU])
 
 
 (eval '(MU/setup-cache (CU/rc-url "com/zotoh/frwk/mime/mime.properties")))
 
-(deftest test-mimeutils-module
+(deftest testutil-mimeutils
 
 (is (= "utf-16" (MU/get-charset "text/plain; charset=utf-16")))
 
@@ -45,8 +45,8 @@
 
 (is (= "a b" (MU/url-decode (MU/url-encode "a b"))))
 
-(MU/guess-contenttype (File. "/tmp/abc.pdf"))
-(MU/guess-mimetype (File. "/tmp/abc.jpeg"))
+(is (>= (.indexOf (MU/guess-mimetype (File. "/tmp/abc.jpeg")) "image/") 0))
+(is (> (.indexOf (MU/guess-contenttype (File. "/tmp/abc.pdf")) "/pdf") 0))
 
 
 
@@ -56,5 +56,5 @@
 
 (def ^:private mimeutils-eof nil)
 
-;;(clojure.test/run-tests 'testzotohcljc.util.mimeutils)
+;;(clojure.test/run-tests 'test.util.mimeutils)
 

@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.util.guids)
+(ns test.util.guids)
 
 (use '[clojure.test])
 (require '[comzotohcljc.util.guids :as GU])
@@ -28,7 +28,7 @@
 ;;(def ^:private WID_2 (GU/new-wwid))
 ;;(def ^:private WID_1 (GU/new-wwid))
 
-(deftest test-guids-module
+(deftest testutil-guids
 
 (is (not (= (GU/new-wwid) (GU/new-wwid))))
 (is (not (= (GU/new-uuid) (GU/new-uuid))))
@@ -40,5 +40,5 @@
 
 (def ^:private guids-eof nil)
 
-;;(clojure.test/run-tests 'testzotohcljc.util.guids)
+;;(clojure.test/run-tests 'test.util.guids)
 

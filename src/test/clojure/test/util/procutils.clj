@@ -18,23 +18,23 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.util.procutils)
+(ns test.util.procutils)
 
 (use '[clojure.test])
 (import '(org.apache.commons.io FileUtils))
 (import '(java.io File))
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.procutils :as PU])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.process :as PU])
 
 
 (def ^:private CUR_MS (System/currentTimeMillis))
 (def ^:private CUR_FP (File. (str (System/getProperty "java.io.tmpdir") "/" CUR_MS)))
 
-(deftest test-procutils-module
+(deftest testutil-procutils
 
 (is (true? (do
               (PU/coroutine (fn [] (FileUtils/writeStringToFile CUR_FP "heeloo" "utf-8")))
-              (PU/safe-wait 3000)
+              (PU/safe-wait 3500)
               (and (.exists CUR_FP) (>= (.length CUR_FP) 6)))))
 
 (is (> (.length (PU/pid)) 0))
@@ -44,5 +44,5 @@
 
 (def ^:private procutils-eof nil)
 
-;;(clojure.test/run-tests 'testzotohcljc.util.procutils)
+;;(clojure.test/run-tests 'test.util.procutils)
 

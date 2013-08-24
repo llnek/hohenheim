@@ -18,16 +18,17 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.crypto.cryptostuff)
+(ns test.crypto.cryptostuff)
 
 (use '[clojure.test])
-(import '(java.security Policy KeyStore SecureRandom))
+(import '(java.security Policy KeyStore SecureRandom MessageDigest))
 (import '(java.util Date GregorianCalendar))
-(require '[comzotohcljc.crypto.cryptors :as RT])
+(import '(java.io File))
+(require '[comzotohcljc.crypto.codec :as RT])
 (require '[comzotohcljc.crypto.stores :as ST])
-(require '[comzotohcljc.util.coreutils :as CU])
-(require '[comzotohcljc.util.ioutils :as IO])
-(require '[comzotohcljc.crypto.cryptutils :as RU])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.io :as IO])
+(require '[comzotohcljc.crypto.core :as RU])
 
 
 (def ^:private ROOTPFX (CU/rc-bytes "com/zotoh/frwk/crypto/test.pfx"))
@@ -37,41 +38,39 @@
 (def ^:private HELPME (RT/pwdify "helpme"))
 (def ^:private SECRET (RT/pwdify "secret"))
 
-(def ^:private ROOTCS 
-  (comzotohcljc.crypto.stores.CryptoStore. 
-                        (RU/init-store! (RU/get-pkcsStore) ROOTPFX HELPME) HELPME))
+(def ^:private ROOTCS
+  (ST/make-crypto-store (RU/init-store! (RU/get-pkcsStore) ROOTPFX HELPME) HELPME))
 
-(def ^:private ROOTKS 
-  (comzotohcljc.crypto.stores.CryptoStore. 
-                        (RU/init-store! (RU/get-jksStore) ROOTJKS HELPME) HELPME))
+(def ^:private ROOTKS
+  (ST/make-crypto-store (RU/init-store! (RU/get-jksStore) ROOTJKS HELPME) HELPME))
 
-(deftest test-cryptostuff-module
+(deftest testcrypto-cryptostuff
 
 (is (not (= "heeloo, how are you?" (RT/caesar-decrypt (RT/caesar-encrypt "heeloo, how are you?" 709394) 666))))
 (is (= "heeloo, how are you?" (RT/caesar-decrypt (RT/caesar-encrypt "heeloo, how are you?" 709394) 709394)))
 
-(is (= "heeloo" (let [ c (comzotohcljc.crypto.cryptors.JasyptCryptor.) ]
+(is (= "heeloo" (let [ c (RT/jasypt-cryptor) ]
                       (.decrypt c (.encrypt c "heeloo")))))
 
-(is (= "heeloo" (let [ c (comzotohcljc.crypto.cryptors.JasyptCryptor.) ]
+(is (= "heeloo" (let [ c (RT/jasypt-cryptor) ]
                       (.decrypt c SECRET (.encrypt c SECRET "heeloo")))))
 
-(is (= "heeloo" (let [ c (comzotohcljc.crypto.cryptors.JavaCryptor.) ]
+(is (= "heeloo" (let [ c (RT/java-cryptor) ]
                       (.decrypt c (.encrypt c "heeloo")))))
 
-(is (= "heeloo" (let [ c (comzotohcljc.crypto.cryptors.JavaCryptor.) ]
+(is (= "heeloo" (let [ c (RT/java-cryptor) ]
                       (.decrypt c TESTPWD (.encrypt c TESTPWD "heeloo")))))
 
-(is (= "heeloo" (let [ c (comzotohcljc.crypto.cryptors.BouncyCryptor.) ]
+(is (= "heeloo" (let [ c (RT/bouncy-cryptor) ]
                       (.decrypt c (.encrypt c "heeloo")))))
 
-(is (= "heeloo" (let [ c (comzotohcljc.crypto.cryptors.BouncyCryptor.) ]
+(is (= "heeloo" (let [ c (RT/bouncy-cryptor) ]
                       (.decrypt c TESTPWD (.encrypt c TESTPWD "heeloo")))))
 
 (is (= (.length (.text (RT/create-strong-pwd 16))) 16))
 (is (= (.length (RT/create-random-string 64)) 64))
 
-(is (instance? comzotohcljc.crypto.cryptors.Password (RT/pwdify "secret-text")))
+(is (satisfies? comzotohcljc.crypto.codec.PasswordAPI (RT/pwdify "secret-text")))
 (is (.startsWith (.encoded (RT/pwdify "secret-text")) "CRYPT:"))
 
 
@@ -128,5 +127,5 @@
 
 (def ^:private cryptostuff-eof nil)
 
-(clojure.test/run-tests 'testzotohcljc.crypto.cryptostuff)
+;;(clojure.test/run-tests 'test.crypto.cryptostuff)
 

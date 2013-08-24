@@ -25,10 +25,11 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
+(import '(java.util.concurrent ConcurrentHashMap))
 (import '(com.zotoh.frwk.util
   RunnableWithId Schedulable TCore ))
 (import '(java.util
-  Map HashMap Properties
+  Map Properties
   Timer TimerTask))
 
 (require '[comzotohcljc.util.core :as CU])
@@ -40,24 +41,23 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-
-
 (defn- xrefPID [w]
   (if (instance? RunnableWithId w)
-    (let [ ^RunnableWithId rw w
-           p (.getId rw) ]
-      (debug "flow-point has pid " p)
+    (let [ p (.getId ^RunnableWithId w) ]
+      (debug "runnable-with-(pid): " p)
       p)
     nil))
 
-(defprotocol SchedulerAPI ""
-  (preRun [_ ^Runnable w] )
+(defprotocol SchedulerAPI
+  ""
+  (preRun [_ w] )
   (activate [_ options] )
   (deactivate [_] )
-  (addTimer [this ^TimerTask task ^long dely] ) )
+  (addTimer [this task dely] ) )
 
 (defn make-scheduler "" [parObj]
-  (let [ ^comzotohcljc.util.core.MutableMapAPI impl (CU/make-mmap) ]
+  (let [ ;;^comzotohcljc.util.core.MutableMapAPI
+         impl (CU/make-mmap) ]
     (with-meta
       (reify
 
@@ -75,8 +75,8 @@
             (let [ ^long t (:threads options)
                    c (TCore. (CU/uid) (if (nil? t) 4 t)) ]
               (.mm-s impl :timer (Timer. (CU/uid) true))
-              (.mm-s impl :holdQ (HashMap.))
-              (.mm-s impl :runQ (HashMap.))
+              (.mm-s impl :holdQ (ConcurrentHashMap.))
+              (.mm-s impl :runQ (ConcurrentHashMap.))
               (.mm-s impl :core c)
               (.start c)))
 
@@ -91,10 +91,8 @@
                 (.stop c)))
 
           (addTimer [_ task dely]
-            (let [ ^Timer t (.mm-g impl :timer)
-                   ^TimerTask tk task
-                   ^long d dely ]
-              (.schedule t tk d)))
+            (let [ t (.mm-g impl :timer) ]
+              (.schedule ^Timer t ^TimerTask task ^long dely)))
 
         Schedulable
 
@@ -123,7 +121,7 @@
               (do
                 (addTimer me
                   (proxy [TimerTask] []
-                    (run [_] (.wakeup me w))) delayMillis)) ))
+                    (run [] (.wakeup me w))) delayMillis)) ))
 
           (hold [this w]
             (let [ pid (xrefPID w) ]

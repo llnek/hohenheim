@@ -25,6 +25,7 @@
     <fileset dir="${distrib.dir}" />
     <path location="${build.dir}" />
     <path location="${build.test.dir}" />
+    <path location="${test.dir}/clojure" />
   </path>
 
 
@@ -231,22 +232,45 @@
        compile test code
        -->
 
+  <target name="clj-test-all">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" 
+      classpathref="test.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.test.dir}" />
+      <arg value="test.util.byteutils" />
+      <arg value="test.util.codes" />
+      <arg value="test.util.coreutils" />
+      <arg value="test.util.dateutils" />
+      <arg value="test.util.fileutils" />
+      <arg value="test.util.guids" />
+      <arg value="test.util.ioutils" />
+      <arg value="test.util.metautils" />
+      <arg value="test.util.mimeutils" />
+      <arg value="test.util.procutils" />
+      <arg value="test.util.seqnumgen" />
+      <arg value="test.util.strutils" />
+      <arg value="test.util.win32ini" />
+      <arg value="test.net.netstuff" />
+      <arg value="test.i18n.i18nstuff" />
+      <arg value="test.crypto.cryptostuff" />
+      <arg value="test.crypto.mimestuff" />
+    </java>
+  </target>
+
+  <target name="compile-test-clj">
+    <antcall target="clj-test-all"/>
+    <copy todir="${build.test.dir}">
+      <fileset dir="${test.dir}/clojure">
+        <exclude name="**/*.clj"/>
+        <exclude name="**/.svn"/>
+      </fileset>
+    </copy>
+  </target>
+
   <target name="compile_test_code" >
     <mkdir dir="${report.test.dir}"/>
     <mkdir dir="${build.test.dir}"/>
-    <!-- TODO: do the test stuff here -->
-    <copy todir="${build.test.dir}">
-      <fileset dir="${test.dir}/clojure">
-        <exclude name="**/log4j.properties"/>
-        <exclude name="**/logback.xml"/>
-        <exclude name="**/.svn"/>
-        <exclude name="**/*.groovy"/>
-        <exclude name="**/*.scala"/>
-        <exclude name="**/*.java"/>
-        <exclude name="**/*.clj"/>
-      </fileset>
-    </copy>
-
+    <antcall target="clj-test-all"/>
   </target>
 
   <!--

@@ -18,21 +18,21 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.util.fileutils)
+(ns test.util.fileutils)
 
 (use '[clojure.test])
 (import '(org.apache.commons.io FileUtils))
 (import '(com.zotoh.frwk.io XData))
 (import '(java.io File))
-(require '[comzotohcljc.util.fileutils :as FU])
-(require '[comzotohcljc.util.coreutils :as CU])
+(require '[comzotohcljc.util.files :as FU])
+(require '[comzotohcljc.util.core :as CU])
 
 
 (def ^:private TMP_DIR (File. (System/getProperty "java.io.tmpdir")))
 (def ^:private TMP_FP (File. TMP_DIR (str (CU/uid) ".txt")))
 (eval '(do (FileUtils/writeStringToFile TMP_FP "heeloo")))
 
-(deftest test-fileutils-module
+(deftest testutil-fileutils
 
 (is (true? (FU/file-readwrite? TMP_FP)))
 (is (true? (FU/file-read? TMP_FP)))
@@ -55,5 +55,5 @@
 
 (def ^:private fileutils-eof nil)
 
-;;(clojure.test/run-tests 'testzotohcljc.util.fileutils)
+;;(clojure.test/run-tests 'test.util.fileutils)
 

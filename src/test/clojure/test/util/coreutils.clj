@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.util.coreutils)
+(ns test.util.coreutils)
 
 (use '[clojure.test])
 (import '(java.util Properties Date Calendar))
@@ -26,7 +26,7 @@
 (import '(java.net URL))
 (import '(java.io FileOutputStream File))
 (import '(java.nio.charset Charset))
-(require '[comzotohcljc.util.coreutils :as CU])
+(require '[comzotohcljc.util.core :as CU])
 
 
 (def ^:private VAR_USER (System/getProperty "user.name"))
@@ -41,7 +41,7 @@
   (def ^:private dummyPropertiesResult (CU/subs-props dummyProperties))))
 
 
-(deftest test-coreutils-module
+(deftest testutil-coreutils
 
 (is (CU/is-nichts? CU/*NICHTS*))
 (is (not (CU/is-nichts? "")))
@@ -89,10 +89,10 @@
 
 ;;(is (= "/tmp/a/b/c" (CU/file-path (File. "/tmp/a/b/c"))))
 
-(is (true? (CU/is-unix?)))
+;;(is (true? (CU/is-unix?)))
 
-(is (= (double 100) (CU/conv-double  "xxxx" 100)))
-(is (= 23.23 (CU/conv-double  "23.23" 100)))
+(is (= (double 100) (CU/conv-double  "xxxx" 100.0)))
+(is (= 23.23 (CU/conv-double  "23.23" 100.0)))
 (is (= 100 (CU/conv-long "xxxx" 100)))
 (is (= 23 (CU/conv-long "23" 100)))
 
@@ -142,6 +142,15 @@
 
 (is (true? (do (CU/test-neseq "" [ 1 2 ]) true)))
 
+(is (false? (CU/notnil? nil)))
+(is (true? (CU/notnil? "")))
+(is (= 3 (count (CU/flatten-nil (1 2 nil nil 3)))))
+(is (= 3 (count (CU/flatten-nil (1 2 3)))))
+(is (= 3 (count (CU/flatten-nil [1 nil 2 nil 3]))))
+(is (= 0.0 (CU/ndz nil)))
+(is (= 0 (CU/nnz nil)))
+(is (false? (CU/nbf nil)))
+
 (is (thrown? IllegalArgumentException (CU/throw-badarg "a")))
 
 (is (true? (let [ x (IllegalArgumentException. "") ] (identical? x (CU/root-cause x)))))
@@ -152,20 +161,10 @@
 
 (is (= "ACZ" (CU/sort-join [ "Z" "C" "A"])))
 
+(is (false? (nil? (:1 (CU/into-map dummyProperties)))))
+(is (= 3 (count (CU/into-map dummyProperties))))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+(is (= 100 (.getf (doto (CU/make-mmap) (.setf! :1 100)) :1)))
 
 
 
@@ -173,5 +172,5 @@
 
 (def ^:private coreutils-eof nil)
 
-;;(clojure.test/run-tests 'testzotohcljc.util.coreutils)
+;;(clojure.test/run-tests 'test.util.coreutils)
 

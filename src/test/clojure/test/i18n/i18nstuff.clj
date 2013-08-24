@@ -18,16 +18,17 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.i18n.i18nstuff)
+(ns test.i18n.i18nstuff)
 
 (use '[clojure.test])
-(require '[comzotohcljc.i18n.i18nutils :as NU])
-(require '[comzotohcljc.util.coreutils :as CU])
+(require '[comzotohcljc.i18n.resources :as NU])
+(require '[comzotohcljc.util.core :as CU])
 
 
-(deftest test-i18nstuff-module
+(deftest testi18n-i18nstuff
 
-(is (= "hello joe, how is your dawg" (let [ rs (NU/load-resource (CU/rc-url "com/zotoh/frwk/i18n/Resources_en.properties")) ]
+(is (= "hello joe, how is your dawg"
+       (let [ rs (NU/load-resource (CU/rc-url "com/zotoh/frwk/i18n/Resources_en.properties")) ]
            (NU/get-string rs "test" [ "joe", "dawg" ]))))
 
 
@@ -43,5 +44,5 @@
 
 (def ^:private i18nstuff-eof nil)
 
-(clojure.test/run-tests 'testzotohcljc.i18n.i18nstuff)
+;;(clojure.test/run-tests 'test.i18n.i18nstuff)
 

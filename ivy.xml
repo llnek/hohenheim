@@ -146,6 +146,7 @@
     <dependency org="org.clojure" name="data.xml" rev="0.0.7" conf="libjar->default"/>
     <dependency org="expectations" name="expectations" rev="1.4.49" conf="libjar->default"/>
     <dependency org="org.clojure" name="clojure" rev="1.5.1" conf="libjar->default"/>
+    <dependency org="net.mikera" name="cljunit" rev="0.3.0" conf="test->default"/>
 
   </dependencies>
 

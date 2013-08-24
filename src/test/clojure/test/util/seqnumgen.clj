@@ -18,13 +18,13 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns testzotohcljc.util.seqnumgen)
+(ns test.util.seqnumgen)
 
 (use '[clojure.test])
-(require '[comzotohcljc.util.seqnumgen :as SN])
+(require '[comzotohcljc.util.seqnum :as SN])
 
 
-(deftest test-seqnumgen-module
+(deftest testutil-seqnumgen
 
 (is (> (SN/next-long) 0))
 (is (> (SN/next-int) 0))
@@ -33,5 +33,5 @@
 
 (def ^:private seqnumgen-eof nil)
 
-;;(clojure.test/run-tests 'testzotohcljc.util.seqnumgen)
+;;(clojure.test/run-tests 'test.util.seqnumgen)
 

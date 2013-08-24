@@ -17,10 +17,4 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns comzotohcljc.hohenheim.etc.apprunner-test
-  (:require [clojure.test :refer :all]
-            [comzotohcljc.hohenheim.etc.apprunner :refer :all]))
 
-(deftest a-test
-  (testing "FIXME, I fail."
-    (is (= 0 1))))
