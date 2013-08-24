@@ -18,27 +18,28 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.guids)
+(ns testcljc.util.byteutils)
 
 (use '[clojure.test])
-(require '[comzotohcljc.util.guids :as GU])
+(import '(java.nio.charset Charset))
+(require '[comzotohcljc.util.bytes :as BU])
 
-;;(def ^:private UID_2 (GU/new-uuid))
-;;(def ^:private UID_1 (GU/new-uuid))
-;;(def ^:private WID_2 (GU/new-wwid))
-;;(def ^:private WID_1 (GU/new-wwid))
 
-(deftest testutil-guids
+(def ^:private CS_UTF8 "utf-8")
 
-(is (not (= (GU/new-wwid) (GU/new-wwid))))
-(is (not (= (GU/new-uuid) (GU/new-uuid))))
+(deftest testutils-byteutils
 
-(is (= (.length (GU/new-wwid)) 48))
-(is (= (.length (GU/new-uuid)) 36))
+(is (= "heeloo" (String. (BU/to-chars (BU/to-bytes (.toCharArray "heeloo") CS_UTF8) CS_UTF8))))
+
+(is (= 4 (alength ^bytes (BU/write-bytes (Integer/MAX_VALUE)))))
+(is (= 8 (alength ^bytes (BU/write-bytes (Long/MAX_VALUE)))))
+
+(is (= (Integer/MAX_VALUE) (BU/read-int (BU/write-bytes (Integer/MAX_VALUE)))))
+(is (= (Long/MAX_VALUE) (BU/read-long (BU/write-bytes (Long/MAX_VALUE)))))
 
 )
 
-(def ^:private guids-eof nil)
+(def ^:private byteutils-eof nil)
 
-;;(clojure.test/run-tests 'test.util.guids)
+;;(clojure.test/run-tests 'testcljc.util.byteutils)
 

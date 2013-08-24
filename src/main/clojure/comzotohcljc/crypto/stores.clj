@@ -75,7 +75,7 @@
                   (recur (conj! rc cert))))
               (recur rc)))))))
 
-(defprotocol CryptoStoreAPI
+(defprotocol CryptoStore
 
   (addKeyEntity [_ ^bytes bits ^comzotohcljc.crypto.codec.Password pwdObj] )
   (addCertEntity [_ ^bytes bits] )
@@ -99,11 +99,11 @@
 
 (defn make-crypto-store ""
 
-  ^comzotohcljc.crypto.stores.CryptoStoreAPI
+  ^comzotohcljc.crypto.stores.CryptoStore
   [^KeyStore keystore
    ^comzotohcljc.crypto.codec.Password passwdObj]
 
-  (reify CryptoStoreAPI
+  (reify CryptoStore
 
     (addKeyEntity [this bits pwdObj]
       ;; we load the p12 content into an empty keystore, then extract the entry

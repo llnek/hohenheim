@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.coreutils)
+(ns testcljc.util.coreutils)
 
 (use '[clojure.test])
 (import '(java.util Properties Date Calendar))
@@ -35,9 +35,9 @@
 (def ^:private dummyResourcePath "com/zotoh/frwk/i18n/Resources_en.properties")
 (def ^:private dummyProperties (Properties.))
 (eval '(do
-  (.put dummyProperties "1" "hello${user.name}")
-  (.put dummyProperties "2" "hello${PATH}")
-  (.put dummyProperties "3" "${user.name}${PATH}")
+  (.put ^Properties dummyProperties "1" "hello${user.name}")
+  (.put ^Properties dummyProperties "2" "hello${PATH}")
+  (.put ^Properties dummyProperties "3" "${user.name}${PATH}")
   (def ^:private dummyPropertiesResult (CU/subs-props dummyProperties))))
 
 
@@ -74,9 +74,9 @@
 (is (= (str "hello" VAR_USER) (CU/subs-svar "hello${user.name}")))
 
 
-(is (= (str VAR_USER VAR_PATH) (.getProperty dummyPropertiesResult "3")))
-(is (= (str "hello" VAR_USER) (.getProperty dummyPropertiesResult "1")))
-(is (= (str "hello" VAR_PATH) (.getProperty dummyPropertiesResult "2")))
+(is (= (str VAR_USER VAR_PATH) (.getProperty ^Properties dummyPropertiesResult "3")))
+(is (= (str "hello" VAR_USER) (.getProperty ^Properties dummyPropertiesResult "1")))
+(is (= (str "hello" VAR_PATH) (.getProperty ^Properties dummyPropertiesResult "2")))
 
 (is (= "Java Virtual Machine Specification" (CU/sysprop "java.vm.specification.name")))
 
@@ -105,7 +105,7 @@
 
 (is (= 3 (.size
   (let [ fp (File. (str (System/getProperty "java.io.tmpdir") "/" (CU/uid))) ]
-    (with-open [ os (FileOutputStream. fp) ] (.store dummyProperties os ""))
+    (with-open [ os (FileOutputStream. fp) ] (.store ^Properties dummyProperties os ""))
     (CU/load-javaprops fp)) )))
 
 (is (= "heeloo" (CU/stringify (CU/bytesify "heeloo"))))
@@ -157,14 +157,14 @@
 
 (is (= "java.lang.IllegalArgumentException: heeloo" (CU/root-causemsg (IllegalArgumentException. "heeloo"))))
 
-(is (= 3 (.size (CU/gen-numbers 1 10 3))))
+(is (= 3 (count (CU/gen-numbers 1 10 3))))
 
 (is (= "ACZ" (CU/sort-join [ "Z" "C" "A"])))
 
 (is (false? (nil? (:1 (CU/into-map dummyProperties)))))
 (is (= 3 (count (CU/into-map dummyProperties))))
 
-(is (= 100 (.getf (doto (CU/make-mmap) (.setf! :1 100)) :1)))
+(is (= 100 (.getf (doto ^comzotohcljc.util.core.MuObj (CU/make-mmap) (.setf! :1 100)) :1)))
 
 
 
@@ -172,5 +172,5 @@
 
 (def ^:private coreutils-eof nil)
 
-;;(clojure.test/run-tests 'test.util.coreutils)
+;;(clojure.test/run-tests 'testcljc.util.coreutils)
 

@@ -18,29 +18,31 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.codes)
+(ns testcljc.i18n.i18nstuff)
 
 (use '[clojure.test])
-(require '[comzotohcljc.util.countrycode :as CC])
-(require '[comzotohcljc.util.usastate :as SC])
+(require '[comzotohcljc.i18n.resources :as NU])
+(require '[comzotohcljc.util.core :as CU])
 
-(deftest testutil-codes
 
-(is (= (CC/find-country "AU") (CC/find-country "au")))
-(is (= "Australia" (CC/find-country "AU")))
-(is (= "AU" (CC/find-code "Australia")))
-(is (false? (CC/usa? "aa")))
-(is (and (CC/usa? "US") (= (CC/usa? "US") (CC/usa? "us"))))
-(is (> (count (CC/list-codes)) 0))
+(deftest testi18n-i18nstuff
 
-(is (= (SC/find-state "CA") (SC/find-state "ca")))
-(is (= "California" (SC/find-state "ca")))
-(is (= "CA" (SC/find-code "California")))
-(is (> (count (SC/list-codes)) 0))
+(is (= "hello joe, how is your dawg"
+       (let [ rs (NU/load-resource (CU/rc-url "com/zotoh/frwk/i18n/Resources_en.properties")) ]
+           (NU/get-string rs "test" [ "joe", "dawg" ]))))
+
+
+
+
+
+
+
+
+
 
 )
 
-(def ^:private codes-eof nil)
+(def ^:private i18nstuff-eof nil)
 
-;;(clojure.test/run-tests 'test.util.codes)
+;;(clojure.test/run-tests 'testcljc.i18n.i18nstuff)
 

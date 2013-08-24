@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.strutils)
+(ns testcljc.util.strutils)
 
 (use '[clojure.test])
 (require '[comzotohcljc.util.str :as SU])
@@ -49,7 +49,7 @@
                 (SU/add-delim! x ";" "blogg")
                 (.toString x))))
 
-(is (= 4 (.size (SU/splunk "hello, how are you" 5))))
+(is (= 4 (count (SU/splunk "hello, how are you" 5))))
 
 (is (true? (SU/hasic-any? "hallowed are the ori" [ "sdfsdg" "jffflf" "Are" ])))
 (is (false? (SU/has-any? "hallowed are the ori" [ "sdfsdg" "jffflf" "Are" ])))
@@ -79,5 +79,5 @@
 
 (def ^:private strutils-eof nil)
 
-;;(clojure.test/run-tests 'test.util.strutils)
+;;(clojure.test/run-tests 'testcljc.util.strutils)
 

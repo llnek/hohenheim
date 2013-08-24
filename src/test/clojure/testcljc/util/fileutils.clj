@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.fileutils)
+(ns testcljc.util.fileutils)
 
 (use '[clojure.test])
 (import '(org.apache.commons.io FileUtils))
@@ -29,8 +29,8 @@
 
 
 (def ^:private TMP_DIR (File. (System/getProperty "java.io.tmpdir")))
-(def ^:private TMP_FP (File. TMP_DIR (str (CU/uid) ".txt")))
-(eval '(do (FileUtils/writeStringToFile TMP_FP "heeloo")))
+(def ^:private TMP_FP (File. ^File TMP_DIR (str (CU/uid) ".txt")))
+(eval '(do (FileUtils/writeStringToFile ^File TMP_FP "heeloo")))
 
 (deftest testutil-fileutils
 
@@ -47,13 +47,13 @@
 (is (nil?  (FU/parent-path nil)))
 
 (is (= "heeloo" (let [ fp (str (CU/uid) ".txt") ]
-                    (FU/save-file TMP_DIR fp (FU/get-file TMP_DIR (.getName TMP_FP)))
-                    (FileUtils/readFileToString (File. TMP_DIR fp) "utf-8")) ))
+                    (FU/save-file ^File TMP_DIR fp (FU/get-file ^File TMP_DIR (.getName ^File TMP_FP)))
+                    (FileUtils/readFileToString (File. ^File TMP_DIR fp) "utf-8")) ))
 
 
 )
 
 (def ^:private fileutils-eof nil)
 
-;;(clojure.test/run-tests 'test.util.fileutils)
+;;(clojure.test/run-tests 'testcljc.util.fileutils)
 

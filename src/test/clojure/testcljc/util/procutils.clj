@@ -18,28 +18,31 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.byteutils)
+(ns testcljc.util.procutils)
 
 (use '[clojure.test])
-(import '(java.nio.charset Charset))
-(require '[comzotohcljc.util.bytes :as BU])
+(import '(org.apache.commons.io FileUtils))
+(import '(java.io File))
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.process :as PU])
 
 
-(def ^:private CS_UTF8 "utf-8")
+(def ^:private CUR_MS (System/currentTimeMillis))
+(def ^:private CUR_FP (File. (str (System/getProperty "java.io.tmpdir") "/" CUR_MS)))
 
-(deftest testutils-byteutils
+(deftest testutil-procutils
 
-(is (= "heeloo" (String. (BU/to-chars (BU/to-bytes (.toCharArray "heeloo") CS_UTF8) CS_UTF8))))
+(is (true? (do
+              (PU/coroutine (fn [] (FileUtils/writeStringToFile ^File CUR_FP "heeloo" "utf-8")))
+              (PU/safe-wait 3500)
+              (and (.exists ^File CUR_FP) (>= (.length ^File CUR_FP) 6)))))
 
-(is (= 4 (alength (BU/write-bytes (Integer/MAX_VALUE)))))
-(is (= 8 (alength (BU/write-bytes (Long/MAX_VALUE)))))
+(is (> (.length (PU/pid)) 0))
 
-(is (= (Integer/MAX_VALUE) (BU/read-int (BU/write-bytes (Integer/MAX_VALUE)))))
-(is (= (Long/MAX_VALUE) (BU/read-long (BU/write-bytes (Long/MAX_VALUE)))))
 
 )
 
-(def ^:private byteutils-eof nil)
+(def ^:private procutils-eof nil)
 
-;;(clojure.test/run-tests 'test.util.byteutils)
+;;(clojure.test/run-tests 'testcljc.util.procutils)
 

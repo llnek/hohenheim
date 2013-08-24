@@ -33,7 +33,7 @@
 (import '(javax.servlet.http Cookie HttpServletRequest))
 (import '(java.net HttpCookie))
 (import '(org.eclipse.jetty.continuation Continuation ContinuationSupport))
-(import '(com.zotoh.frwk.core 
+(import '(com.zotoh.frwk.core
   Versioned Hierarchial
   Identifiable Disposable Startable))
 
@@ -105,7 +105,7 @@
                 (.suspend rsp))
               (let [ evt (ioes-reify-event this req)
                      ^comzotohcljc.hhh.io.core.WaitEventHolder
-                       w  (make-async-wait-holder 
+                       w  (make-async-wait-holder
                             (make-servlet-trigger req rsp dev) evt)
                        ^comzotohcljc.hhh.io.core.EmitterAPI  src this ]
                   (.timeoutMillis w wm)
@@ -161,7 +161,7 @@
          tds (:workers cfg)
          ssl (SU/hgl? file) ]
 
-    (.setAttr! co :port 
+    (.setAttr! co :port
                (if (and (number? port)(pos? port)) port (if ssl 443 80)))
     (.setAttr! co :host (:host cfg))
     (.setAttr! co :sslType (if (SU/hgl? fv) fv "TLS"))
@@ -242,11 +242,11 @@
 
 (defmethod ioes-start :czc.hhh.io/JettyIO
   [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ ^comzotohcljc.util.core.MuObj ctr (.parent co)
+  (let [ ^comzotohcljc.hhh.core.sys.Thingy ctr (.parent ^Hierarchial co)
          ^Server jetty (.getAttr co :jetty)
          ^File app (.getAttr ctr K_APPDIR)
          ^String cp (SU/strim (.getAttr co :contextPath))
-         ^WebAppContext 
+         ^WebAppContext
          webapp (JettyUtils/newWebAppContext app cp "czchhhiojetty" co)
          logDir (-> (File. app "WEB-INF/logs")(.toURI)(.toURL)(.toString))
          resBase (-> app (.toURI)(.toURL)(.toString)) ]
@@ -343,8 +343,8 @@
   (let [ ^HttpServletRequest req (first args)
          ^HTTPResult result (make-http-result)
          eid (SN/next-long) ]
-    (reify 
-      
+    (reify
+
       Identifiable
       (id [_] eid)
 
@@ -430,7 +430,7 @@
       (getResultObj [_] result)
       (replyResult [this]
         (let [ ^comzotohcljc.hhh.io.core.WaitEventHolder
-               wevt (.release co this) ]
+               wevt (.release ^comzotohcljc.hhh.io.core.EmitterAPI co this) ]
           (when-not (nil? wevt)
             (.resumeOnResult wevt result))))
 

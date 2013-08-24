@@ -347,7 +347,7 @@
 
 (defmethod comp-initialize :czc.hhh.ext/Container
   [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ appDir (.getAttr co K_APPDIR)
+  (let [ ^File appDir (.getAttr co K_APPDIR)
          env (.getAttr co K_ENVCONF)
          app (.getAttr co K_APPCONF)
          ^Properties mf (.getAttr co K_MFPROPS)

@@ -95,10 +95,11 @@
          ds (:delay-secs cfg)
          dw (SU/nsb (:delay-when cfg)) ]
     (if (SU/hgl? dw)
-      (.setAttr! co :delayWhen (DU/parse-iso8601 (SU/strim dw)))
+      (.setAttr! co :delayWhen (DU/parse-date (SU/strim dw) "yyyy-MM-ddTHH:mm:ss"))
       (do
-        (.setAttr! co :delayMillis 
-                   (* 1000 (Math/min (int 3) (if (number? ds) ds 3))))))
+        (.setAttr! co :delayMillis
+                   (* 1000 (Math/min (int 3)
+                                     (int (if (number? ds) ds 3)))))))
     (when (number? intv)
       (.setAttr! co :intervalMillis (* 1000 intv)))
     (info "loopable config: " cfg)

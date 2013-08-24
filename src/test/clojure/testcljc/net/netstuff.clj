@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.net.netstuff)
+(ns testcljc.net.netstuff)
 
 (require '[comzotohcljc.net.comms :as NU])
 (import '(java.net URL URI))
@@ -33,5 +33,5 @@
 
 (def ^:private netstuff-eof nil)
 
-;;(clojure.test/run-tests 'test.net.netstuff)
+;;(clojure.test/run-tests 'testcljc.net.netstuff)
 

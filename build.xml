@@ -237,34 +237,24 @@
       classpathref="test.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.test.dir}" />
-      <arg value="test.util.byteutils" />
-      <arg value="test.util.codes" />
-      <arg value="test.util.coreutils" />
-      <arg value="test.util.dateutils" />
-      <arg value="test.util.fileutils" />
-      <arg value="test.util.guids" />
-      <arg value="test.util.ioutils" />
-      <arg value="test.util.metautils" />
-      <arg value="test.util.mimeutils" />
-      <arg value="test.util.procutils" />
-      <arg value="test.util.seqnumgen" />
-      <arg value="test.util.strutils" />
-      <arg value="test.util.win32ini" />
-      <arg value="test.net.netstuff" />
-      <arg value="test.i18n.i18nstuff" />
-      <arg value="test.crypto.cryptostuff" />
-      <arg value="test.crypto.mimestuff" />
+      <arg value="testcljc.util.byteutils" />
+      <arg value="testcljc.util.codes" />
+      <arg value="testcljc.util.coreutils" />
+      <arg value="testcljc.util.dateutils" />
+      <arg value="testcljc.util.fileutils" />
+      <arg value="testcljc.util.guids" />
+      <arg value="testcljc.util.ioutils" />
+      <arg value="testcljc.util.metautils" />
+      <arg value="testcljc.util.mimeutils" />
+      <arg value="testcljc.util.procutils" />
+      <arg value="testcljc.util.seqnumgen" />
+      <arg value="testcljc.util.strutils" />
+      <arg value="testcljc.util.win32ini" />
+      <arg value="testcljc.net.netstuff" />
+      <arg value="testcljc.i18n.i18nstuff" />
+      <arg value="testcljc.crypto.cryptostuff" />
+      <arg value="testcljc.crypto.mimestuff" />
     </java>
-  </target>
-
-  <target name="compile-test-clj">
-    <antcall target="clj-test-all"/>
-    <copy todir="${build.test.dir}">
-      <fileset dir="${test.dir}/clojure">
-        <exclude name="**/*.clj"/>
-        <exclude name="**/.svn"/>
-      </fileset>
-    </copy>
   </target>
 
   <target name="compile_test_code" >
@@ -277,10 +267,17 @@
        run test code
        -->
 
-  <target name="run_test_code" >
-    <echo message="No test to run."/>
-  </target>
 
+  <target name="run_test_code" >
+    <!--
+    <echo message="No test to run."/>
+    -->
+    <java classname="clojure.main" failonerror="true" fork="true" maxmemory="2048m"
+      classpathref="test.path.id">
+      <arg value="-e"/>
+      <arg value="(use '[clojure.test])(run-tests 'testcljc.util.byteutils)"/>
+    </java>
+  </target>
 
   <!--
        pack api and other docs

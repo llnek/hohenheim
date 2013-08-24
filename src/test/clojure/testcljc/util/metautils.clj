@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.metautils)
+(ns testcljc.util.metautils)
 
 (use '[clojure.test])
 (require '[comzotohcljc.util.meta :as MU])
@@ -51,15 +51,15 @@
 
 (is (= "" (MU/make-obj "java.lang.String")))
 
-(is (= 1 (.size (MU/list-parents (Class/forName "java.lang.String")))))
+(is (= 1 (count (MU/list-parents (Class/forName "java.lang.String")))))
 
-(is (> (.size (MU/list-methods (Class/forName "java.lang.String"))) 40))
-(is (> (.size (MU/list-fields (Class/forName "java.lang.String"))) 5))
+(is (> (count (MU/list-methods (Class/forName "java.lang.String"))) 40))
+(is (> (count (MU/list-fields (Class/forName "java.lang.String"))) 5))
 
 
 )
 
 (def ^:private metautils-eof nil)
 
-;;(clojure.test/run-tests 'test.util.metautils)
+;;(clojure.test/run-tests 'testcljc.util.metautils)
 

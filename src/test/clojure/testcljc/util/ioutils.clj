@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.ioutils)
+(ns testcljc.util.ioutils)
 
 (use '[clojure.test])
 
@@ -33,8 +33,8 @@
 
 
 (def ^:private TMP_DIR (File. (System/getProperty "java.io.tmpdir")))
-(def ^:private TMP_FP (File. TMP_DIR (str (CU/uid) ".txt")))
-(eval '(do (FileUtils/writeStringToFile TMP_FP "heeloo" "utf-8")))
+(def ^:private TMP_FP (File. ^File TMP_DIR (str (CU/uid) ".txt")))
+(eval '(do (FileUtils/writeStringToFile ^File TMP_FP "heeloo" "utf-8")))
 ;; force to use file
 ;;(eval '(do (IOUtils/setStreamLimit 2)))
 
@@ -44,11 +44,11 @@
 (is (true? (.exists (IO/make-tmpfile))))
 
 (is (true? (let [ v (IO/newly-tmpfile) ]
-              (and (.exists (first v)) (nil? (nth v 1))))))
+              (and (.exists ^File (first v)) (nil? (nth v 1))))))
 
 (is (true? (let [ v (IO/newly-tmpfile true)
-                  rc (and (.exists (first v)) (instance? OutputStream (nth v 1))) ]
-             (when rc (.close (nth v 1)))
+                  rc (and (.exists ^File (first v)) (instance? OutputStream (nth v 1))) ]
+             (when rc (.close ^OutputStream (nth v 1)))
              rc)))
 
 (is (instance? InputStream (IO/streamify (byte-array 10))))
@@ -61,46 +61,48 @@
 
 (is (true? (do (IO/reset-stream! (IO/streamify (CU/bytesify "hello"))) true)))
 
-(is (true? (let [ xs (IO/open-file (.getCanonicalPath TMP_FP))
-                    rc (instance? XStream xs) ] (.close xs) rc)))
+(is (true? (let [ xs (IO/open-file (.getCanonicalPath ^File TMP_FP))
+                    rc (instance? XStream xs) ] (.close ^XStream xs) rc)))
 
-(is (true? (let [ xs (IO/open-file TMP_FP) rc (instance? XStream xs) ] (.close xs) rc)))
+(is (true? (let [ xs (IO/open-file ^File TMP_FP) rc (instance? XStream xs) ] (.close ^XStream xs) rc)))
 
 (is (= "heeloo world" (CU/stringify (IO/from-gzb64 (IO/to-gzb64 (CU/bytesify "heeloo world"))))))
 
-(is (>= (with-open [ inp (IO/open-file TMP_FP) ] (IO/available inp)) 6))
+(is (>= (with-open [ ^InputStream inp (IO/open-file TMP_FP) ] (IO/available inp)) 6))
 
-(is (true? (.exists (with-open [ inp (IO/open-file TMP_FP) ] (IO/copy-stream inp)))))
+(is (true? (let [ ^File fp (with-open [ ^InputStream inp (IO/open-file TMP_FP) ]
+                       (IO/copy-stream inp)) ]
+             (.exists fp))))
 
 (is (true? (let [ v (IO/newly-tmpfile false) ]
-                (with-open [inp (IO/open-file TMP_FP) ]
-                  (with-open [ os (FileOutputStream. (first v)) ]
+                (with-open [^InputStream inp (IO/open-file TMP_FP) ]
+                  (with-open [ os (FileOutputStream. ^File (first v)) ]
                     (IO/copy-bytes inp os 4)))
-                (>= (.length (first v)) 4))))
+                (>= (.length ^File (first v)) 4))))
 
 (is (true? (.isDiskFile (IO/make-xdata true))))
 (is (false? (.isDiskFile (IO/make-xdata))))
 
-(is (true? (let [ x (with-open [ inp (IO/open-file TMP_FP) ] (IO/read-bytes inp true)) ]
-                (and (instance? XData x) (.isDiskFile x) (> (.size x) 0))) ))
+(is (true? (let [ x (with-open [ ^InputStream inp (IO/open-file TMP_FP) ] (IO/read-bytes inp true)) ]
+                (and (instance? XData x) (.isDiskFile ^XData x) (> (.size ^XData x) 0))) ))
 
-(is (true? (let [ x (with-open [ inp (IO/open-file TMP_FP) ] (IO/read-bytes inp)) ]
-                (and (instance? XData x) (not (.isDiskFile x)) (> (.size x) 0))) ))
+(is (true? (let [ x (with-open [ ^InputStream inp (IO/open-file TMP_FP) ] (IO/read-bytes inp)) ]
+                (and (instance? XData x) (not (.isDiskFile ^XData x)) (> (.size ^XData x) 0))) ))
 
-(is (true? (let [ x (with-open [ rdr (FileReader. TMP_FP) ] (IO/read-chars rdr true)) ]
-                (and (instance? XData x) (.isDiskFile x) (> (.size x) 0))) ))
+(is (true? (let [ x (with-open [ rdr (FileReader. ^File TMP_FP) ] (IO/read-chars rdr true)) ]
+                (and (instance? XData x) (.isDiskFile ^XData x) (> (.size ^XData x) 0))) ))
 
-(is (true? (let [ x (with-open [ rdr (FileReader. TMP_FP) ] (IO/read-chars rdr)) ]
-                (and (instance? XData x) (not (.isDiskFile x)) (> (.size x) 0))) ))
+(is (true? (let [ x (with-open [ rdr (FileReader. ^File TMP_FP) ] (IO/read-chars rdr)) ]
+                (and (instance? XData x) (not (.isDiskFile ^XData x)) (> (.size ^XData x) 0))) ))
 
 (is (= "heeloo" (String. (IO/morph-chars (CU/bytesify "heeloo")))))
 
-(is (false? (with-open [ p1 (IO/open-file TMP_FP)]
-                (with-open [ p2 (IO/open-file TMP_FP)] (IO/diff? p1 p2)))))
+(is (false? (with-open [ ^InputStream p1 (IO/open-file TMP_FP)]
+                (with-open [ ^InputStream p2 (IO/open-file TMP_FP)] (IO/diff? p1 p2)))))
 
 )
 
 (def ^:private ioutils-eof nil)
 
-;;(clojure.test/run-tests 'test.util.ioutils)
+;;(clojure.test/run-tests 'testcljc.util.ioutils)
 

@@ -18,20 +18,27 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.seqnumgen)
+(ns testcljc.util.guids)
 
 (use '[clojure.test])
-(require '[comzotohcljc.util.seqnum :as SN])
+(require '[comzotohcljc.util.guids :as GU])
 
+;;(def ^:private UID_2 (GU/new-uuid))
+;;(def ^:private UID_1 (GU/new-uuid))
+;;(def ^:private WID_2 (GU/new-wwid))
+;;(def ^:private WID_1 (GU/new-wwid))
 
-(deftest testutil-seqnumgen
+(deftest testutil-guids
 
-(is (> (SN/next-long) 0))
-(is (> (SN/next-int) 0))
+(is (not (= (GU/new-wwid) (GU/new-wwid))))
+(is (not (= (GU/new-uuid) (GU/new-uuid))))
+
+(is (= (.length (GU/new-wwid)) 48))
+(is (= (.length (GU/new-uuid)) 36))
 
 )
 
-(def ^:private seqnumgen-eof nil)
+(def ^:private guids-eof nil)
 
-;;(clojure.test/run-tests 'test.util.seqnumgen)
+;;(clojure.test/run-tests 'testcljc.util.guids)
 

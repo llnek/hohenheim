@@ -39,14 +39,14 @@
 
 (defn to-bytes "Convert char[] to byte[]."
 
-  [^chars chArray ^String encoding]
+  ^bytes [^chars chArray ^String encoding]
 
   (.array (.encode (Charset/forName encoding) (CharBuffer/wrap chArray)) ) )
 
 
 (defn to-chars "Convert byte[] to char[]."
 
-  [^bytes byteArray ^String encoding]
+  ^chars [^bytes byteArray ^String encoding]
 
   (.array (.decode (Charset/forName encoding) (ByteBuffer/wrap byteArray)) ) )
 
@@ -66,7 +66,7 @@
 
 
 (defmethod write-bytes Integer
-  [nnum]
+  ^bytes [nnum]
   (with-open [ baos (ByteArrayOutputStream. (int 4096)) ]
     (let [ ds (DataOutputStream. baos ) ]
       (.writeInt ds (int nnum))
@@ -75,7 +75,7 @@
 
 
 (defmethod write-bytes Long
-  [nnum]
+  ^bytes [nnum]
   (with-open [ baos (ByteArrayOutputStream. (int 4096)) ]
     (let [ ds (DataOutputStream. baos ) ]
       (.writeLong ds ^long nnum)

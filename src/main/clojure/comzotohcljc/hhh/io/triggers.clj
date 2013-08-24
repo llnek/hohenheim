@@ -116,8 +116,8 @@
           (.complete))) ) ) )
 
 
-(defn make-servlet-trigger "" 
-  
+(defn make-servlet-trigger ""
+
   [^HttpServletRequest req ^HttpServletResponse rsp src]
 
   (reify AsyncWaitTrigger
@@ -207,8 +207,8 @@
     ))
 
 
-(defn make-async-wait-holder 
-  
+(defn make-async-wait-holder
+
   [ ^comzotohcljc.hhh.io.core.AsyncWaitTrigger trigger
     ^HTTPEvent event ]
 
@@ -216,12 +216,12 @@
     (reify
 
       Identifiable
-      (id [_] (.id event))
+      (id [_] (.getId event))
 
       WaitEventHolder
 
       (resumeOnResult [this res]
-        (let [ ^Timer tm (.mm-g impl :timer) 
+        (let [ ^Timer tm (.mm-g impl :timer)
                ^comzotohcljc.hhh.io.core.EmitterAPI  src (.emitter event) ]
           (when-not (nil? tm) (.cancel tm))
           (.release src this)
@@ -235,7 +235,7 @@
           (.schedule tm (proxy [TimerTask][]
             (run [] (.onExpiry me))) ^long millis)))
 
-      (timeoutSecs [this secs] 
+      (timeoutSecs [this secs]
         (timeoutMillis this (* 1000 secs)))
 
       (onExpiry [this]

@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.mimeutils)
+(ns testcljc.util.mimeutils)
 
 (use '[clojure.test])
 (import '(java.io File InputStream))
@@ -56,5 +56,5 @@
 
 (def ^:private mimeutils-eof nil)
 
-;;(clojure.test/run-tests 'test.util.mimeutils)
+;;(clojure.test/run-tests 'testcljc.util.mimeutils)
 

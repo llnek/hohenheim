@@ -18,31 +18,29 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.procutils)
+(ns testcljc.util.codes)
 
 (use '[clojure.test])
-(import '(org.apache.commons.io FileUtils))
-(import '(java.io File))
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.process :as PU])
+(require '[comzotohcljc.util.countrycode :as CC])
+(require '[comzotohcljc.util.usastate :as SC])
 
+(deftest testutil-codes
 
-(def ^:private CUR_MS (System/currentTimeMillis))
-(def ^:private CUR_FP (File. (str (System/getProperty "java.io.tmpdir") "/" CUR_MS)))
+(is (= (CC/find-country "AU") (CC/find-country "au")))
+(is (= "Australia" (CC/find-country "AU")))
+(is (= "AU" (CC/find-code "Australia")))
+(is (false? (CC/usa? "aa")))
+(is (and (CC/usa? "US") (= (CC/usa? "US") (CC/usa? "us"))))
+(is (> (count (CC/list-codes)) 0))
 
-(deftest testutil-procutils
-
-(is (true? (do
-              (PU/coroutine (fn [] (FileUtils/writeStringToFile CUR_FP "heeloo" "utf-8")))
-              (PU/safe-wait 3500)
-              (and (.exists CUR_FP) (>= (.length CUR_FP) 6)))))
-
-(is (> (.length (PU/pid)) 0))
-
+(is (= (SC/find-state "CA") (SC/find-state "ca")))
+(is (= "California" (SC/find-state "ca")))
+(is (= "CA" (SC/find-code "California")))
+(is (> (count (SC/list-codes)) 0))
 
 )
 
-(def ^:private procutils-eof nil)
+(def ^:private codes-eof nil)
 
-;;(clojure.test/run-tests 'test.util.procutils)
+;;(clojure.test/run-tests 'testcljc.util.codes)
 

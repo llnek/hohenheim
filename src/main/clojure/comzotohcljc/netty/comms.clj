@@ -400,7 +400,7 @@
              attObj (.getAttachment ch)
              msginfo (:info attObj)
              keepAlive (if (nil? msginfo) false (:keep-alive msginfo)) ]
-        (error (.getCause ev) "")
+        (error (.getCause ^ExceptionEvent ev) "")
         (.onerror usercb ch msginfo ev)
         (when-not keepAlive (CU/TryC (.close ch)))))
 

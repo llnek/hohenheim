@@ -18,29 +18,20 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.win32ini)
+(ns testcljc.util.seqnumgen)
+
 (use '[clojure.test])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.ini :as WI])
-
-(def ^:private INIFILE (WI/parse-inifile (CU/rc-url "com/zotoh/frwk/util/sample.ini")))
-
-(deftest testutil-wi32ini
-
-(is (= (count (.sectionKeys INIFILE)) 2))
-
-(is (map? (.getSectionAsMap INIFILE "operating systems")))
-(is (map? (.getSectionAsMap INIFILE "boot loader")))
-
-(is (true? (.endsWith (.getString INIFILE "boot loader" "default") "WINDOWS")))
-
-(is (true? (= (.getLong INIFILE "boot loader" "timeout") 30)))
+(require '[comzotohcljc.util.seqnum :as SN])
 
 
+(deftest testutil-seqnumgen
+
+(is (> (SN/next-long) 0))
+(is (> (SN/next-int) 0))
 
 )
 
-(def ^:private win32ini-eof nil)
+(def ^:private seqnumgen-eof nil)
 
-;;(clojure.test/run-tests 'test.util.win32ini)
+;;(clojure.test/run-tests 'testcljc.util.seqnumgen)
 

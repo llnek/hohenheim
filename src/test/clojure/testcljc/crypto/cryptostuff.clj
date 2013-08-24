@@ -18,10 +18,11 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.crypto.cryptostuff)
+(ns testcljc.crypto.cryptostuff)
 
 (use '[clojure.test])
-(import '(java.security Policy KeyStore SecureRandom MessageDigest))
+(import '(java.security Policy KeyStore SecureRandom MessageDigest
+  KeyStore$PrivateKeyEntry KeyStore$TrustedCertificateEntry))
 (import '(java.util Date GregorianCalendar))
 (import '(java.io File))
 (require '[comzotohcljc.crypto.codec :as RT])
@@ -67,11 +68,11 @@
 (is (= "heeloo" (let [ c (RT/bouncy-cryptor) ]
                       (.decrypt c TESTPWD (.encrypt c TESTPWD "heeloo")))))
 
-(is (= (.length (.text (RT/create-strong-pwd 16))) 16))
+(is (= (.length ^String (.text (RT/create-strong-pwd 16))) 16))
 (is (= (.length (RT/create-random-string 64)) 64))
 
 (is (satisfies? comzotohcljc.crypto.codec.PasswordAPI (RT/pwdify "secret-text")))
-(is (.startsWith (.encoded (RT/pwdify "secret-text")) "CRYPT:"))
+(is (.startsWith ^String (.encoded ^comzotohcljc.crypto.codec.PasswordAPI (RT/pwdify "secret-text")) "CRYPT:"))
 
 
 (is (= "SHA-512" (.getAlgorithm (RU/make-MsgDigest RU/*SHA_512*))))
@@ -94,7 +95,7 @@
 (is (not (nil? (RU/make-keypair "RSA" 1024))))
 
 (is (let [ v (RU/make-csrreq 1024 "C=AU,ST=NSW,L=Sydney,O=Google,OU=HQ,CN=www.google.com" "PEM") ]
-          (and (= (.size v) 2) (> (alength (first v)) 0) (> (alength (nth v 1)) 0))) )
+          (and (= (count v) 2) (> (alength ^bytes (first v)) 0) (> (alength ^bytes (nth v 1)) 0))) )
 
 (is (let [ fout (IO/make-tmpfile "kenl" ".p12")]
       (RU/make-ssv1PKCS12 (Date.) ENDDT "C=AU,ST=NSW,L=Sydney,O=Google" HELPME 1024 fout)
@@ -104,21 +105,25 @@
       (RU/make-ssv1JKS (Date.) ENDDT "C=AU,ST=NSW,L=Sydney,O=Google" SECRET 1024 fout)
             (> (.length fout) 0)))
 
-(is (let [ pke (.keyEntity ROOTCS (first (.keyAliases ROOTCS)) HELPME)
+(is (let [ ^KeyStore$PrivateKeyEntry pke (.keyEntity ^comzotohcljc.crypto.stores.CryptoStore ROOTCS 
+                           ^String (first (.keyAliases ^comzotohcljc.crypto.stores.CryptoStore ROOTCS)) 
+                           HELPME)
        fout (IO/make-tmpfile "" ".p12")
        pk (.getPrivateKey pke)
        cs (.getCertificateChain pke) ]
             (RU/make-ssv3PKCS12 (Date.) ENDDT "C=AU,ST=NSW,L=Sydney,O=Google" SECRET 1024  cs pk fout)
               (> (.length fout) 0)))
 
-(is (let [ pke (.keyEntity ROOTKS (first (.keyAliases ROOTKS)) HELPME)
+(is (let [ ^KeyStore$PrivateKeyEntry pke (.keyEntity  ^comzotohcljc.crypto.stores.CryptoStore ROOTKS 
+                           ^String (first (.keyAliases  ^comzotohcljc.crypto.stores.CryptoStore ROOTKS)) 
+                           HELPME)
        fout (IO/make-tmpfile "" ".jks")
        pk (.getPrivateKey pke)
        cs (.getCertificateChain pke) ]
             (RU/make-ssv3JKS (Date.) ENDDT "C=AU,ST=NSW,L=Sydney,O=Google" SECRET 1024  cs pk fout)
               (> (.length fout) 0)))
 
-(is (let [ fout (IO/make-tmpfile "" ".p7b") ]
+(is (let [ ^File fout (IO/make-tmpfile "" ".p7b") ]
         (RU/export-pkcs7 (CU/rc-url "com/zotoh/frwk/crypto/test.pfx") HELPME fout)
           (> (.length fout) 0)))
 
@@ -127,5 +132,5 @@
 
 (def ^:private cryptostuff-eof nil)
 
-;;(clojure.test/run-tests 'test.crypto.cryptostuff)
+;;(clojure.test/run-tests 'testcljc.crypto.cryptostuff)
 

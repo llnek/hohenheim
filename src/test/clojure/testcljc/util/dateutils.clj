@@ -18,7 +18,7 @@
 ;; http://www.apache.org/licenses/LICENSE-2.0
 ;;
 
-(ns test.util.dateutils)
+(ns testcljc.util.dateutils)
 
 (import '(java.util Date))
 (use '[clojure.test])
@@ -37,5 +37,5 @@
 
 (def ^:private dateutils-eof nil)
 
-;;(clojure.test/run-tests 'test.util.dateutils)
+;;(clojure.test/run-tests 'testcljc.util.dateutils)
 
