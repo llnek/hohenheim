@@ -19,10 +19,18 @@
   </path>
 
   <path id="test.path.id">
-    <fileset dir="${lib.dir}/test" />
-    <fileset dir="${scala.lib.dir}"/>
-    <fileset dir="${clojure.dir}" />
-    <fileset dir="${distrib.dir}" />
+    <fileset dir="${lib.dir}/test" >
+      <include name="*.jar"/>
+    </fileset>
+    <fileset dir="${scala.lib.dir}">
+      <include name="*.jar"/>
+    </fileset>
+    <fileset dir="${clojure.dir}" >
+      <include name="*.jar"/>
+    </fileset>
+    <fileset dir="${distrib.dir}">
+      <include name="*.jar"/>
+    </fileset>
     <path location="${build.dir}" />
     <path location="${build.test.dir}" />
     <path location="${test.dir}/clojure" />
@@ -296,7 +304,8 @@
        -->
 
   <target name="runtests-java" >
-    <junit logfailedtests="true" showoutput="false" printsummary="yes" fork="yes" haltonfailure="yes" >
+    <junit logfailedtests="true" showoutput="false" printsummary="yes" 
+      fork="yes" haltonfailure="yes" >
       <classpath refid="test.path.id"/>
       <formatter type="plain" usefile="false"/>
       <batchtest todir="${report.test.dir}">
@@ -325,8 +334,7 @@
     <junit logfailedtests="true" showoutput="false" printsummary="yes" fork="yes" haltonfailure="yes" >
       <classpath refid="test.path.id"/>
       <formatter type="plain" usefile="false"/>
-      <test name="com.zotoh.frwk.util.ClojureJUnit" haltonfailure="no"
-        todir="${report.test.dir}">
+      <test name="com.zotoh.frwk.util.ClojureJUnit" todir="${report.test.dir}">
         <formatter type="xml"/>
       </test>
     </junit>
