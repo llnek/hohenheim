@@ -520,7 +520,7 @@
          ^long keylen (:keylen opts)
          kp (make-keypair (SU/nsb *DSA*) keylen)
          ks (get-jksStore)
-         rc (mkSSV1 ks kp pwdObj options) ]
+         rc (mkSSV1 ks kp pwdObj opts) ]
     (FileUtils/writeByteArrayToFile out rc)))
 
 (defn- mkSSV3Cert

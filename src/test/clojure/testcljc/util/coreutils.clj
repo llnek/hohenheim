@@ -144,8 +144,8 @@
 
 (is (false? (CU/notnil? nil)))
 (is (true? (CU/notnil? "")))
-(is (= 3 (count (CU/flatten-nil (1 2 nil nil 3)))))
-(is (= 3 (count (CU/flatten-nil (1 2 3)))))
+(is (= 3 (count (CU/flatten-nil '(1 2 nil nil 3)))))
+(is (= 3 (count (CU/flatten-nil '(1 2 3)))))
 (is (= 3 (count (CU/flatten-nil [1 nil 2 nil 3]))))
 (is (= 0.0 (CU/ndz nil)))
 (is (= 0 (CU/nnz nil)))
@@ -164,7 +164,7 @@
 (is (false? (nil? (:1 (CU/into-map dummyProperties)))))
 (is (= 3 (count (CU/into-map dummyProperties))))
 
-(is (= 100 (.getf (doto ^comzotohcljc.util.core.MuObj (CU/make-mmap) (.setf! :1 100)) :1)))
+(is (= 100 (.mm-g (doto ^comzotohcljc.util.core.MutableMap (CU/make-mmap) (.mm-s :1 100)) :1)))
 
 
 

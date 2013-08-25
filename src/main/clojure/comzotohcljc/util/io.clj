@@ -206,7 +206,7 @@
     [fp os]))
 
 (defn- swap-read-chars
-  ^XData [^InputStream inp ^CharArrayWriter wtr]
+  ^XData [^Reader inp ^CharArrayWriter wtr]
 
   (let [ [^File fp ^Writer os] (swap-chars wtr)
          bits (char-array 4096) ]
@@ -222,7 +222,7 @@
         (IOUtils/closeQuietly os)))) )
 
 (defn- slurp-chars
-  ^XData [^InputStream inp lmt]
+  ^XData [^Reader inp lmt]
   (let [ wtr (CharArrayWriter. (int 10000))
          bits (char-array 4096) ]
     (loop [ c (.read inp bits) cnt 0 ]

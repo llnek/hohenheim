@@ -414,12 +414,12 @@
     []
     (let [ _end (if (< end Integer/MAX_VALUE) (+ end 1) end )
            r (new-random) ]
-      (loop [ rc (transient []) cnt howMany ]
+      (loop [ rc [] cnt howMany ]
         (if (<= cnt 0)
-          (persistent! rc)
+          rc
           (let [ n (.nextInt r _end) ]
             (if (and (>= n start) (not (contains? rc n)))
-              (recur (conj! rc n) (dec cnt))
+              (recur (conj rc n) (dec cnt))
               (recur rc cnt) )))))) )
 
 (defn sort-join "Sort a list of strings and then concatenate them."

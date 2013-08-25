@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite errors="0" failures="0" hostname="lt-wowux" name="com.zotoh.frwk.util.ClojureJUnit" skipped="0" tests="34" time="9.981" timestamp="2013-08-25T01:22:07">
+  <properties>
+    <property name="file.encoding.pkg" value="sun.io" />
+    <property name="ivy.retrieve.pattern.ivy.instance" value="/wdrive/dev/builds/hohenheim/lib/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="java.vendor.url.ivy.instance" value="http://java.oracle.com/" />
+    <property name="ivy.project.dir.ivy.instance" value="/wdrive/mygithub/hohenheim" />
+    <property name="ivy.resolve.default.type.filter" value="*" />
+    <property name="qa.dir" value="/wdrive/dev/builds/hohenheim/qa" />
+    <property name="report.test.dir" value="/wdrive/dev/builds/hohenheim/qa/test-reports" />
+    <property name="java.home" value="/wdrive/opt/j2se/jdk1.7.0_21/jre" />
+    <property name="ivy.configurations.ivy.instance" value="*" />
+    <property name="ivy.root" value="/wdrive/.ivy" />
+    <property name="ivy.basedir.ivy.instance" value="/wdrive/mygithub/hohenheim" />
+    <property name="ivy.dep.file.ivy.instance" value="ivy.xml" />
+    <property name="java.endorsed.dirs" value="/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/endorsed" />
+    <property name="java.class.path.ivy.instance" value="/wdrive/opt/apache/ant/lib/ant-launcher.jar:/wdrive/mygithub/hohenheim/./*:/wdrive/dev/builds/blason/lib/test/*:/wdrive/opt/apache/ant/lib/ant-junit.jar:/wdrive/opt/apache/ant/lib/ant-apache-log4j.jar:/wdrive/opt/apache/ant/lib/ant-jmf.jar:/wdrive/opt/apache/ant/lib/ivy-2.3.0.jar:/wdrive/opt/apache/ant/lib/ant.jar:/wdrive/opt/apache/ant/lib/ant-apache-resolver.jar:/wdrive/opt/apache/ant/lib/ant-launcher.jar:/wdrive/opt/apache/ant/lib/ant-testutil.jar:/wdrive/opt/apache/ant/lib/ant-apache-oro.jar:/wdrive/opt/apache/ant/lib/ant-netrexx.jar:/wdrive/opt/apache/ant/lib/ant-javamail.jar:/wdrive/opt/apache/ant/lib/ant-antlr.jar:/wdrive/opt/apache/ant/lib/ant-swing.jar:/wdrive/opt/apache/ant/lib/ant-commons-net.jar:/wdrive/opt/apache/ant/lib/ant-apache-bcel.jar:/wdrive/opt/apache/ant/lib/ant-apache-regexp.jar:/wdrive/opt/apache/ant/lib/ant-jsch.jar:/wdrive/opt/apache/ant/lib/ant-jdepend.jar:/wdrive/opt/apache/ant/lib/ant-apache-xalan2.jar:/wdrive/opt/apache/ant/lib/ant-commons-logging.jar:/wdrive/opt/apache/ant/lib/ant-jai.jar:/wdrive/opt/apache/ant/lib/ant-contrib-1.0b3.jar:/wdrive/opt/apache/ant/lib/ant-junit4.jar:/wdrive/opt/apache/ant/lib/ant-apache-bsf.jar:/wdrive/opt/j2se/jdk1.7.0_21/lib/tools.jar" />
+    <property name="ivy.home" value="/home/kenl/.ivy2" />
+    <property name="src.dir" value="/wdrive/mygithub/hohenheim/src/main" />
+    <property name="pack.dir" value="/wdrive/dev/builds/hohenheim/package" />
+    <property name="java.vm.specification.vendor.ivy.instance" value="Oracle Corporation" />
+    <property name="sun.os.patch.level" value="unknown" />
+    <property name="ivy.dep.file" value="ivy.xml" />
+    <property name="java.vendor.url" value="http://java.oracle.com/" />
+    <property name="ivy.lib.dir.ivy.instance" value="/wdrive/mygithub/hohenheim/lib" />
+    <property name="java.version" value="1.7.0_21" />
+    <property name="ivy.conf.dir.ivy.instance" value="/wdrive/mygithub/hohenheim" />
+    <property name="sun.boot.library.path.ivy.instance" value="/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/amd64" />
+    <property name="ivy.report.output.pattern.ivy.instance" value="[organisation]-[module]-[conf].[ext]" />
+    <property name="ivy.module" value="hohenheim" />
+    <property name="ivy.publish.src.artifacts.pattern.ivy.instance" value="/wdrive/mygithub/hohenheim/distrib/[type]s/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="java.vendor.url.bug" value="http://bugreport.sun.com/bugreport/" />
+    <property name="sun.management.compiler.ivy.instance" value="HotSpot 64-Bit Tiered Compilers" />
+    <property name="ant.project.invoked-targets" value="runtests-clj" />
+    <property name="os.name.ivy.instance" value="Linux" />
+    <property name="ivy.default.ivy.user.dir.ivy.instance" value="/home/kenl/.ivy2" />
+    <property name="ivy.default.always.check.exact.revision" value="false" />
+    <property name="antbuild.dir" value="/wdrive/dev/builds/hohenheim" />
+    <property name="ivy.default.settings.dir.ivy.instance" value="jar:file:/wdrive/opt/apache/ant/lib/ivy-2.3.0.jar!/org/apache/ivy/core/settings" />
+    <property name="user.name" value="kenl" />
+    <property name="ivy.lcache.dir" value="/wdrive/.ivy/cache" />
+    <property name="sun.io.unicode.encoding" value="UnicodeLittle" />
+    <property name="PID" value="hohenheim" />
+    <property name="sun.jnu.encoding" value="UTF-8" />
+    <property name="java.runtime.name" value="Java(TM) SE Runtime Environment" />
+    <property name="ant.home.ivy.instance" value="/wdrive/opt/apache/ant" />
+    <property name="file.encoding.ivy.instance" value="UTF-8" />
+    <property name="ivy.cache.ttl.default.ivy.instance" value="10s" />
+    <property name="ivy.conf.file.ivy.instance" value="/wdrive/mygithub/hohenheim/ivysettings.xml" />
+    <property name="java.specification.vendor.ivy.instance" value="Oracle Corporation" />
+    <property name="java.vendor.ivy.instance" value="Oracle Corporation" />
+    <property name="lib.dir" value="/wdrive/dev/builds/hohenheim/lib" />
+    <property name="sun.cpu.isalist.ivy.instance" value="" />
+    <property name="java.specification.name" value="Java Platform API Specification" />
+    <property name="scala.lib.dir" value="/wdrive/opt/lang/scala/lib" />
+    <property name="user.timezone" value="" />
+    <property name="java.endorsed.dirs.ivy.instance" value="/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/endorsed" />
+    <property name="path.separator" value=":" />
+    <property name="java.class.version.ivy.instance" value="51.0" />
+    <property name="ivy.default.conf.dir" value="jar:file:/wdrive/opt/apache/ant/lib/ivy-2.3.0.jar!/org/apache/ivy/core/settings" />
+    <property name="file.encoding" value="UTF-8" />
+    <property name="java.runtime.name.ivy.instance" value="Java(TM) SE Runtime Environment" />
+    <property name="ivy.resolve.default.type.filter.ivy.instance" value="*" />
+    <property name="ant.project.default-target" value="release" />
+    <property name="ivy.targets.copied" value="true" />
+    <property name="common.basedir" value="/wdrive/mygithub/hohenheim" />
+    <property name="sun.java.command" value="org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner com.zotoh.frwk.util.ClojureJUnit filtertrace=true haltOnError=false haltOnFailure=false formatter=org.apache.tools.ant.taskdefs.optional.junit.SummaryJUnitResultFormatter showoutput=false outputtoformatters=true logfailedtests=true logtestlistenerevents=false formatter=org.apache.tools.ant.taskdefs.optional.junit.PlainJUnitResultFormatter formatter=org.apache.tools.ant.taskdefs.optional.junit.XMLJUnitResultFormatter,/wdrive/mygithub/hohenheim/result.xml crashfile=/wdrive/mygithub/hohenheim/junitvmwatcher6306918167367345585.properties propsfile=/wdrive/mygithub/hohenheim/junit5897702929441305151.properties" />
+    <property name="ant.file" value="/wdrive/mygithub/hohenheim/build.xml" />
+    <property name="ivy.distrib.dir.ivy.instance" value="/wdrive/mygithub/hohenheim/distrib" />
+    <property name="ivy.checksums.ivy.instance" value="sha1,md5" />
+    <property name="sun.arch.data.model.ivy.instance" value="64" />
+    <property name="ivy.build.artifacts.dir.ivy.instance" value="/wdrive/mygithub/hohenheim/build/artifacts" />
+    <property name="ivy.settings.file" value="ivysettings.xml" />
+    <property name="java.io.tmpdir" value="/tmp" />
+    <property name="ivy.buildlist.ivyfilepath.ivy.instance" value="ivy.xml" />
+    <property name="ivy.cache.ttl.default" value="10s" />
+    <property name="user.language" value="en" />
+    <property name="user.dir.ivy.instance" value="/wdrive/mygithub/hohenheim" />
+    <property name="ivy.home.ivy.instance" value="/home/kenl/.ivy2" />
+    <property name="line.separator" value="&#xa;" />
+    <property name="java.specification.version.ivy.instance" value="1.7" />
+    <property name="ant.file.type" value="file" />
+    <property name="ivy.build.artifacts.dir" value="/wdrive/mygithub/hohenheim/build/artifacts" />
+    <property name="sun.io.unicode.encoding.ivy.instance" value="UnicodeLittle" />
+    <property name="ivy.status" value="integration" />
+    <property name="java.vm.info" value="mixed mode" />
+    <property name="ivy.lib.dir" value="/wdrive/dev/builds/hohenheim/lib" />
+    <property name="sun.desktop" value="gnome" />
+    <property name="java.vm.specification.name" value="Java Virtual Machine Specification" />
+    <property name="ivy.default.conf.dir.ivy.instance" value="jar:file:/wdrive/opt/apache/ant/lib/ivy-2.3.0.jar!/org/apache/ivy/core/settings" />
+    <property name="java.vm.version.ivy.instance" value="23.21-b01" />
+    <property name="ant.file.common" value="/wdrive/mygithub/hohenheim/common.xml" />
+    <property name="user.name.ivy.instance" value="kenl" />
+    <property name="ivy.cache.dir" value="/wdrive/.ivy/cache" />
+    <property name="java.awt.printerjob" value="sun.print.PSPrinterJob" />
+    <property name="java.io.tmpdir.ivy.instance" value="/tmp" />
+    <property name="ant.version" value="Apache Ant(TM) version 1.9.2 compiled on July 8 2013" />
+    <property name="java.home.ivy.instance" value="/wdrive/opt/j2se/jdk1.7.0_21/jre" />
+    <property name="java.vm.vendor.ivy.instance" value="Oracle Corporation" />
+    <property name="build.test.dir" value="/wdrive/dev/builds/hohenheim/qa/test-classes" />
+    <property name="ant.file.type.common" value="file" />
+    <property name="ivy.default.settings.dir" value="jar:file:/wdrive/opt/apache/ant/lib/ivy-2.3.0.jar!/org/apache/ivy/core/settings" />
+    <property name="ivy.configurations" value="*" />
+    <property name="ivy.settings.url" value="file:/wdrive/mygithub/hohenheim/ivysettings.xml" />
+    <property name="ant.file.type.hohenheim" value="file" />
+    <property name="os.name" value="Linux" />
+    <property name="java.specification.vendor" value="Oracle Corporation" />
+    <property name="sun.jnu.encoding.ivy.instance" value="UTF-8" />
+    <property name="ivy.deliver.ivy.pattern.ivy.instance" value="/wdrive/mygithub/hohenheim/distrib/[type]s/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="ivy.checksums" value="sha1,md5" />
+    <property name="PID-DISTRO" value="hohenheim-distro" />
+    <property name="java.vm.name" value="Java HotSpot(TM) 64-Bit Server VM" />
+    <property name="ivy.log.modules.in.use" value="false" />
+    <property name="java.runtime.version.ivy.instance" value="1.7.0_21-b11" />
+    <property name="ivy.report.output.pattern" value="[organisation]-[module]-[conf].[ext]" />
+    <property name="ivy.version" value="2.3.0" />
+    <property name="java.library.path" value="/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib" />
+    <property name="ivy.conf.url" value="file:/wdrive/mygithub/hohenheim/ivysettings.xml" />
+    <property name="java.vm.name.ivy.instance" value="Java HotSpot(TM) 64-Bit Server VM" />
+    <property name="os.version.ivy.instance" value="3.8.0-19-generic" />
+    <property name="line.separator.ivy.instance" value="&#xa;" />
+    <property name="ant.java.version" value="1.7" />
+    <property name="sun.desktop.ivy.instance" value="gnome" />
+    <property name="sun.cpu.endian.ivy.instance" value="little" />
+    <property name="java.vm.specification.name.ivy.instance" value="Java Virtual Machine Specification" />
+    <property name="basedir" value="/wdrive/mygithub/hohenheim" />
+    <property name="build.debug" value="true" />
+    <property name="java.class.version" value="51.0" />
+    <property name="ivy.settings.url.ivy.instance" value="file:/wdrive/mygithub/hohenheim/ivysettings.xml" />
+    <property name="path.separator.ivy.instance" value=":" />
+    <property name="sun.boot.class.path.ivy.instance" value="/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/resources.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/rt.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/sunrsasign.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/jsse.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/jce.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/charsets.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/jfr.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/classes" />
+    <property name="ant.home" value="/wdrive/opt/apache/ant" />
+    <property name="ivy.resolved.configurations" value="libjar, test" />
+    <property name="ivy.deliver.ivy.pattern" value="/wdrive/mygithub/hohenheim/distrib/[type]s/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="sun.boot.library.path" value="/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/amd64" />
+    <property name="build.dir" value="/wdrive/dev/builds/hohenheim/build" />
+    <property name="ivy.default.always.check.exact.revision.ivy.instance" value="false" />
+    <property name="java.library.path.ivy.instance" value="/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib" />
+    <property name="distrib.dir" value="/wdrive/dev/builds/hohenheim/distrib" />
+    <property name="awt.toolkit.ivy.instance" value="sun.awt.X11.XToolkit" />
+    <property name="ivy.basedir" value="/wdrive/mygithub/hohenheim" />
+    <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers" />
+    <property name="java.ext.dirs.ivy.instance" value="/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/ext:/usr/java/packages/lib/ext" />
+    <property name="java.awt.graphicsenv" value="sun.awt.X11GraphicsEnvironment" />
+    <property name="ivy.log.modules.in.use.ivy.instance" value="false" />
+    <property name="sun.os.patch.level.ivy.instance" value="unknown" />
+    <property name="file.encoding.pkg.ivy.instance" value="sun.io" />
+    <property name="ivy.resolver.default.check.modified" value="false" />
+    <property name="ivy.settings.file.ivy.instance" value="/wdrive/mygithub/hohenheim/ivysettings.xml" />
+    <property name="ivy.lrepo.dir" value="/wdrive/.ivy/repos" />
+    <property name="ivy.nb.targets.copied" value="168" />
+    <property name="ant.project.name" value="hohenheim" />
+    <property name="ivy.cache.dir.ivy.instance" value="/wdrive/.ivy/cache" />
+    <property name="java.vm.specification.version" value="1.7" />
+    <property name="ivy.status.ivy.instance" value="integration" />
+    <property name="awt.toolkit" value="sun.awt.X11.XToolkit" />
+    <property name="sun.cpu.isalist" value="" />
+    <property name="file.separator.ivy.instance" value="/" />
+    <property name="java.ext.dirs" value="/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/ext:/usr/java/packages/lib/ext" />
+    <property name="ivy.deps.changed" value="false" />
+    <property name="os.version" value="3.8.0-19-generic" />
+    <property name="user.home" value="/home/kenl" />
+    <property name="sun.java.launcher.ivy.instance" value="SUN_STANDARD" />
+    <property name="java.vm.vendor" value="Oracle Corporation" />
+    <property name="ivy.organisation" value="com.zotoh" />
+    <property name="user.dir" value="/wdrive/mygithub/hohenheim" />
+    <property name="ant.library.dir.ivy.instance" value="/wdrive/opt/apache/ant/lib" />
+    <property name="ivy.publish.src.artifacts.pattern" value="/wdrive/mygithub/hohenheim/distrib/[type]s/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="test.dir" value="/wdrive/mygithub/hohenheim/src/test" />
+    <property name="java.vm.info.ivy.instance" value="mixed mode" />
+    <property name="sun.java.command.ivy.instance" value="org.apache.tools.ant.launch.Launcher -cp ./*:/wdrive/dev/builds/blason/lib/test/* test" />
+    <property name="ivy.distrib.dir" value="/wdrive/mygithub/hohenheim/distrib" />
+    <property name="sun.cpu.endian" value="little" />
+    <property name="ivy.revision" value="working@lt-wowux" />
+    <property name="user.timezone.ivy.instance" value="America/Los_Angeles" />
+    <property name="java.vm.version" value="23.21-b01" />
+    <property name="ivy.default.ivy.user.dir" value="/home/kenl/.ivy2" />
+    <property name="java.class.path" value="/wdrive/dev/builds/hohenheim/lib/test/ant-1.9.2.jar:/wdrive/dev/builds/hohenheim/lib/test/ant-contrib-1.0b3.jar:/wdrive/dev/builds/hohenheim/lib/test/ant-junit-1.9.2.jar:/wdrive/dev/builds/hohenheim/lib/test/ant-junit4-1.9.2.jar:/wdrive/dev/builds/hohenheim/lib/test/ant-launcher-1.9.2.jar:/wdrive/dev/builds/hohenheim/lib/test/bcmail-jdk15on-149.jar:/wdrive/dev/builds/hohenheim/lib/test/bcpkix-jdk15on-149.jar:/wdrive/dev/builds/hohenheim/lib/test/bcprov-jdk15on-149.jar:/wdrive/dev/builds/hohenheim/lib/test/bonecp-0.7.1.RELEASE.jar:/wdrive/dev/builds/hohenheim/lib/test/bultitude-0.2.2.jar:/wdrive/dev/builds/hohenheim/lib/test/cljunit-0.3.0.jar:/wdrive/dev/builds/hohenheim/lib/test/clojure-1.5.1.jar:/wdrive/dev/builds/hohenheim/lib/test/commons-codec-1.8.jar:/wdrive/dev/builds/hohenheim/lib/test/commons-dbutils-1.5.jar:/wdrive/dev/builds/hohenheim/lib/test/commons-email-1.3.1.jar:/wdrive/dev/builds/hohenheim/lib/test/commons-fileupload-1.3.jar:/wdrive/dev/builds/hohenheim/lib/test/commons-io-2.4.jar:/wdrive/dev/builds/hohenheim/lib/test/commons-lang3-3.1.jar:/wdrive/dev/builds/hohenheim/lib/test/commons-logging-1.1.1.jar:/wdrive/dev/builds/hohenheim/lib/test/commons-net-3.3.jar:/wdrive/dev/builds/hohenheim/lib/test/compiler-0.8.9.jar:/wdrive/dev/builds/hohenheim/lib/test/data.codec-0.1.0.jar:/wdrive/dev/builds/hohenheim/lib/test/data.json-0.2.2.jar:/wdrive/dev/builds/hohenheim/lib/test/data.xml-0.0.7.jar:/wdrive/dev/builds/hohenheim/lib/test/dynapath-0.2.3.jar:/wdrive/dev/builds/hohenheim/lib/test/ehcache-2.7.0.jar:/wdrive/dev/builds/hohenheim/lib/test/freemarker-2.3.19.jar:/wdrive/dev/builds/hohenheim/lib/test/geronimo-jms_1.1_spec-1.1.1.jar:/wdrive/dev/builds/hohenheim/lib/test/groovy-all-2.1.6.jar:/wdrive/dev/builds/hohenheim/lib/test/guava-14.0.1.jar:/wdrive/dev/builds/hohenheim/lib/test/h2-1.3.172.jar:/wdrive/dev/builds/hohenheim/lib/test/hamcrest-core-1.3.jar:/wdrive/dev/builds/hohenheim/lib/test/httpclient-4.2.5.jar:/wdrive/dev/builds/hohenheim/lib/test/httpcore-4.2.4.jar:/wdrive/dev/builds/hohenheim/lib/test/httpcore-nio-4.2.4.jar:/wdrive/dev/builds/hohenheim/lib/test/ivy-2.3.0.jar:/wdrive/dev/builds/hohenheim/lib/test/jasypt-1.9.0.jar:/wdrive/dev/builds/hohenheim/lib/test/java.jdbc-0.3.0-alpha4.jar:/wdrive/dev/builds/hohenheim/lib/test/java.jmx-0.2.0.jar:/wdrive/dev/builds/hohenheim/lib/test/javamail-1.5.0.jar:/wdrive/dev/builds/hohenheim/lib/test/javax-jms-6.0.0.jar:/wdrive/dev/builds/hohenheim/lib/test/javax-management-6.0.0.jar:/wdrive/dev/builds/hohenheim/lib/test/javax-transaction-6.0.0.jar:/wdrive/dev/builds/hohenheim/lib/test/javax.servlet-3.0.0.v201112011016.jar:/wdrive/dev/builds/hohenheim/lib/test/jbcrypt-0.3m.jar:/wdrive/dev/builds/hohenheim/lib/test/jcommander-1.30.jar:/wdrive/dev/builds/hohenheim/lib/test/jdom2-2.0.4.jar:/wdrive/dev/builds/hohenheim/lib/test/jetty-continuation-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/jetty-http-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/jetty-io-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/jetty-security-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/jetty-server-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/jetty-servlet-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/jetty-util-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/jetty-webapp-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/jetty-xml-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/joda-time-2.2.jar:/wdrive/dev/builds/hohenheim/lib/test/jregex-1.2_01.jar:/wdrive/dev/builds/hohenheim/lib/test/js-1.6R7.jar:/wdrive/dev/builds/hohenheim/lib/test/jsr305-2.0.1.jar:/wdrive/dev/builds/hohenheim/lib/test/junit-4.11.jar:/wdrive/dev/builds/hohenheim/lib/test/logback-classic-1.0.13.jar:/wdrive/dev/builds/hohenheim/lib/test/logback-core-1.0.13.jar:/wdrive/dev/builds/hohenheim/lib/test/math.combinatorics-0.0.4.jar:/wdrive/dev/builds/hohenheim/lib/test/math.numeric-tower-0.0.2.jar:/wdrive/dev/builds/hohenheim/lib/test/mysql-connector-java-5.1.23-bin.jar:/wdrive/dev/builds/hohenheim/lib/test/netty-3.6.6.Final.jar:/wdrive/dev/builds/hohenheim/lib/test/postgresql-9.2-1002.jdbc4.jar:/wdrive/dev/builds/hohenheim/lib/test/scala-actors-2.10.0.jar:/wdrive/dev/builds/hohenheim/lib/test/scala-compiler-2.10.2.jar:/wdrive/dev/builds/hohenheim/lib/test/scala-library-2.10.2.jar:/wdrive/dev/builds/hohenheim/lib/test/scala-reflect-2.10.2.jar:/wdrive/dev/builds/hohenheim/lib/test/scalate-core_2.10-1.6.1.jar:/wdrive/dev/builds/hohenheim/lib/test/scalate-util_2.10-1.6.1.jar:/wdrive/dev/builds/hohenheim/lib/test/scalatest_2.10-1.9.1.jar:/wdrive/dev/builds/hohenheim/lib/test/slf4j-api-1.7.5.jar:/wdrive/dev/builds/hohenheim/lib/test/tools-1.7.0.jar:/wdrive/dev/builds/hohenheim/lib/test/tools.logging-0.2.6.jar:/wdrive/dev/builds/hohenheim/lib/test/websocket-api-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/websocket-client-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/websocket-common-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/websocket-server-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/websocket-servlet-9.0.4.v20130625.jar:/wdrive/dev/builds/hohenheim/lib/test/yuicompressor-2.4.7.jar:/wdrive/opt/lang/scala/lib/akka-actors.jar:/wdrive/opt/lang/scala/lib/diffutils.jar:/wdrive/opt/lang/scala/lib/jline.jar:/wdrive/opt/lang/scala/lib/scala-actors-migration.jar:/wdrive/opt/lang/scala/lib/scala-actors.jar:/wdrive/opt/lang/scala/lib/scala-compiler.jar:/wdrive/opt/lang/scala/lib/scala-library.jar:/wdrive/opt/lang/scala/lib/scala-partest.jar:/wdrive/opt/lang/scala/lib/scala-reflect.jar:/wdrive/opt/lang/scala/lib/scala-swing.jar:/wdrive/opt/lang/scala/lib/scalap.jar:/wdrive/opt/lang/scala/lib/typesafe-config.jar:/wdrive/opt/lang/clojure/lib/clojure-1.5.1.jar:/wdrive/dev/builds/hohenheim/distrib/hohenheim-1.0.0-SNAPSHOT.jar:/wdrive/dev/builds/hohenheim/distrib/hohenheim-spec-1.0.0-SNAPSHOT.jar:/wdrive/dev/builds/hohenheim/build:/wdrive/dev/builds/hohenheim/qa/test-classes:/wdrive/mygithub/hohenheim/src/test/clojure:/wdrive/mygithub/hohenheim/*:/wdrive/dev/builds/blason/lib/test/jetty-continuation-8.1.8.v20121106.jar:/wdrive/dev/builds/blason/lib/test/scalate-util_2.10-1.6.1.jar:/wdrive/dev/builds/blason/lib/test/jasypt-1.9.0.jar:/wdrive/dev/builds/blason/lib/test/logback-core-1.0.9.jar:/wdrive/dev/builds/blason/lib/test/ant-junit4-1.8.4.jar:/wdrive/dev/builds/blason/lib/test/javax.servlet-3.0.0.v201112011016.jar:/wdrive/dev/builds/blason/lib/test/commons-logging-1.1.1.jar:/wdrive/dev/builds/blason/lib/test/ivy-2.3.0.jar:/wdrive/dev/builds/blason/lib/test/jdom2-2.0.4.jar:/wdrive/dev/builds/blason/lib/test/javax-jms-6.0.0.jar:/wdrive/dev/builds/blason/lib/test/netty-3.6.5.Final.jar:/wdrive/dev/builds/blason/lib/test/jetty-http-8.1.8.v20121106.jar:/wdrive/dev/builds/blason/lib/test/bcpkix-jdk15on-148.jar:/wdrive/dev/builds/blason/lib/test/javax-management-6.0.0.jar:/wdrive/dev/builds/blason/lib/test/javamail-1.4.5.jar:/wdrive/dev/builds/blason/lib/test/commons-codec-1.7.jar:/wdrive/dev/builds/blason/lib/test/bcmail-jdk15on-148.jar:/wdrive/dev/builds/blason/lib/test/ant-junit-1.8.4.jar:/wdrive/dev/builds/blason/lib/test/commons-dbutils-1.5.jar:/wdrive/dev/builds/blason/lib/test/commons-io-2.4.jar:/wdrive/dev/builds/blason/lib/test/freemarker-2.3.19.jar:/wdrive/dev/builds/blason/lib/test/commons-net-3.2.jar:/wdrive/dev/builds/blason/lib/test/mysql-connector-java-5.1.23-bin.jar:/wdrive/dev/builds/blason/lib/test/guava-14.0.1.jar:/wdrive/dev/builds/blason/lib/test/jetty-webapp-8.1.8.v20121106.jar:/wdrive/dev/builds/blason/lib/test/jetty-server-8.1.8.v20121106.jar:/wdrive/dev/builds/blason/lib/test/empire-db-2.4.1.jar:/wdrive/dev/builds/blason/lib/test/h2-1.3.170.jar:/wdrive/dev/builds/blason/lib/test/postgresql-9.2-1002.jdbc4.jar:/wdrive/dev/builds/blason/lib/test/commons-beanutils-1.8.3.jar:/wdrive/dev/builds/blason/lib/test/jetty-security-8.1.8.v20121106.jar:/wdrive/dev/builds/blason/lib/test/tools-1.7.0.jar:/wdrive/dev/builds/blason/lib/test/commons-email-1.2.jar:/wdrive/dev/builds/blason/lib/test/yuicompressor-2.4.7.jar:/wdrive/dev/builds/blason/lib/test/javax-transaction-6.0.0.jar:/wdrive/dev/builds/blason/lib/test/scala-compiler-2.10.1.jar:/wdrive/dev/builds/blason/lib/test/ant-1.8.4.jar:/wdrive/dev/builds/blason/lib/test/groovy-all-2.1.0.jar:/wdrive/dev/builds/blason/lib/test/commons-lang3-3.1.jar:/wdrive/dev/builds/blason/lib/test/scalate-core_2.10-1.6.1.jar:/wdrive/dev/builds/blason/lib/test/bonecp-0.7.1.RELEASE.jar:/wdrive/dev/builds/blason/lib/test/jcommander-1.30.jar:/wdrive/dev/builds/blason/lib/test/scalap-2.10.0.jar:/wdrive/dev/builds/blason/lib/test/slf4j-api-1.7.2.jar:/wdrive/dev/builds/blason/lib/test/scala-library-2.10.1.jar:/wdrive/dev/builds/blason/lib/test/jetty-xml-8.1.8.v20121106.jar:/wdrive/dev/builds/blason/lib/test/httpcore-nio-4.2.3.jar:/wdrive/dev/builds/blason/lib/test/commons-fileupload-1.2.2.jar:/wdrive/dev/builds/blason/lib/test/logback-classic-1.0.9.jar:/wdrive/dev/builds/blason/lib/test/js-1.6R7.jar:/wdrive/dev/builds/blason/lib/test/scala-actors-2.10.0.jar:/wdrive/dev/builds/blason/lib/test/squeryl_2.10-0.9.5-6.jar:/wdrive/dev/builds/blason/lib/test/jetty-util-8.1.8.v20121106.jar:/wdrive/dev/builds/blason/lib/test/scalatest_2.10-1.9.1.jar:/wdrive/dev/builds/blason/lib/test/httpclient-4.2.3.jar:/wdrive/dev/builds/blason/lib/test/jetty-servlet-8.1.8.v20121106.jar:/wdrive/dev/builds/blason/lib/test/cglib-nodep-2.2.jar:/wdrive/dev/builds/blason/lib/test/jetty-websocket-8.1.8.v20121106.jar:/wdrive/dev/builds/blason/lib/test/compiler-0.8.9.jar:/wdrive/dev/builds/blason/lib/test/ant-launcher-1.8.4.jar:/wdrive/dev/builds/blason/lib/test/jetty-io-8.1.8.v20121106.jar:/wdrive/dev/builds/blason/lib/test/geronimo-jms_1.1_spec-1.1.1.jar:/wdrive/dev/builds/blason/lib/test/httpcore-4.2.3.jar:/wdrive/dev/builds/blason/lib/test/ant-contrib-1.0b3.jar:/wdrive/dev/builds/blason/lib/test/jregex-1.2_01.jar:/wdrive/dev/builds/blason/lib/test/jsr305-2.0.1.jar:/wdrive/dev/builds/blason/lib/test/clojure-1.5.1.jar:/wdrive/dev/builds/blason/lib/test/junit-4.8.1.jar:/wdrive/dev/builds/blason/lib/test/bcprov-jdk15on-148.jar:/wdrive/dev/builds/blason/lib/test/ehcache-2.7.0.jar:/wdrive/dev/builds/blason/lib/test/scala-reflect-2.10.1.jar:/wdrive/opt/apache/ant/lib/ant-launcher.jar:/wdrive/opt/apache/ant/lib/ant.jar:/wdrive/opt/apache/ant/lib/ant-junit.jar:/wdrive/opt/apache/ant/lib/ant-junit4.jar" />
+    <property name="user.home.ivy.instance" value="/home/kenl" />
+    <property name="basedir.ivy.instance" value="/wdrive/mygithub/hohenheim" />
+    <property name="ant.library.dir" value="/wdrive/opt/apache/ant/lib" />
+    <property name="os.arch" value="amd64" />
+    <property name="ivy.conf.file" value="/wdrive/mygithub/hohenheim/ivysettings.xml" />
+    <property name="java.awt.graphicsenv.ivy.instance" value="sun.awt.X11GraphicsEnvironment" />
+    <property name="java.vendor.url.bug.ivy.instance" value="http://bugreport.sun.com/bugreport/" />
+    <property name="java.vm.specification.version.ivy.instance" value="1.7" />
+    <property name="sun.java.launcher" value="SUN_STANDARD" />
+    <property name="java.awt.printerjob.ivy.instance" value="sun.print.PSPrinterJob" />
+    <property name="ivy.settings.dir.ivy.instance" value="/wdrive/mygithub/hohenheim" />
+    <property name="ivy.resolver.default.check.modified.ivy.instance" value="false" />
+    <property name="ant.core.lib" value="/wdrive/opt/apache/ant/lib/ant.jar" />
+    <property name="java.vm.specification.vendor" value="Oracle Corporation" />
+    <property name="ivy.settings.dir" value="/wdrive/mygithub/hohenheim" />
+    <property name="build.version" value="1.0.0-SNAPSHOT" />
+    <property name="file.separator" value="/" />
+    <property name="user.language.ivy.instance" value="en" />
+    <property name="user.country.ivy.instance" value="US" />
+    <property name="ivy.conf.url.ivy.instance" value="file:/wdrive/mygithub/hohenheim/ivysettings.xml" />
+    <property name="java.runtime.version" value="1.7.0_21-b11" />
+    <property name="java.specification.name.ivy.instance" value="Java Platform API Specification" />
+    <property name="sun.boot.class.path" value="/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/resources.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/rt.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/sunrsasign.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/jsse.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/jce.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/charsets.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/lib/jfr.jar:/wdrive/opt/j2se/jdk1.7.0_21/jre/classes" />
+    <property name="ant.file.hohenheim" value="/wdrive/mygithub/hohenheim/build.xml" />
+    <property name="ivy.conf.dir" value="/wdrive/mygithub/hohenheim" />
+    <property name="ivy.retrieve.pattern" value="/wdrive/dev/builds/hohenheim/lib/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="user.country" value="US" />
+    <property name="java.version.ivy.instance" value="1.7.0_21" />
+    <property name="ivy.resolved.file" value="/wdrive/mygithub/hohenheim/ivy.xml" />
+    <property name="clojure.dir" value="/wdrive/opt/lang/clojure/lib" />
+    <property name="os.arch.ivy.instance" value="amd64" />
+    <property name="java.vendor" value="Oracle Corporation" />
+    <property name="ivy.project.dir" value="/wdrive/mygithub/hohenheim" />
+    <property name="java.specification.version" value="1.7" />
+    <property name="sun.arch.data.model" value="64" />
+    <property name="ivy.buildlist.ivyfilepath" value="ivy.xml" />
+  </properties>
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutils-byteutils  &lt;testcljc/util/byteutils.clj:30&gt;" time="0.005" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.byteutils" time="0.006" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-codes  &lt;testcljc/util/codes.clj:27&gt;" time="0.012" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.codes" time="0.012" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-coreutils  &lt;testcljc/util/coreutils.clj:44&gt;" time="0.091" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.coreutils" time="0.091" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-dateutils  &lt;testcljc/util/dateutils.clj:27&gt;" time="0.006" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.dateutils" time="0.006" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-fileutils  &lt;testcljc/util/fileutils.clj:35&gt;" time="0.009" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.fileutils" time="0.009" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-guids  &lt;testcljc/util/guids.clj:31&gt;" time="0.006" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.guids" time="0.006" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-ioutils  &lt;testcljc/util/ioutils.clj:42&gt;" time="0.025" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.ioutils" time="0.027" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-metautils  &lt;testcljc/util/metautils.clj:27&gt;" time="0.038" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.metautils" time="0.038" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-mimeutils  &lt;testcljc/util/mimeutils.clj:33&gt;" time="0.017" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.mimeutils" time="0.017" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-procutils  &lt;testcljc/util/procutils.clj:33&gt;" time="3.506" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.procutils" time="3.506" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-seqnumgen  &lt;testcljc/util/seqnumgen.clj:27&gt;" time="0.002" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.seqnumgen" time="0.003" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-strutils  &lt;testcljc/util/strutils.clj:27&gt;" time="0.017" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.strutils" time="0.017" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testutil-wi32ini  &lt;testcljc/util/win32ini.clj:28&gt;" time="0.01" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.util.win32ini" time="0.01" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testnet-netstuff  &lt;testcljc/net/netstuff.clj:28&gt;" time="0.337" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.net.netstuff" time="0.337" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testi18n-i18nstuff  &lt;testcljc/i18n/i18nstuff.clj:28&gt;" time="0.002" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.i18n.i18nstuff" time="0.003" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testcrypto-cryptostuff  &lt;testcljc/crypto/cryptostuff.clj:49&gt;" time="5.585" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.crypto.cryptostuff" time="5.586" />
+  <testcase classname="junit.framework.JUnit4TestCaseFacade" name="testcrypto-mimestuff  &lt;testcljc/crypto/mimestuff.clj:47&gt;" time="0.27" />
+  <testcase classname="junit.framework.TestSuite" name="testcljc.crypto.mimestuff" time="0.271" />
+  <system-out><![CDATA[18:22:11.249 [main] DEBUG comzotohcljc.net.comms - http-response:  content-encoding:  nil 
+ content-type:  text/html; charset=ISO-8859-1
+18:22:14.474 [main] DEBUG comzotohcljc.crypto.core - Generating keypair for algo  RSA , length  1024
+18:22:14.640 [main] DEBUG comzotohcljc.crypto.core - make-csrreq: dnStr=  C=AU,ST=NSW,L=Sydney,O=Google,OU=HQ,CN=www.google.com , key-len=  1024
+18:22:14.640 [main] DEBUG comzotohcljc.crypto.core - Generating keypair for algo  RSA , length  1024
+18:22:14.793 [main] DEBUG comzotohcljc.crypto.core - Generating keypair for algo  RSA , length  1024
+18:22:14.835 [main] DEBUG comzotohcljc.crypto.core - mkSSV1Cert: dn=  C=AU,ST=NSW,L=Sydney,O=Google , algo=  SHA1WithRSAEncryption , start= #inst "2013-08-25T01:22:14.793-00:00" , end= #inst "2050-02-01T08:00:00.000-00:00"
+18:22:14.869 [main] DEBUG comzotohcljc.crypto.core - Generating keypair for algo  DSA , length  1024
+18:22:15.846 [main] DEBUG comzotohcljc.crypto.core - mkSSV1Cert: dn=  C=AU,ST=NSW,L=Sydney,O=Google , algo=  SHA1withDSA , start= #inst "2013-08-25T01:22:14.867-00:00" , end= #inst "2050-02-01T08:00:00.000-00:00"
+18:22:15.851 [main] DEBUG comzotohcljc.crypto.core - Generating keypair for algo  RSA , length  1024
+18:22:15.934 [main] DEBUG comzotohcljc.crypto.core - Generating keypair for algo  DSA , length  1024
+]]></system-out>
+  <system-err><![CDATA[SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/wdrive/dev/builds/hohenheim/lib/test/logback-classic-1.0.13.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/wdrive/dev/builds/blason/lib/test/logback-classic-1.0.9.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [ch.qos.logback.classic.util.ContextSelectorStaticBinder]
+]]></system-err>
+</testsuite>

@@ -268,15 +268,20 @@
        -->
 
 
+  <target name="runtests-clj" >
+    <junit logfailedtests="true" showoutput="false" printsummary="yes" fork="yes" haltonfailure="yes" >
+      <classpath refid="test.path.id"/>
+      <formatter type="plain" usefile="false"/>
+      <test name="com.zotoh.frwk.util.ClojureJUnit" haltonfailure="no" outfile="result">
+        <formatter type="xml"/>
+      </test>
+    </junit>
+
+  </target>
+
   <target name="run_test_code" >
-    <!--
-    <echo message="No test to run."/>
-    -->
-    <java classname="clojure.main" failonerror="true" fork="true" maxmemory="2048m"
-      classpathref="test.path.id">
-      <arg value="-e"/>
-      <arg value="(use '[clojure.test])(run-tests 'testcljc.util.byteutils)"/>
-    </java>
+    <!-- <echo message="No test to run."/> -->
+    <antcall target="runtests-clj"/>
   </target>
 
   <!--

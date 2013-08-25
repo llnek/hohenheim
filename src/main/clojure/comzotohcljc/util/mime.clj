@@ -199,7 +199,7 @@
     (let [ ^Pattern rgx _extRegex
            ^Matcher mc (.matcher rgx (.toLowerCase (.getName file)))
            ex (if (.matches mc) (.group mc 1) "")
-           p (SU/nsb (get (mime-cache) ex)) ]
+           p (if (SU/hgl? ex) ((keyword ex) (mime-cache))) ]
       (if (SU/hgl? p) p dft))) )
 
 (defn guess-contenttype "Guess the content-type of file."

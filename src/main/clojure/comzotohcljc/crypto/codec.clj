@@ -182,14 +182,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- jaDecr ^String [^String pkey ^String text]
-  (doto (StrongTextEncryptor.)
-    (.setPassword pkey)
-    (.decrypt text)) )
+  (let [ c (StrongTextEncryptor.) ]
+    (.setPassword c pkey)
+    (.decrypt c text)) )
 
 (defn- jaEncr ^String [^String pkey ^String text]
-  (doto (StrongTextEncryptor.)
-    (.setPassword pkey)
-    (.encrypt text)) )
+  (let [ c (StrongTextEncryptor.) ]
+    (.setPassword c pkey)
+    (.encrypt c text)) )
 
 (defn jasypt-cryptor ^comzotohcljc.crypto.codec.BaseCryptor []
   (reify BaseCryptor

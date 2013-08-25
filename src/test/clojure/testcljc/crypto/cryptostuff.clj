@@ -28,6 +28,7 @@
 (require '[comzotohcljc.crypto.codec :as RT])
 (require '[comzotohcljc.crypto.stores :as ST])
 (require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.io :as IO])
 (require '[comzotohcljc.crypto.core :as RU])
 
@@ -53,26 +54,26 @@
 (is (= "heeloo" (let [ c (RT/jasypt-cryptor) ]
                       (.decrypt c (.encrypt c "heeloo")))))
 
-(is (= "heeloo" (let [ c (RT/jasypt-cryptor) ]
-                      (.decrypt c SECRET (.encrypt c SECRET "heeloo")))))
+(is (= "heeloo" (let [ c (RT/jasypt-cryptor) pkey (SU/nsb SECRET) ]
+                      (.decrypt c pkey (.encrypt c pkey "heeloo")))))
 
 (is (= "heeloo" (let [ c (RT/java-cryptor) ]
                       (.decrypt c (.encrypt c "heeloo")))))
 
-(is (= "heeloo" (let [ c (RT/java-cryptor) ]
-                      (.decrypt c TESTPWD (.encrypt c TESTPWD "heeloo")))))
+(is (= "heeloo" (let [ c (RT/java-cryptor) pkey (SU/nsb TESTPWD) ]
+                      (.decrypt c pkey (.encrypt c pkey "heeloo")))))
 
 (is (= "heeloo" (let [ c (RT/bouncy-cryptor) ]
                       (.decrypt c (.encrypt c "heeloo")))))
 
-(is (= "heeloo" (let [ c (RT/bouncy-cryptor) ]
-                      (.decrypt c TESTPWD (.encrypt c TESTPWD "heeloo")))))
+(is (= "heeloo" (let [ c (RT/bouncy-cryptor) pkey (SU/nsb TESTPWD) ]
+                      (.decrypt c pkey (.encrypt c pkey "heeloo")))))
 
 (is (= (.length ^String (.text (RT/create-strong-pwd 16))) 16))
 (is (= (.length (RT/create-random-string 64)) 64))
 
-(is (satisfies? comzotohcljc.crypto.codec.PasswordAPI (RT/pwdify "secret-text")))
-(is (.startsWith ^String (.encoded ^comzotohcljc.crypto.codec.PasswordAPI (RT/pwdify "secret-text")) "CRYPT:"))
+(is (instance? comzotohcljc.crypto.codec.Password (RT/pwdify "secret-text")))
+(is (.startsWith ^String (.encoded ^comzotohcljc.crypto.codec.Password (RT/pwdify "secret-text")) "CRYPT:"))
 
 
 (is (= "SHA-512" (.getAlgorithm (RU/make-MsgDigest RU/*SHA_512*))))
@@ -98,11 +99,13 @@
           (and (= (count v) 2) (> (alength ^bytes (first v)) 0) (> (alength ^bytes (nth v 1)) 0))) )
 
 (is (let [ fout (IO/make-tmpfile "kenl" ".p12")]
-      (RU/make-ssv1PKCS12 (Date.) ENDDT "C=AU,ST=NSW,L=Sydney,O=Google" HELPME 1024 fout)
+      (RU/make-ssv1PKCS12 "C=AU,ST=NSW,L=Sydney,O=Google" HELPME fout
+                          { :start (Date.) :end ENDDT :keylen 1024 })
       (> (.length fout) 0)))
 
 (is (let [ fout (IO/make-tmpfile "" ".jks") ]
-      (RU/make-ssv1JKS (Date.) ENDDT "C=AU,ST=NSW,L=Sydney,O=Google" SECRET 1024 fout)
+      (RU/make-ssv1JKS "C=AU,ST=NSW,L=Sydney,O=Google" SECRET fout
+                          { :start (Date.) :end ENDDT :keylen 1024 })
             (> (.length fout) 0)))
 
 (is (let [ ^KeyStore$PrivateKeyEntry pke (.keyEntity ^comzotohcljc.crypto.stores.CryptoStore ROOTCS 
@@ -111,7 +114,8 @@
        fout (IO/make-tmpfile "" ".p12")
        pk (.getPrivateKey pke)
        cs (.getCertificateChain pke) ]
-            (RU/make-ssv3PKCS12 (Date.) ENDDT "C=AU,ST=NSW,L=Sydney,O=Google" SECRET 1024  cs pk fout)
+            (RU/make-ssv3PKCS12 "C=AU,ST=NSW,L=Sydney,O=Google" SECRET fout
+                                { :start (Date.) :end ENDDT :issuerCerts (seq cs) :issuerKey pk })
               (> (.length fout) 0)))
 
 (is (let [ ^KeyStore$PrivateKeyEntry pke (.keyEntity  ^comzotohcljc.crypto.stores.CryptoStore ROOTKS 
@@ -120,7 +124,8 @@
        fout (IO/make-tmpfile "" ".jks")
        pk (.getPrivateKey pke)
        cs (.getCertificateChain pke) ]
-            (RU/make-ssv3JKS (Date.) ENDDT "C=AU,ST=NSW,L=Sydney,O=Google" SECRET 1024  cs pk fout)
+            (RU/make-ssv3JKS "C=AU,ST=NSW,L=Sydney,O=Google" SECRET fout
+                                { :start (Date.) :end ENDDT :issuerCerts (seq cs) :issuerKey pk })
               (> (.length fout) 0)))
 
 (is (let [ ^File fout (IO/make-tmpfile "" ".p7b") ]
