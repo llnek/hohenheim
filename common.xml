@@ -59,13 +59,14 @@
         target: test-build
        ================================= -->
 
-  <target name="test-build" depends="build">
-
+  <target name="test-build">
     <antcall target="compile_test_code"/>
     <antcall target="run_test_code"/>
-
     <echo level="verbose" message="test called - OK"/>
+  </target>
 
+  <target name="fulltest-build" depends="build">
+    <antcall target="test-build"/>
   </target>
 
   <!-- =================================
@@ -93,6 +94,7 @@
 
   <target name="clean">
     <delete dir="${build.dir}"/>
+    <delete dir="${qa.dir}"/>
     <delete dir="${distrib.dir}"/>
     <delete dir="${pack.dir}"/>
     <delete dir="${lib.dir}"/>

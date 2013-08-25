@@ -6,7 +6,7 @@
   <include file="${basedir}/common.xml"/>
 
   <!--
-       paths used for compilation and run  
+       paths used for compilation and run
        -->
 
   <path id="compile.path.id">
@@ -40,13 +40,6 @@
       <compilerarg line="-Xlint:deprecation -Xlint:unchecked"/>
       <include name="**/*.java"/>
     </javac>
-  </target>
-
-  <target name="clj-one">
-    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
-      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
-      <sysproperty key="clojure.compile.path" value="${build.dir}" />
-    </java>
   </target>
 
   <target name="clj-hhh-main">
@@ -179,7 +172,6 @@
   <target name="compile_and_jar">
 
     <!-- build the classloaders -->
-
     <scalac srcdir="${src.dir}/scala" destdir="${build.dir}" classpathref="compile.path.id"
       fork="true" jvmargs="-Xmx5120M -Xms1024M">
       <include name="com/zotoh/hohenheim/loaders/**/*.scala"/>
@@ -232,8 +224,36 @@
        compile test code
        -->
 
-  <target name="clj-test-all">
-    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" 
+  <target name="compile-tests-java">
+    <javac sourcepath="" srcdir="${test.dir}/java" destdir="${build.test.dir}"
+      includeantruntime="false" excludes=""
+      debug="${build.debug}" debuglevel="lines,vars,source" classpathref="test.path.id">
+      <compilerarg line="-Xlint:deprecation -Xlint:unchecked"/>
+      <include name="**/*.java"/>
+    </javac>
+    <copy todir="${build.test.dir}">
+      <fileset dir="${test.dir}/java">
+        <exclude name="**/*.java"/>
+        <exclude name="**/.svn"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="compile-tests-scala">
+    <scalac srcdir="${test.dir}/scala" destdir="${build.test.dir}" classpathref="test.path.id"
+      fork="true" jvmargs="-Xmx5120M -Xms1024M">
+      <include name="**/*.scala"/>
+    </scalac>
+    <copy todir="${build.test.dir}">
+      <fileset dir="${test.dir}/scala">
+        <exclude name="**/*.scala"/>
+        <exclude name="**/.svn"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="compile-tests-clj">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m"
       classpathref="test.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.test.dir}" />
@@ -255,18 +275,50 @@
       <arg value="testcljc.crypto.cryptostuff" />
       <arg value="testcljc.crypto.mimestuff" />
     </java>
+    <copy todir="${build.test.dir}">
+      <fileset dir="${test.dir}/clojure">
+        <exclude name="**/*.clj"/>
+        <exclude name="**/.svn"/>
+      </fileset>
+    </copy>
   </target>
 
   <target name="compile_test_code" >
     <mkdir dir="${report.test.dir}"/>
     <mkdir dir="${build.test.dir}"/>
-    <antcall target="clj-test-all"/>
+    <antcall target="compile-tests-java"/>
+    <antcall target="compile-tests-scala"/>
+    <antcall target="compile-tests-clj"/>
   </target>
 
   <!--
        run test code
        -->
 
+  <target name="runtests-java" >
+    <junit logfailedtests="true" showoutput="false" printsummary="yes" fork="yes" haltonfailure="yes" >
+      <classpath refid="test.path.id"/>
+      <batchtest todir="${report.test.dir}" >
+          <fileset dir="${build.test.dir}">
+            <include name="**/JUTest.*"/>
+          </fileset>
+          <formatter type="plain" usefile="false"/>
+      </batchtest>
+    </junit>
+  </target>
+
+  <target name="runtests-scala">
+    <taskdef name="scalatest" classname="org.scalatest.tools.ScalaTestAntTask">
+      <classpath refid="test.path.id"/>
+    </taskdef>
+    <scalatest haltonfailure="true" fork="true" maxmemory="888M">
+      <reporter type="stderr"/>
+      <wildcard package="testzotoh.scala"/>
+      <runpath>
+        <pathelement path="${build.test.dir}"/>
+      </runpath>
+    </scalatest>
+  </target>
 
   <target name="runtests-clj" >
     <junit logfailedtests="true" showoutput="false" printsummary="yes" fork="yes" haltonfailure="yes" >
@@ -279,8 +331,11 @@
 
   </target>
 
+
   <target name="run_test_code" >
     <!-- <echo message="No test to run."/> -->
+    <antcall target="runtests-java"/>
+    <antcall target="runtests-scala"/>
     <antcall target="runtests-clj"/>
   </target>
 
@@ -405,6 +460,8 @@
 
   <target name="release" depends="common.pub-distro"/>
   <target name="jar" depends="common.pub-jar"/>
+
+  <target name="gentest" depends="common.fulltest-build"/>
   <target name="test" depends="common.test-build"/>
 
 
