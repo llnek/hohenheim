@@ -1,23 +1,21 @@
 /*??
- * COPYRIGHT (C) 2012-2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.
- *
- * THIS IS FREE SOFTWARE; YOU CAN REDISTRIBUTE IT AND/OR
- * MODIFY IT UNDER THE TERMS OF THE APACHE LICENSE,
- * VERSION 2.0 (THE "LICENSE").
- *
- * THIS LIBRARY IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL,
- * BUT WITHOUT ANY WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF
- * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
- *
- * SEE THE LICENSE FOR THE SPECIFIC LANGUAGE GOVERNING PERMISSIONS
- * AND LIMITATIONS UNDER THE LICENSE.
- *
- * You should have received a copy of the Apache License
- * along with this distribution; if not, you may obtain a copy of the
- * License at
- * http://www.apache.org/licenses/LICENSE-2.0
- *
+*
+* Copyright (c) 2013 Cherimoia, LLC. All rights reserved.
+*
+* This library is distributed in the hope that it will be useful
+* but without any warranty; without even the implied warranty of
+* merchantability or fitness for a particular purpose.
+*
+* The use and distribution terms for this software are covered by the
+* Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
+* which can be found in the file epl-v10.html at the root of this distribution.
+*
+* By using this software in any fashion, you are agreeing to be bound by
+* the terms of this license.
+* You must not remove this notice, or any other, from this software.
+*
  ??*/
+
 
 package com.zotoh.hohenheim.core
 
