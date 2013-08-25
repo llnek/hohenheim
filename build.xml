@@ -298,11 +298,12 @@
   <target name="runtests-java" >
     <junit logfailedtests="true" showoutput="false" printsummary="yes" fork="yes" haltonfailure="yes" >
       <classpath refid="test.path.id"/>
-      <batchtest todir="${report.test.dir}" >
+      <formatter type="plain" usefile="false"/>
+      <batchtest todir="${report.test.dir}">
           <fileset dir="${build.test.dir}">
             <include name="**/JUTest.*"/>
           </fileset>
-          <formatter type="plain" usefile="false"/>
+          <formatter type="xml"/>
       </batchtest>
     </junit>
   </target>
@@ -312,7 +313,7 @@
       <classpath refid="test.path.id"/>
     </taskdef>
     <scalatest haltonfailure="true" fork="true" maxmemory="888M">
-      <reporter type="stderr"/>
+      <reporter type="junitxml" directory="${report.test.dir}"/>
       <wildcard package="testzotoh.scala"/>
       <runpath>
         <pathelement path="${build.test.dir}"/>
@@ -324,7 +325,8 @@
     <junit logfailedtests="true" showoutput="false" printsummary="yes" fork="yes" haltonfailure="yes" >
       <classpath refid="test.path.id"/>
       <formatter type="plain" usefile="false"/>
-      <test name="com.zotoh.frwk.util.ClojureJUnit" haltonfailure="no" outfile="result">
+      <test name="com.zotoh.frwk.util.ClojureJUnit" haltonfailure="no"
+        todir="${report.test.dir}">
         <formatter type="xml"/>
       </test>
     </junit>
