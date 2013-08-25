@@ -400,10 +400,6 @@
       <fileset dir="${basedir}/etc"/>
     </copy>
 
-    <copy todir="${pack.dir}/conf">
-      <fileset dir="${basedir}/conf"/>
-    </copy>
-
   </target>
 
   <!--
