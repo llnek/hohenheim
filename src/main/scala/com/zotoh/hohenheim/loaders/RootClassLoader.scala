@@ -64,7 +64,7 @@ class ExecClassLoader(par:ClassLoader) extends AbstractClassLoader( new RootClas
   private def load(base:String) {
     val p= new File(base, "exec")
 
-    if (!_loaded) {
+    if (p.exists() && !_loaded) {
       findUrls(p)
     }
 

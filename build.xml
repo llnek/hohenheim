@@ -454,8 +454,71 @@
   <!--
        pack samples and/or demos
        -->
+  <target name="create-demo-app">
+    <if><or>
+        <equals arg1="${appid}" arg2="jetty"/>
+        <equals arg1="${appid}" arg2="mvc"/></or>
+      <then>
+        <mkdir dir="${demo.dir}/${appid}/public/images"/>
+        <mkdir dir="${demo.dir}/${appid}/public/scripts"/>
+        <mkdir dir="${demo.dir}/${appid}/public/styles"/>
+        <copy todir="${demo.dir}/${appid}/public/images" file="${demo.src}/demo/favicon.ico"/>
+        <copy todir="${demo.dir}/${appid}/public/scripts" file="${demo.src}/demo/test.js"/>
+        <copy todir="${demo.dir}/${appid}/public/styles" file="${demo.src}/demo/main.css"/>
+      </then>
+    </if>
+    <if><equals arg1="${appid}" arg2="jetty"/>
+      <then>
+        <mkdir dir="${demo.dir}/${appid}/WEB-INF/classes"/>
+        <mkdir dir="${demo.dir}/${appid}/WEB-INF/lib"/>
+        <copy todir="${demo.dir}/${appid}/WEB-INF" file="${basedir}/etc/jetty/web.xml"/>
+      </then>
+    </if>
+    <mkdir dir="${demo.dir}/${appid}/POD-INF/classes"/>
+    <mkdir dir="${demo.dir}/${appid}/POD-INF/patch"/>
+    <mkdir dir="${demo.dir}/${appid}/POD-INF/lib"/>
+    <!-- <copy todir="${demo.dir}/${appid}/POD-INF/lib" file="${distrib.dir}/demo.jar"/> -->
+    <mkdir dir="${demo.dir}/${appid}/META-INF"/>
+    <echo message="" file="${demo.dir}/${appid}/META-INF/RELEASE-NOTES.txt"/>
+    <echo message="" file="${demo.dir}/${appid}/META-INF/NOTES.txt"/>
+    <echo message="" file="${demo.dir}/${appid}/META-INF/LICENSE.txt"/>
+    <echo message="" file="${demo.dir}/${appid}/META-INF/README.md"/>
+    <copy todir="${demo.dir}/${appid}/META-INF" file="${demo.src}/demo/MANIFEST.MF"/>
+    <replace file="${demo.dir}/${appid}/META-INF/MANIFEST.MF" token="@@@VER@@@" value="${build.version}"/>
+    <replace file="${demo.dir}/${appid}/META-INF/MANIFEST.MF" token="@@@ID@@@" value="${appid}"/>
+    <copy todir="${demo.dir}/${appid}/conf">
+      <fileset dir="${demo.src}/demo/${appid}">
+        <include name="*.conf"/>
+      </fileset>
+    </copy>
+    <copy todir="${demo.dir}/${appid}/conf" file="${basedir}/etc/app/app.conf"/>
+    <copy todir="${demo.dir}/${appid}/src/main/scala/demo/${appid}">
+      <fileset dir="${demo.src}/demo/${appid}">
+        <exclude name="**/env.conf"/>
+      </fileset>
+    </copy>
+    <mkdir dir="${demo.dir}/${appid}/docs"/>
+    <zip destfile="${demo.dir}/${appid}.pod"><fileset dir="${demo.dir}/${appid}"/></zip>
+    <!-- 
+         <delete dir="${demo.dir}/${appid}"/>
+         -->
+  </target>
 
   <target name="pack_samples" >
+    <property name="demo.src" value="${src.dir}/scala/com/zotoh/hohenheim"/>
+    <property name="demo.dir" value="${pack.dir}/docs/samples"/>
+    <for param="dir">
+      <path>
+        <dirset dir="${demo.src}">
+          <include name="demo/*"/>
+        </dirset>
+      </path>
+      <sequential>
+        <var name="appid" value="" unset="true"/>
+        <basename property="appid" file="@{dir}"/>
+        <antcall target="create-demo-app"/>
+      </sequential>
+    </for>
   </target>
 
 
