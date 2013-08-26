@@ -289,7 +289,8 @@
       <copy todir="${app.dir}" file="${hohenheim.home}/etc/app/pom.xml"/>
 
       <replace file="${app.dir}/META-INF/MANIFEST.MF" token="@@APPKEY@@" value="${uuid}"/>
-      <replace file="${app.dir}/META-INF/MANIFEST.MF" token="@@APPDOMAIN@@" value="${hohenheim.app.domain}"/>
+      <replace file="${app.dir}/META-INF/MANIFEST.MF" token="@@APPMAINCLASS@@"
+        value="${hohenheim.app.domain}.core.MyAppMain"/>
       <replace file="${app.dir}/pom.xml" token="@@APPDOMAIN@@" value="${hohenheim.app.domain}"/>
       <replace file="${app.dir}/pom.xml" token="@@APPID@@" value="${hohenheim.appid}"/>
       <replace file="${app.dir}/ivy.xml" token="@@APPID@@" value="${hohenheim.appid}"/>
@@ -363,8 +364,9 @@
       <replace file="${app.dir}/src/main/clojure/${app.domain.path}/pipe.clj"
         token="@@APPDOMAIN@@" value="${hohenheim.app.domain}"/>
       <replace file="${app.dir}/conf/env.conf" token="@@APPDOMAIN@@" value="${hohenheim.app.domain}"/>
-      <replace file="${app.dir}/build.xml" token="@@APPDOMAIN@@" value="${hohenheim.app.domain}"/>
       <replace file="${app.dir}/build.xml" token="@@APPID@@" value="${hohenheim.appid}"/>
+      <replace file="${app.dir}/build.xml" token="@@APPCLJFILES@@"
+value="&lt;arg value='${hohenheim.app.domain}.core'/&gt;&lt;arg value='${hohenheim.app.domain}.pipe'/&gt;" />
     </target>
 
     <target name="build-app" if="hohenheim.appid">

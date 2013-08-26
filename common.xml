@@ -19,6 +19,15 @@
     </sequential>
   </macrodef>
 
+  <scriptdef name="generateguid" language="javascript">
+      <attribute name="property" />
+      <![CDATA[
+      importClass( java.util.UUID );
+      project.setProperty( attributes.get( "property" ), UUID.randomUUID() );
+      ]]>
+  </scriptdef>
+  <generateguid property="uuid" />
+
   <path id="scala.path.id">
     <fileset dir="${scala.lib.dir}"/>
   </path>
@@ -151,6 +160,7 @@
     <mkdir dir="${pack.dir}/apps"/>
     <mkdir dir="${pack.dir}/blocks"/>
     <mkdir dir="${pack.dir}/pods"/>
+    <mkdir dir="${pack.dir}/ivy"/>
     <touch file="${pack.dir}/VERSION"/>
     <echo message="${build.version}" file="${pack.dir}/VERSION"/>
     <copy todir="${pack.dir}/etc">

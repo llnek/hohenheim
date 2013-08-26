@@ -374,7 +374,8 @@
     (let [ sf (File. appDir (str DN_CONF "/static-routes.conf"))
            rf (File. appDir (str DN_CONF "/routes.conf")) ]
       (.setAttr! co :routes
-                 (vec (concat (RO/load-routes sf) (RO/load-routes rf)))) )
+        (vec (concat (if (.exists sf) (RO/load-routes sf) [] )
+                     (if (.exists rf) (RO/load-routes rf) [] ))) ))
 
     (let [ svcs (:services env) ]
       (if (empty? svcs)

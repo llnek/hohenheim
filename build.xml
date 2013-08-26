@@ -5,6 +5,8 @@
   <property file="build.properties" />
   <include file="${basedir}/common.xml"/>
 
+
+
   <!--
        paths used for compilation and run
        -->
@@ -462,10 +464,17 @@
         <mkdir dir="${demo.dir}/${appid}/public/images"/>
         <mkdir dir="${demo.dir}/${appid}/public/scripts"/>
         <mkdir dir="${demo.dir}/${appid}/public/styles"/>
-        <copy todir="${demo.dir}/${appid}/public/images" file="${demo.src}/demo/favicon.ico"/>
+        <copy todir="${demo.dir}/${appid}/public/images" file="${basedir}/etc/web/favicon.ico"/>
         <copy todir="${demo.dir}/${appid}/public/scripts" file="${demo.src}/demo/test.js"/>
         <copy todir="${demo.dir}/${appid}/public/styles" file="${demo.src}/demo/main.css"/>
+        <mkdir dir="${demo.dir}/${appid}/src/main/resources/coffee"/>
+        <mkdir dir="${demo.dir}/${appid}/src/main/resources/less"/>
+        <mkdir dir="${demo.dir}/${appid}/src/main/resources/js"/>
+        <copy todir="${demo.dir}/${appid}" file="${basedir}/etc/web/build.xml"/>
       </then>
+      <else>
+        <copy todir="${demo.dir}/${appid}" file="${basedir}/etc/app/build.xml"/>
+      </else>
     </if>
     <if><equals arg1="${appid}" arg2="jetty"/>
       <then>
@@ -483,24 +492,41 @@
     <echo message="" file="${demo.dir}/${appid}/META-INF/NOTES.txt"/>
     <echo message="" file="${demo.dir}/${appid}/META-INF/LICENSE.txt"/>
     <echo message="" file="${demo.dir}/${appid}/META-INF/README.md"/>
-    <copy todir="${demo.dir}/${appid}/META-INF" file="${demo.src}/demo/MANIFEST.MF"/>
-    <replace file="${demo.dir}/${appid}/META-INF/MANIFEST.MF" token="@@@VER@@@" value="${build.version}"/>
-    <replace file="${demo.dir}/${appid}/META-INF/MANIFEST.MF" token="@@@ID@@@" value="${appid}"/>
+    <copy todir="${demo.dir}/${appid}/META-INF" file="${basedir}/etc/app/MANIFEST.MF"/>
+    <replace file="${demo.dir}/${appid}/META-INF/MANIFEST.MF" token="@@APPKEY@@" value="${appkey}"/>
+    <replace file="${demo.dir}/${appid}/META-INF/MANIFEST.MF"
+      token="@@APPMAINCLASS@@" value="demo.${appid}.DemoMain"/>
     <copy todir="${demo.dir}/${appid}/conf">
       <fileset dir="${demo.src}/demo/${appid}">
         <include name="*.conf"/>
       </fileset>
     </copy>
     <copy todir="${demo.dir}/${appid}/conf" file="${basedir}/etc/app/app.conf"/>
+    <replace file="${demo.dir}/${appid}/conf/app.conf" token="@@USER@@" value="test"/>
     <copy todir="${demo.dir}/${appid}/src/main/scala/demo/${appid}">
       <fileset dir="${demo.src}/demo/${appid}">
         <exclude name="**/env.conf"/>
       </fileset>
     </copy>
+    <mkdir dir="${demo.dir}/${appid}/src/main/clojure"/>
+    <mkdir dir="${demo.dir}/${appid}/src/main/java"/>
     <mkdir dir="${demo.dir}/${appid}/docs"/>
-    <zip destfile="${demo.dir}/${appid}.pod"><fileset dir="${demo.dir}/${appid}"/></zip>
+    <copy todir="${demo.dir}/${appid}" file="${basedir}/etc/app/build.properties"/>
+    <replace file="${demo.dir}/${appid}/build.properties" token="@@HOHENHEIMHOME@@" value="${basedir}/../.."/>
+    <replace file="${demo.dir}/${appid}/build.xml" token="@@APPID@@" value="${appid}"/>
+    <replace file="${demo.dir}/${appid}/build.xml" token="@@APPCLJFILES@@" value=""/>
+    <copy todir="${demo.dir}/${appid}" file="${basedir}/etc/app/ivysettings.xml"/>
+
+    <copy todir="${demo.dir}/${appid}" file="${basedir}/etc/app/ivy.xml"/>
+    <replace file="${demo.dir}/${appid}/ivy.xml" token="@@APPDOMAIN@@" value="demoware"/>
+    <replace file="${demo.dir}/${appid}/ivy.xml" token="@@APPID@@" value="${appid}"/>
+
+    <copy todir="${demo.dir}/${appid}" file="${basedir}/etc/app/pom.xml"/>
+    <replace file="${demo.dir}/${appid}/pom.xml" token="@@APPDOMAIN@@" value="demoware"/>
+    <replace file="${demo.dir}/${appid}/pom.xml" token="@@APPID@@" value="${appid}"/>
     <!-- 
-         <delete dir="${demo.dir}/${appid}"/>
+      <zip destfile="${demo.dir}/${appid}.pod"><fileset dir="${demo.dir}/${appid}"/></zip>
+     <delete dir="${demo.dir}/${appid}"/>
          -->
   </target>
 
@@ -514,8 +540,10 @@
         </dirset>
       </path>
       <sequential>
+        <var name="appkey" value="" unset="true"/>
         <var name="appid" value="" unset="true"/>
         <basename property="appid" file="@{dir}"/>
+        <generateguid property="appkey" />
         <antcall target="create-demo-app"/>
       </sequential>
     </for>

@@ -1,4 +1,0 @@
-Implementation-Version: @@@VER@@@
-Main-Class: demo.@@@ID@@@.DemoMain
-
-
