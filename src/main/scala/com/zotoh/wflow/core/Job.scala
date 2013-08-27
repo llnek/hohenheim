@@ -19,12 +19,14 @@
 
 package com.zotoh.wflow.core
 
+import com.zotoh.frwk.server.{Event, ServerLike}
+
 /**
  * @author kenl
  */
 trait Job {
-  def container() : Any
-  def event() : Any
+  def container() : ServerLike
+  def event() : Event
   def id() : Any
 }
 

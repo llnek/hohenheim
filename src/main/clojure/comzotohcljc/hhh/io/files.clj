@@ -72,12 +72,14 @@
 (defmethod ioes-reify-event :czc.hhh.io/FilePicker
   [co & args]
   (let [ f (nth args 1)  eeid (SN/next-long) ]
-    (with-meta 
-      (reify 
+    (with-meta
+      (reify
         Identifiable
         (id [_] eeid)
         FileEvent
+        (bindSession [_ s] nil)
         (getSession [_] nil)
+        (getId [_] eeid)
         (emitter [_] co)
         (getFile [_] f))
       { :typeid :czc.hhh.io/FileEvent } )))

@@ -25,6 +25,7 @@ import com.zotoh.frwk.util.Schedulable
 import java.util.concurrent.atomic.AtomicLong
 import com.zotoh.wflow.core.Job
 import com.zotoh.frwk.core.Startable
+import com.zotoh.frwk.server.ServerLike
 
 
 trait PipelineDelegate {
@@ -35,9 +36,7 @@ trait PipelineDelegate {
 
 }
 
-trait IContainer {
-  def core() : Schedulable
-}
+
 
 object Pipeline {
   private val _sn= new AtomicLong(0L)
@@ -68,7 +67,7 @@ class Pipeline (private val _theJob:Job, private val _delegateClass:String) exte
   require(_theJob != null, "Job is null.")
 
   def core() : Schedulable = container() match {
-    case x:IContainer => x.core()
+    case x:ServerLike => x.core()
     case _ => null
   }
 

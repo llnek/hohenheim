@@ -92,7 +92,9 @@
         Identifiable
         (id [_] eeid)
         HTTPEvent
+        (bindSession [_ s] nil)
         (getSession [_] nil)
+        (getId [_] eeid)
         (emitter [_] co)
         (getCookies [_]
           (let [ v (SU/nsb (.getHeader req "Cookie"))

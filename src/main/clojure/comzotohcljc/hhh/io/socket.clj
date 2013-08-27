@@ -48,6 +48,7 @@
         (id [_] eeid)
         SocketEvent
         (bindSession [_ s] nil)
+        (getId [_] eeid)
         (getSession [_] nil)
         (getSockOut [_] (.getOutputStream soc))
         (getSockIn [_] (.getInputStream soc))

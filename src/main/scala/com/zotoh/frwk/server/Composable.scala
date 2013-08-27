@@ -17,14 +17,12 @@
  ??*/
 
 
-package com.zotoh.hohenheim.core
-
+package com.zotoh.frwk.server
 
 /**
  * @author kenl
  */
-trait Servicable {
-
-  def service(c:ServiceRegistry): Unit
-
+trait Composable {
+  def compose(cm:ComponentRegistry, arg:Any*): Any
 }
+

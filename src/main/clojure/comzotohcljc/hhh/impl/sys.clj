@@ -34,7 +34,7 @@
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.impl.ext])
-(use '[comzotohcljc.hhh.impl.defaults 
+(use '[comzotohcljc.hhh.impl.defaults
        :rename {enabled? blockmeta-enabled?
                 start kernel-start
                 stop kernel-stop}])

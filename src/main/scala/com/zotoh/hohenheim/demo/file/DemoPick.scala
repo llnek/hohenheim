@@ -16,13 +16,42 @@
 *
  ??*/
 
+package demo.file
 
-package com.zotoh.hohenheim.core
+
+
+import org.apache.commons.io.{FileUtils=>FUT}
+
+import com.zotoh.hohenheim.io.FileEvent
+
+
+import com.zotoh.wflow.core.Job
+import com.zotoh.wflow._
+
+
+
 
 /**
  * @author kenl
+ *
  */
-trait Composable {
-  def compose(cm:ComponentRegistry, arg:Any*): Any
+class Demo extends PipelineDelegate    {
+
+  def getStartActivity(pipe:Pipeline) = new PTask(new Work() {
+    def perform(cur:FlowPoint, job:Job, arg:Any) = {
+      val ev= job.event().asInstanceOf[FileEvent]
+      val f=ev.getFile()
+      println("Picked up new file: " + f)
+      println("Content: " + FUT.readFileToString(f, "utf-8"))
+      FUT.deleteQuietly(f)
+    }
+  })
+
+
+  def onStop(pipe:Pipeline) {}
+  def onError(err:Throwable, curPt:FlowPoint) = null
+
+
 }
+
 

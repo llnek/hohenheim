@@ -17,22 +17,20 @@
  ??*/
 
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.server
 
 /**
  * @author kenl
  */
 trait ComponentRegistry  {
 
-  def hasComponent( name:String): Boolean
+  def has( name:Any): Boolean
   
-  def lookup( name:String): Component
+  def lookup( name:Any): Component
 
-  def release( c:Component): Unit
+  def dereg( c:Component): Unit
 
-  def add(c:Component): Unit
-
-  def getParent() : ComponentRegistry
+  def reg(c:Component): Unit
 
 }
 

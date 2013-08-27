@@ -74,7 +74,9 @@
         Identifiable
         (id [_] eeid)
         JMSEvent
+        (bindSession [_ s] nil)
         (getSession [_] nil)
+        (getId [_] eeid)
         (emitter [_] co)
         (getMsg [_] msg))
       { :typeid :czc.hhh.io/JMSEvent } )))

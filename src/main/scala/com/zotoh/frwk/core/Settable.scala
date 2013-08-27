@@ -23,7 +23,7 @@ package com.zotoh.frwk.core
  */
 trait Settable {
 
-  def set(key:Any, p:Any): Unit
+  def setv(key:Any, p:Any): Unit
 
 }
 

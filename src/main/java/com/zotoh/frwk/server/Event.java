@@ -16,20 +16,12 @@
 *
  ??*/
 
-
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.server;
 
 /**
  * @author kenl
  */
-class ServiceError(msg:String,e:Throwable) extends Exception(msg,e) {
-
-  def this(e:Throwable) {
-    this(null,e)
-  }
-
-  def this(msg:String) {
-    this(msg,null)
-  }
-
+public interface Event {
+  public Object emitter();
+  public Object getId();
 }

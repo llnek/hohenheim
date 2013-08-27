@@ -17,27 +17,19 @@
  ??*/
 
 
-package com.zotoh.hohenheim.core
-
-import com.zotoh.frwk.core._
+package com.zotoh.frwk.server
 
 /**
  * @author kenl
  */
-trait Service extends Component with Initializable
-with Configurable
-with Startable
-with Suspendable
-with Disposable {
+class ComponentError(msg:String,e:Throwable) extends Exception(msg,e) {
+
+  def this(e:Throwable) {
+    this(null,e)
+  }
+
+  def this(msg:String) {
+    this(msg,null)
+  }
 
 }
-
-trait BackgroundService extends Service {}
-
-trait RESTfulService extends Service {}
-
-trait APIService extends Service {}
-
-
-
-

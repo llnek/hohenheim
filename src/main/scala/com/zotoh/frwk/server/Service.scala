@@ -17,19 +17,20 @@
  ??*/
 
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.server
+
+import com.zotoh.frwk.core._
 
 /**
  * @author kenl
  */
-class ComponentError(msg:String,e:Throwable) extends Exception(msg,e) {
-
-  def this(e:Throwable) {
-    this(null,e)
-  }
-
-  def this(msg:String) {
-    this(msg,null)
-  }
-
+trait Service extends Component with Gettable with Settable {
 }
+
+trait BackgroundService extends Service {}
+trait RESTfulService extends Service {}
+trait APIService extends Service {}
+
+
+
+

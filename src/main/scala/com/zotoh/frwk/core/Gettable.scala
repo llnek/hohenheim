@@ -22,6 +22,6 @@ package com.zotoh.frwk.core
  * @author kenl
  */
 trait Gettable {
-  def get(key:Any): Any
+  def getv(key:Any): Any
 }
 

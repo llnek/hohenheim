@@ -27,8 +27,10 @@
 (import '(com.zotoh.frwk.core
   Versioned Hierarchial Startable Disposable
   Identifiable ))
+(import '(com.zotoh.frwk.server
+  ComponentRegistry ServiceError ))
 (import '(com.zotoh.hohenheim.core
-  Container ConfigError ServiceError ))
+  Container ConfigError ))
 
 (import '(com.zotoh.hohenheim.io IOEvent))
 (import '(com.zotoh.frwk.util CoreUtils))
@@ -185,6 +187,13 @@
           (getAppDir [this] (.getAttr this K_APPDIR))
           (core [this]
             (.getAttr this K_SCHEDULER))
+          (hasService [_ serviceId]
+            (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS) ]
+              (.hasComponent srg serviceId)))
+
+          (getService [_ serviceId]
+            (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS) ]
+              (.lookup srg serviceId)))
 
         Versioned
           (version [_] "1.0")

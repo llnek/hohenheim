@@ -120,13 +120,15 @@
   [co & args]
   (let [ eeid (SN/next-long) ]
     (with-meta
-      (reify 
-        
+      (reify
+
         Identifiable
         (id [_] eeid)
 
         TimerEvent
+        (bindSession [_ s] nil)
         (getSession [_] nil)
+        (getId [_] eeid)
         (emitter [_] co)
         (isRepeating [_] true))
       { :typeid :czc.hhh.io/TimerEvent } )))
@@ -166,13 +168,15 @@
   [co & args]
   (let [ eeid (SN/next-long) ]
     (with-meta
-      (reify 
-        
+      (reify
+
         Identifiable
         (id [_] eeid)
 
         TimerEvent
+        (bindSession [_ s] nil)
         (getSession [_] nil)
+        (getId [_] eeid)
         (emitter [_] co)
         (isRepeating [_] false))
       { :typeid :czc.hhh.io/TimerEvent } )))
@@ -203,7 +207,7 @@
 
 ;;(defmethod loopable-oneloop :default [co] nil)
 
-(defmethod loopable-schedule :czc.hhh.io/ThreadedTimer 
+(defmethod loopable-schedule :czc.hhh.io/ThreadedTimer
   [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ intv (.getAttr co :intervalMillis)
          cl (MU/get-cldr)

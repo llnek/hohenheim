@@ -20,9 +20,12 @@
 package com.zotoh.hohenheim.io;
 
 
-public interface IOEvent {
-  public Object emitter();
-  public long getId();
+import com.zotoh.frwk.server.Event;
+
+/**
+ * @author kenl
+ */
+public interface IOEvent extends Event {
 
   public void bindSession(IOSession s);
   public IOSession getSession();

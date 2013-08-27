@@ -22,6 +22,7 @@ package com.zotoh.wflow
 import org.slf4j._
 import java.util.concurrent.atomic.AtomicLong
 import com.zotoh.wflow.core.Job
+import com.zotoh.frwk.server.ServerLike
 
 object FlowPoint {
   private val _sn= new AtomicLong(0)
@@ -89,7 +90,7 @@ abstract class FlowPoint protected[wflow](protected val _parent:Pipeline) extend
 
   def rerun() {
     flow().container() match {
-      case x:IContainer => x.core().reschedule(this)
+      case x:ServerLike => x.core().reschedule(this)
       case _ =>
     }
   }
@@ -100,7 +101,7 @@ abstract class FlowPoint protected[wflow](protected val _parent:Pipeline) extend
     val f= flow()
 
     f.container() match {
-      case x:IContainer => x.core().dequeue(this)
+      case x:ServerLike => x.core().dequeue(this)
     }
     try {
       rc=eval( f.job )
@@ -121,7 +122,7 @@ abstract class FlowPoint protected[wflow](protected val _parent:Pipeline) extend
 
   private def runAfter(f:Pipeline, rc:FlowPoint) {
     val ct= f.container() match {
-      case x:IContainer => x.core()
+      case x:ServerLike => x.core()
       case _ => null
     }
     val np= rc.nextPoint()

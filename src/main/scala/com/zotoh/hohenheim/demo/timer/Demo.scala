@@ -56,7 +56,7 @@ class Demo() extends PipelineDelegate {
   import Demo._
 
   def getStartActivity(pipe:Pipeline) = new PTask( new Work() {
-    def perform(cur:FlowPoint, job:Job, arg:Any) {
+    def perform(cur:FlowPoint, job:Job, arg:Any) = {
       val ev= job.event.asInstanceOf[TimerEvent]
       if ( ev.isRepeating ) {
         println("-----> (" + count +  ") repeating-update: " + new JDate())

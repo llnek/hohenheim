@@ -17,20 +17,19 @@
  ??*/
 
 
-package com.zotoh.hohenheim.core
+package com.zotoh.frwk.server
 
 /**
  * @author kenl
  */
-trait ServiceRegistry {
+class ServiceError(msg:String,e:Throwable) extends Exception(msg,e) {
 
-  def lookup( name:String): Service
+  def this(e:Throwable) {
+    this(null,e)
+  }
 
-  def hasService( name:String): Boolean
-
-  def release( c:Service): Unit
-
-  def add(name:String, svc:Service): Unit
+  def this(msg:String) {
+    this(msg,null)
+  }
 
 }
-

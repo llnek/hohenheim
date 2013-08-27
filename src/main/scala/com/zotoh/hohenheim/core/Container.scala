@@ -19,13 +19,14 @@
 
 package com.zotoh.hohenheim.core
 
-import com.zotoh.frwk.util.Schedulable
+
 import com.zotoh.hohenheim.io.IOEvent
-import com.zotoh.wflow.IContainer
+
 import com.zotoh.frwk.core.Disposable
 import java.io.File
+import com.zotoh.frwk.server.ServerLike
 
-trait Container extends IContainer with Disposable {
+trait Container extends ServerLike with Disposable {
   def notifyObservers(evt:IOEvent ) : Unit
   def getAppKey() : String
   def getAppDir() : File

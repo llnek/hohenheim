@@ -17,14 +17,17 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hhh.impl.defaults )
+  comzotohcljc.hhh.impl.defaults)
 
 (import '(com.zotoh.frwk.util CoreUtils))
 (import '(com.zotoh.hohenheim.loaders AppClassLoader))
 (import '(com.zotoh.frwk.core
   Versioned Identifiable Hierarchial))
+(import '(com.zotoh.frwk.server
+  ComponentRegistry
+  RegistryError ServiceError ))
 (import '(com.zotoh.hohenheim.core
-  RegistryError ServiceError ConfigError))
+  ConfigError))
 (import '(java.io File))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
@@ -110,37 +113,36 @@
         Identifiable
           (id [_] regoId)
 
-        Registry
-
-          (has? [_ cid]
+        ComponentRegistry
+        (has [this cid]
             (let [ cache (.mm-g impl :cache)
                    c (get cache cid) ]
               (if (nil? c) false true)) )
-
-          (lookup [_ cid]
+        (lookup [this cid]
             (let [ cache (.mm-g impl :cache)
                    c (get cache cid) ]
-              (if (and (nil? c) (satisfies? Registry parObj))
-                (.lookup ^comzotohcljc.hhh.core.sys.Registry parObj cid)
+              (if (and (nil? c) (instance? ComponentRegistry parObj))
+                (.lookup ^ComponentRegistry parObj cid)
                 c)) )
 
+        (dereg [this c]
+          (let [ cid (if (nil? c) nil (.id  ^Identifiable c))
+                 cache (.mm-g impl :cache) ]
+            (when (.has this cid)
+              (.mm-s impl :cache (dissoc cache cid)))))
+
+        (reg [this c]
+          (let [ cid (if (nil? c) nil (.id  ^Identifiable c))
+                 cache (.mm-g impl :cache) ]
+            (when (.has this cid)
+              (throw (RegistryError.
+                       (str "Component \"" cid "\" already exists" ))))
+            (.mm-s impl :cache (assoc cache cid c))))
+
+        Registry
           (seq* [_]
             (let [ cache (.mm-g impl :cache) ]
-              (seq cache)))
-
-          (dereg [this c]
-            (let [ cid (if (nil? c) nil (.id  ^Identifiable c))
-                   cache (.mm-g impl :cache) ]
-              (when (has? this cid)
-                (.mm-s impl :cache (dissoc cache cid)))))
-
-          (reg [this c]
-            (let [ cid (if (nil? c) nil (.id  ^Identifiable c))
-                   cache (.mm-g impl :cache) ]
-              (when (has? this cid)
-                (throw (RegistryError.
-                         (str "Component \"" cid "\" already exists" ))))
-              (.mm-s impl :cache (assoc cache cid c)))) )
+              (seq cache))) )
 
       { :typeid (keyword (str "czc.hhh.impl/" (name regoType))) } )) )
 

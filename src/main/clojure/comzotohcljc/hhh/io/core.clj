@@ -20,7 +20,9 @@
 
   comzotohcljc.hhh.io.core )
 
-(import '(com.zotoh.frwk.core 
+(import '(com.zotoh.frwk.server Service))
+
+(import '(com.zotoh.frwk.core
   Versioned Hierarchial
   Identifiable Disposable Startable))
 (import '(com.zotoh.hohenheim.core Container))
@@ -128,6 +130,11 @@
 
           (start [this] (ioes-start this))
           (stop [this] (ioes-stop this))
+
+        Service
+          (getv [_ k] (.mm-g impl (keyword k)))
+          (setv [_ k v]
+                (.mm-s impl (keyword k) v))
 
         EmitterAPI
 

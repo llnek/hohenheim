@@ -86,30 +86,18 @@
 
 
 
-(defn- make-email-event [co msg]
-  (let [ eeid (SN/next-long) ]
-    (with-meta
-      (reify 
-        
-        Identifiable
-        (id [_] eeid)
-
-        EmailEvent
-        (getSession [_] nil)
-        (emitter [_] co)
-        (getMsg [_] msg))
-      { :typeid :czc.hhh.io/EmailEvent } )) )
-
 (defn- ctor-email-event [co msg]
   (let [ eeid (SN/next-long) ]
     (with-meta
-      (reify 
-        
+      (reify
+
         Identifiable
         (id [_] eeid)
 
         EmailEvent
+        (bindSession [_ s] nil)
         (getSession [_] nil)
+        (getId [_] eeid)
         (emitter [_] co)
         (getMsg [_] msg))
       { :typeid :czc.hhh.io/EmailEvent } )))
@@ -177,7 +165,7 @@
   (try
       (connect-pop3 co)
       (scan-pop3 co)
-    (catch Throwable e# 
+    (catch Throwable e#
       (warn e# ""))
     (finally
       (closeStore co))) )
@@ -234,7 +222,7 @@
   (try
       (connect-imap co)
       (scan-imap co)
-    (catch Throwable e# 
+    (catch Throwable e#
       (warn e# ""))
     (finally
       (closeStore co))) )

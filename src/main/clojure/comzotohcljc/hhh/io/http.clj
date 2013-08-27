@@ -346,6 +346,7 @@
 
       HTTPEvent
 
+      (getId [_] eid)
       (getCookie [_ nm]
         (let [ lnm (.toLowerCase nm) cs (.getCookies req) ]
           (some (fn [^Cookie c]
@@ -361,6 +362,7 @@
               (.add rc (cookie-to-javaCookie c))))
           rc))
 
+      (bindSession [_ s] nil)
       (getSession [_] nil)
       (emitter [_] co)
       (isKeepAlive [_]
