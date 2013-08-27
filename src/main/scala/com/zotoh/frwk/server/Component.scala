@@ -19,11 +19,11 @@
 
 package com.zotoh.frwk.server
 
-import com.zotoh.frwk.core.{Named,Versioned}
+import com.zotoh.frwk.core.{Identifiable, Named, Versioned}
 
 /**
  * @author kenl
  */
-trait Component extends Named with Versioned with Composable  {
+trait Component extends Identifiable with Versioned { //with Composable  {
 }
 

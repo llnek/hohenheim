@@ -43,7 +43,7 @@ class Demo extends PipelineDelegate    {
       val f=ev.getFile()
       println("Picked up new file: " + f)
       println("Content: " + FUT.readFileToString(f, "utf-8"))
-      FUT.deleteQuietly(f)
+      //FUT.deleteQuietly(f)
     }
   })
 

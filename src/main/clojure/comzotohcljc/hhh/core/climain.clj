@@ -21,6 +21,18 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
+(import '(com.zotoh.hohenheim.core ConfigError))
+(import '(com.zotoh.frwk.server Component ComponentRegistry))
+(import '(com.zotoh.frwk.core
+  Versioned Identifiable Hierarchial
+  Startable ))
+(import '(com.zotoh.hohenheim.loaders
+  AppClassLoader RootClassLoader ExecClassLoader))
+(import '(com.zotoh.hohenheim.etc CmdHelpError))
+(import '(java.util Locale))
+(import '(java.io File))
+(import '(org.apache.commons.io FileUtils))
+
 (require '[comzotohcljc.i18n.resources :as LN])
 (require '[comzotohcljc.util.process :as PU])
 (require '[comzotohcljc.util.meta :as MU])
@@ -33,17 +45,6 @@
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.impl.defaults])
-
-(import '(com.zotoh.hohenheim.core ConfigError))
-(import '(com.zotoh.frwk.core
-  Versioned Identifiable Hierarchial
-  Startable ))
-(import '(com.zotoh.hohenheim.loaders
-  AppClassLoader RootClassLoader ExecClassLoader))
-(import '(com.zotoh.hohenheim.etc CmdHelpError))
-(import '(java.util Locale))
-(import '(java.io File))
-(import '(org.apache.commons.io FileUtils))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)

@@ -66,9 +66,9 @@ class DemoGen extends PipelineDelegate {
   def getStartActivity(pipe:Pipeline) = new PTask(new Work() {
     def perform(cur:FlowPoint, job:Job, arg:Any) = {
           val s= "Current time is " + new JDate()
-          cur.flow().container().getService("default-sample") match {
+          pipe.container().getService("default-sample") match {
             case p:Service =>
-              FUT.writeStringToFile( new File(p.getv("target-folder").toString(), "ts-"+ count +".txt"),
+              FUT.writeStringToFile( new File(p.getv("target").toString(), "ts-"+ count +".txt"),
                 s, "utf-8")
             case _ =>
           }

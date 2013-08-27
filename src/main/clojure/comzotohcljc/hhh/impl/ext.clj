@@ -28,7 +28,7 @@
   Versioned Hierarchial Startable Disposable
   Identifiable ))
 (import '(com.zotoh.frwk.server
-  ComponentRegistry ServiceError ))
+  ComponentRegistry Component ServiceError ))
 (import '(com.zotoh.hohenheim.core
   Container ConfigError ))
 
@@ -142,18 +142,18 @@
 (defprotocol ^:private ContainerAPI
   ""
   (reifyOneService [_ sid cfg] )
-  (reifyService [_ svc cfg] )
+  (reifyService [_ svc sid cfg] )
   (reifyServices [_] )
   (enabled? [_] ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- make-service-block [^Identifiable bk container cfg]
+(defn- make-service-block [^Identifiable bk container nm cfg]
   (let [ eid (.id bk)
          ^comzotohcljc.hhh.core.sys.Thingy
          obj (if (= :czc.hhh.io/JettyIO eid)
                (make-servlet-emitter container)
-               (make-emitter container eid))
+               (make-emitter container eid nm))
          hid (:handler cfg)
          mm (meta obj) ]
     (info "about to synthesize an emitter: " eid)
@@ -189,28 +189,26 @@
             (.getAttr this K_SCHEDULER))
           (hasService [_ serviceId]
             (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS) ]
-              (.hasComponent srg serviceId)))
+              (.has srg (keyword serviceId))))
 
           (getService [_ serviceId]
             (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS) ]
-              (.lookup srg serviceId)))
+              (.lookup srg (keyword serviceId))))
 
-        Versioned
+        Component
+          (id [_] (.id ^Identifiable pod) )
           (version [_] "1.0")
 
         Hierarchial
           (parent [_] nil)
 
-        Identifiable
-          (id [_] (.id ^Identifiable pod) )
-
         Startable
           (start [_]
-            (let [ ^comzotohcljc.hhh.core.sys.Registry
-                   srg (.mm-g impl K_SVCS)
+            (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
                    main (.mm-g impl :main-app) ]
               (info "container starting all services...")
               (doseq [ [k v] (seq* srg) ]
+                (info "service: " k " about to start...")
                 (.start ^Startable v))
               (info "container starting main app...")
               (cond
@@ -221,8 +219,7 @@
                 :else nil)))
 
           (stop [_]
-            (let [ ^comzotohcljc.hhh.core.sys.Registry
-                   srg (.mm-g impl K_SVCS)
+            (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
                    main (.mm-g impl :main-app) ]
               (info "container stopping all services...")
               (doseq [ [k v] (seq* srg) ]
@@ -237,8 +234,7 @@
 
         Disposable
           (dispose [_]
-            (let [ ^comzotohcljc.hhh.core.sys.Registry
-                   srg (.mm-g impl K_SVCS)
+            (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
                    main (.mm-g impl :main-app) ]
               (doseq [ [k v] (seq* srg) ]
                 (.dispose ^Disposable v))
@@ -267,24 +263,21 @@
                     (reifyOneService this k v)))))
 
           (reifyOneService [this nm cfg]
-            (let [ svc (SU/nsb (:service cfg))
-                   ^comzotohcljc.hhh.core.sys.Registry
-                   srg (.mm-g impl K_SVCS)
+            (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS)
+                   svc (SU/nsb (:service cfg))
                    b (:enabled cfg) ]
               (if-not (or (false? b) (SU/nichts? svc))
-                (let [ s (reifyService this svc cfg) ]
+                (let [ s (reifyService this svc nm cfg) ]
                   (.reg srg s)))))
 
-          (reifyService [this svc cfg]
+          (reifyService [this svc nm cfg]
             (let [^comzotohcljc.util.core.MuObj ctx (.getCtx this)
-                   ^comzotohcljc.hhh.core.sys.Registry
-                   root (.getf ctx K_COMPS)
-                   ^comzotohcljc.hhh.core.sys.Registry
-                   bks (.lookup root K_BLOCKS)
-                   bk (.lookup bks (keyword svc)) ]
+                   ^ComponentRegistry root (.getf ctx K_COMPS)
+                   ^ComponentRegistry bks (.lookup root K_BLOCKS)
+                   ^ComponentRegistry bk (.lookup bks (keyword svc)) ]
               (when (nil? bk)
                 (throw (ServiceError. (str "No such Service: " svc "."))))
-              (make-service-block bk this cfg))) )
+              (make-service-block bk this nm cfg))) )
 
     { :typeid (keyword "czc.hhh.ext/Container") } )) )
 
@@ -292,8 +285,7 @@
   (let [ c (make-app-container pod)
          ^comzotohcljc.util.core.MuObj ctx (.getCtx pod)
          cl (.getf ctx K_APP_CZLR)
-         ^comzotohcljc.hhh.core.sys.Registry
-         root (.getf ctx K_COMPS)
+         ^ComponentRegistry root (.getf ctx K_COMPS)
          apps (.lookup root K_APPS)
          ^URL url (.srcUrl ^comzotohcljc.hhh.impl.defaults.PODMeta pod)
          ps { K_APPDIR (File. (.toURI  url)) K_APP_CZLR cl } ]

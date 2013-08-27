@@ -27,6 +27,9 @@
 (import '(com.zotoh.frwk.io IOUtils))
 (import '(com.zotoh.frwk.core
   Startable Versioned Hierarchial Identifiable))
+(import '(com.zotoh.frwk.server
+  Component ComponentRegistry))
+
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
@@ -75,10 +78,8 @@
    mf]
 
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx execv)
-         ^comzotohcljc.hhh.core.sys.Registry
-         root (.getf ctx K_COMPS)
-         ^comzotohcljc.hhh.core.sys.Registry
-         apps (.lookup root K_APPS)
+         ^ComponentRegistry root (.getf ctx K_COMPS)
+         ^ComponentRegistry apps (.lookup root K_APPS)
          ps (CU/load-javaprops mf)
          ver (.getProperty ps "Implementation-Version" "")
          vid (.getProperty ps "Implementation-Vendor-Id")
@@ -168,14 +169,13 @@
         Startable
           (start [this]
             (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
-                   ^comzotohcljc.hhh.core.sys.Registry
-                   root (.getf ctx K_COMPS)
+                   ^ComponentRegistry root (.getf ctx K_COMPS)
                    ^Startable k (.lookup root K_KERNEL) ]
               (inspect-pods this)
               (.start k)))
           (stop [this]
             (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
-                   ^comzotohcljc.hhh.core.sys.Registry
+                   ^ComponentRegistry
                    root (.getf ctx K_COMPS)
                    ^Startable k (.lookup root K_KERNEL) ]
               (.stop k)))  )
@@ -231,8 +231,7 @@
           (.setf! K_TMPDIR tmp)
           (.setf! K_BKSDIR bks)) )
     (start-jmx)
-    (let [ ^comzotohcljc.hhh.core.sys.Registry
-           root (make-component-registry :SystemRegistry K_COMPS "1.0" co)
+    (let [ ^ComponentRegistry root (make-component-registry :SystemRegistry K_COMPS "1.0" co)
            bks (make-component-registry :BlocksRegistry K_BLOCKS "1.0" nil)
            apps (make-component-registry :AppsRegistry K_APPS "1.0" nil)
            deployer (make-deployer)
@@ -269,14 +268,12 @@
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
 
-        Versioned
+        Component
+          (id [_] (.mm-g impl :id))
           (version [_] "1.0")
 
         Hierarchial
           (parent [_] nil)
-
-        Identifiable
-          (id [_] (.mm-g impl :id))
 
         BlockMeta
 
@@ -311,7 +308,7 @@
       (let [ ^comzotohcljc.hhh.core.sys.Thingy
              b (-> (make-blockmeta (-> f (.toURI)(.toURL)))
                    (synthesize-component {}) ) ]
-        (.reg ^comzotohcljc.hhh.core.sys.Registry co b)
+        (.reg ^ComponentRegistry co b)
         (info "added one block: " (.id ^Identifiable b)) ))))
 
 

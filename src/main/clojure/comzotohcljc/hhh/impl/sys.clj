@@ -22,6 +22,7 @@
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
 (import '(com.zotoh.hohenheim.loaders AppClassLoader))
+(import '(com.zotoh.frwk.server Component ComponentRegistry))
 (import '(com.zotoh.frwk.core
   Identifiable Hierarchial Versioned Startable))
 (import '(java.net URL))
@@ -67,14 +68,12 @@
           (setCtx! [_ x] (.mm-s impl :ctx x) )
           (getCtx [_] (.mm-g impl :ctx) )
 
-        Versioned
+        Component
+          (id [_] K_DEPLOYER )
           (version [_] "1.0" )
 
         Hierarchial
           (parent [_] nil)
-
-        Identifiable
-          (id [_] K_DEPLOYER )
 
         Deployer
 
@@ -147,22 +146,19 @@
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
 
-        Versioned
+        Component
           (version [_] "1.0")
+          (id [_] K_KERNEL )
 
         Hierarchial
           (parent [_] nil)
-
-        Identifiable
-          (id [_] K_KERNEL )
 
         Kernel
         Startable
           (start [this]
             (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
+                   ^ComponentRegistry root (.getf ctx K_COMPS)
                    ^comzotohcljc.hhh.core.sys.Registry
-                   root (.getf ctx K_COMPS)
-                   ^comzotohcljc.util.core.MuObj
                    apps (.lookup root K_APPS) ]
               ;; need this to prevent deadlocks amongst pods
               ;; when there are dependencies
@@ -197,14 +193,13 @@
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
 
-        Versioned
+        Component
           (version [_] ver)
+          (id [_] pid )
 
         Hierarchial
           (parent [_] parObj)
 
-        Identifiable
-          (id [_] pid )
 
         PODMeta
 

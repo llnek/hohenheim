@@ -24,7 +24,7 @@
 (import '(com.zotoh.frwk.core
   Versioned Identifiable Hierarchial))
 (import '(com.zotoh.frwk.server
-  ComponentRegistry
+  Component ComponentRegistry
   RegistryError ServiceError ))
 (import '(com.zotoh.hohenheim.core
   ConfigError))
@@ -107,10 +107,8 @@
         Hierarchial
           (parent [_] parObj)
 
-        Versioned
+        Component
           (version [_] ver)
-
-        Identifiable
           (id [_] regoId)
 
         ComponentRegistry

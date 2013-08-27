@@ -95,8 +95,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-emitter "" [^Container parObj emId]
-  (let [ eeid (SN/next-long)
+(defn make-emitter "" [^Container parObj emId emAlias]
+  (let [ eeid emAlias ;;(SN/next-long)
          impl (CU/make-mmap) ]
     (.mm-s impl :backlog (HashMap.))
     (with-meta

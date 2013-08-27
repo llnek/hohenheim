@@ -226,6 +226,7 @@
       <fileset dir="${build.dir}">
         <exclude name="**/log4j.properties"/>
         <exclude name="**/logback.xml"/>
+        <exclude name="demo/**"/>
       </fileset>
     </jar>
   </target>

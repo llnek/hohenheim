@@ -42,7 +42,7 @@
 (use '[comzotohcljc.hhh.core.sys :rename { seq* rego-seq* has? rego-has? } ])
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(use '[comzotohcljc.hhh.io.loops 
+(use '[comzotohcljc.hhh.io.loops
        :only (loopable-schedule loopable-oneloop cfg-loopable) ])
 (use '[comzotohcljc.hhh.io.events :only (make-filepicker-event) ])
 (use '[comzotohcljc.hhh.io.core])
@@ -85,17 +85,21 @@
       { :typeid :czc.hhh.io/FileEvent } )))
 
 (defn- postPoll [^comzotohcljc.hhh.core.sys.Thingy co
-                 ^File f 
+                 ^File f
                  action]
   (let [ ^File des (.getAttr co :dest)
         ^comzotohcljc.hhh.io.core.EmitterAPI src co
          fname (.getName f)
-         cf  (if (and (not= action :FP-DELETED) (CU/notnil? des))
+         cf (cond
+              (= action :FP-CREATED)
+              (if (CU/notnil? des)
                 (CU/TryC
-                    (FileUtils/moveFileToDirectory f des false)
-                    (File. des fname) )
-                f) ]
-    (.dispatch src (ioes-reify-event co fname cf action))))
+                  (FileUtils/moveFileToDirectory f des false)
+                  (File. des fname) )
+                f)
+              :else nil) ]
+    (when-not (nil? cf)
+      (.dispatch src (ioes-reify-event co fname cf action)))) )
 
 
 (defmethod comp-configure :czc.hhh.io/FilePicker
@@ -139,7 +143,7 @@
                  (postPoll co f :FP-CREATED))
                (onFileChange [f]
                  (postPoll co f :FP-CHANGED))
-               (onFileDelete [f] 
+               (onFileDelete [f]
                  (postPoll co f :FP-DELETED))) ]
     (.addListener obs lnr)
     (.addObserver mon obs)
