@@ -102,6 +102,8 @@
         Job
 
           (container [_] _container)
+          (setv [this k v] (.setf! this k v))
+          (getv [this k] (.getf this k))
           (event [_] evt)
           (id [_] jid))
 

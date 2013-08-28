@@ -16,14 +16,27 @@
 *
  ??*/
 
-
-package com.zotoh.frwk.util
+package com.zotoh.wflow
 
 /**
+ *
  * @author kenl
  */
-trait RunnableWithId extends Runnable {
-  def getId() : Any
+trait AsyncCallback {
+
+  /**
+   * @param result
+   */
+  def onSuccess(result:Any ): Unit
+
+  /**
+   * @param e
+   */
+  def onError(e:Throwable): Unit
+
+  /**
+   *
+   */
+  def onTimeout(): Unit
+
 }
-
-

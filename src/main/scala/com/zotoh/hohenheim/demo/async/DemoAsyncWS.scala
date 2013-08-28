@@ -16,27 +16,27 @@
 *
  ??*/
 
+package demo.async
 
-package com.zotoh.frwk.util
+import com.zotoh.wflow.AsyncCallback
+
 
 /**
  * @author kenl
+ *
  */
-trait Schedulable {
+object DemoAsyncWS {
 
-  def dequeue(w:Runnable) : Unit
-  def run(w:Runnable) : Unit
-  def postpone(w:Runnable, delayMillis:Long) : Unit
-  def hold(pid:Any, w:Runnable) : Unit
-  def hold(w:Runnable) : Unit
-
-  def delay(w:Runnable, delayMillis:Long): Unit
-  def dispose() : Unit
-
-  def wakeup(w:Runnable) : Unit
-  def wakeAndRun(pid:Any,w:Runnable) : Unit
-  def reschedule(w:Runnable) : Unit
+  def doLongAsyncCall( cb:AsyncCallback ) {
+    val t= new Thread(new Runnable() {
+        def run() {
+            Thread.sleep(10000)
+            cb.onSuccess("hello world")
+        }
+    })
+    t.setDaemon(true)
+    t.start()
+  }
 
 }
-
 

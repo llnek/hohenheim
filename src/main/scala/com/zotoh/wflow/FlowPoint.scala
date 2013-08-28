@@ -23,6 +23,7 @@ import org.slf4j._
 import java.util.concurrent.atomic.AtomicLong
 import com.zotoh.wflow.core.Job
 import com.zotoh.frwk.server.ServerLike
+import com.zotoh.frwk.util.RunnableWithId
 
 object FlowPoint {
   private val _sn= new AtomicLong(0)
@@ -32,7 +33,7 @@ object FlowPoint {
  * @author kenl
  *
  */
-abstract class FlowPoint protected[wflow](protected val _parent:Pipeline) extends Runnable {
+abstract class FlowPoint protected[wflow](protected val _parent:Pipeline) extends  RunnableWithId {
 
   private val _log:Logger= LoggerFactory.getLogger(classOf[FlowPoint])
   def tlog() = _log
@@ -56,7 +57,7 @@ abstract class FlowPoint protected[wflow](protected val _parent:Pipeline) extend
 
   def eval(j:Job ):FlowPoint
 
-  def id() = _pid
+  def getId() = _pid
 
   def nextPoint() = _nextPtr
   def getDef() = _defn

@@ -20,11 +20,12 @@
 package com.zotoh.wflow.core
 
 import com.zotoh.frwk.server.{Event, ServerLike}
+import com.zotoh.frwk.core.{Gettable, Settable}
 
 /**
  * @author kenl
  */
-trait Job {
+trait Job extends Gettable with Settable {
   def container() : ServerLike
   def event() : Event
   def id() : Any
