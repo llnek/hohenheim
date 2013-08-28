@@ -128,7 +128,7 @@ abstract class FlowPoint protected[wflow](protected val _parent:Pipeline) extend
     }
     val np= rc.nextPoint()
     rc match {
-      case x:DelayPoint => ct.delay(np, x.delayMillis())
+      case x:DelayPoint => ct.postpone(np, x.delayMillis())
       case x:AsyncWaitPoint => ct.hold( np)
       case x:NihilPoint => f.stop()
       case _ => ct.run(rc)

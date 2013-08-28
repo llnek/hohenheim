@@ -82,7 +82,7 @@
          port (.getAttr co :port)
          ip (if (SU/hgl? host) (InetAddress/getByName host) (InetAddress/getLocalHost))
          soc (ServerSocket. port backlog ip) ]
-    (info "opened Server Socket: " port " on host: " host)
+    (info "opened Server Socket " soc  " (bound?) " (.isBound soc))
     (doto soc (.setReuseAddress true))
     (.setAttr! co :ssocket soc)))
 
@@ -98,17 +98,20 @@
       (PU/coroutine (fn []
                       (while (.isBound ssoc)
                         (try
-                          (sockItDown (.accept ssoc))
+                          (sockItDown co (.accept ssoc))
                           (catch Throwable e#
+                            (warn e# "")
                             (IOUtils/closeQuietly ssoc)
                             (.setAttr! co :ssocket nil)))))
-                    cl))))
+                    cl))
+    (ioes-started co)))
 
 (defmethod ioes-stop :czc.hhh.io/SocketIO
   [^comzotohcljc.hhh.core.sys.Thingy co]
   (let [ ^ServerSocket ssoc (.getAttr co :ssocket) ]
     (IOUtils/closeQuietly ssoc)
-    (.setAttr! co :ssocket nil)))
+    (.setAttr! co :ssocket nil)
+    (ioes-stopped co)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

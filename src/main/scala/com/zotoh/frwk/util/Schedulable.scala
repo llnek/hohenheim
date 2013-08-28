@@ -30,7 +30,6 @@ trait Schedulable {
   def hold(pid:Any, w:Runnable) : Unit
   def hold(w:Runnable) : Unit
 
-  def delay(w:Runnable, delayMillis:Long): Unit
   def dispose() : Unit
 
   def wakeup(w:Runnable) : Unit

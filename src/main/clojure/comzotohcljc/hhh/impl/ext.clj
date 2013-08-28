@@ -49,6 +49,7 @@
 (use '[comzotohcljc.hhh.io.http])
 (use '[comzotohcljc.hhh.io.netty])
 (use '[comzotohcljc.hhh.io.events])
+(use '[comzotohcljc.hhh.io.socket])
 (use '[comzotohcljc.hhh.mvc.handler])
 
 (use '[comzotohcljc.hhh.core.constants])

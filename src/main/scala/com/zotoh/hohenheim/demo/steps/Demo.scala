@@ -44,6 +44,7 @@ class DemoMain extends AppMain {
   }
 }
 
+
 /**
  * What this example demostrates is a webservice which takes in some user info, authenticate the
  * user, then perform some EC2 operations such as granting permission to access an AMI, and
