@@ -107,9 +107,10 @@ class MockQueueSession(private val _conn:MockQueueConnection,
     val t= new Thread(new Runnable() {
       def run() {
         Thread.sleep(3000)
-        while (me._active && me._conn.isActive())
+        while (me._active && me._conn.isActive())      {
           me.trigger()
-        Thread.sleep(3000)
+          Thread.sleep(3000)
+        }
         me._active=false
       }
     })
