@@ -30,6 +30,7 @@ splash_bubble() {
 splash() {
   echo ""
   splash_crawford2
+  #splash_bubble
   echo ""
   echo -n "Version: "
   cat $HOHENHEIM_HOME/VERSION
@@ -64,6 +65,16 @@ if [ "$JAVA_HOME" = "" ] ; then
   #exit -1
   JAVA_HOME=/usr
 fi
+
+build_all() {
+  cd apps
+  for a in `ls`
+  do
+    cd  $CWD
+    ./bin/hohenheim build $a
+  done
+}
+
 
 JPROF=-agentpath:/Applications/jprofiler7/bin/macos/libjprofilerti.jnilib=port=8849
 DBGOPTS="-agentlib:jdwp=transport=dt_socket,server=y,address=8787,suspend=n"
@@ -143,6 +154,12 @@ if [ $# -eq 1 -a "$1" = "status" ]; then
   show_proc
   exit 0
 fi
+
+if [ $# -eq 1 -a "$1" = "build-all" ]; then
+  build_all
+  exit 0
+fi
+
 
 #CMDLINE="$JAVA_CMD -cp $BCP $DBGOPTS $LOGREF $BASEDIR $CLDR $MAINCZ $HOHENHEIM_HOME $@ "
 cd $HOHENHEIM_BIN

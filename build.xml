@@ -525,10 +525,8 @@
     <copy todir="${demo.dir}/${appid}" file="${basedir}/etc/app/pom.xml"/>
     <replace file="${demo.dir}/${appid}/pom.xml" token="@@APPDOMAIN@@" value="demoware"/>
     <replace file="${demo.dir}/${appid}/pom.xml" token="@@APPID@@" value="${appid}"/>
-    <!-- 
-      <zip destfile="${demo.dir}/${appid}.pod"><fileset dir="${demo.dir}/${appid}"/></zip>
-     <delete dir="${demo.dir}/${appid}"/>
-         -->
+    <zip destfile="${demo.dir}/${appid}.pod"><fileset dir="${demo.dir}/${appid}"/></zip>
+    <delete dir="${demo.dir}/${appid}"/>
   </target>
 
   <target name="pack_samples" >

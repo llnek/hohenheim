@@ -79,9 +79,11 @@
   <!-- target: clean ================================= -->
   <target name="clean">
     <delete includeemptydirs="true">
+      <fileset erroronmissingdir="false" dir="${out.test.dir}" includes="**/*"/>
       <fileset erroronmissingdir="false" dir="${out.jar.dir}" includes="**/*"/>
       <fileset erroronmissingdir="false" dir="${build.dir}" includes="**/*"/>
     </delete>
+    <delete file="${PID}-${build.version}.jar" quiet="true"/>
     <antcall target="clean-public"/>
   </target>
   <target name="clean-public">
