@@ -16,54 +16,58 @@
 *
  ??*/
 
-package demo.http
+package demo.jetty
 
 import java.text.SimpleDateFormat
 import java.util.{Date=>JDate}
-
-import org.json._
-
+import com.zotoh.hohenheim.io.{HTTPResult,HTTPEvent}
+import com.zotoh.frwk.io.XData
 import com.zotoh.hohenheim.runtime.AppMain
 import com.zotoh.hohenheim.core.Container
-import com.zotoh.hohenheim.io.{HTTPEvent, TimerEvent}
+import org.json._
 
 import com.zotoh.wflow.core.Job
 import com.zotoh.wflow._
-
 
 /**
  * @author kenl
  *
  */
-
 class DemoMain extends AppMain {
   def contextualize(c:Container) {
   }
   def initialize() {
-    println("Point your browser to http://localhost:8080/test/hello")
+    println("Point your browser to http://localhost:8085/helloworld")
   }
   def configure(cfg:JSONObject) {
   }
-  def start() {}
+  def start() {
+  }
   def stop() {
   }
   def dispose() {
   }
 }
-
 class Demo extends PipelineDelegate {
 
-  private def fmtXml() = """
-<?xml version = "1.0" encoding = "utf-8"?>
-<hello xmlns="http://simple/">
-<world>
-  Holy Batman!
-</world>
-</hello>
+  private def fmtHtml() = """
+      <html><head>
+      <title>Hohenheim: Test Jetty Servlet</title>
+      <link rel="shortcut icon" href="public/images/favicon.ico"/>
+      <link type="text/css" rel="stylesheet" href="public/styles/main.css"/>
+      <script type="text/javascript" src="public/scripts/test.js"></script>
+      </head>
+      <body><h1>Bonjour!</h1><br/>
+      <button type="button" onclick="pop();">Click Me!</button>
+      </body></html>
   """
+
+  def onStop(pipe:Pipeline) {}
+  def onError(err:Throwable, curPt:FlowPoint) = null
 
   val task1= new Work() {
     def perform(cur:FlowPoint, job:Job, arg:Any) = {
+
         val ev= job.event.asInstanceOf[HTTPEvent]
         val res= ev.getResultObj
         /*
@@ -76,20 +80,16 @@ class Demo extends PipelineDelegate {
 */
         // construct a simple html page back to caller
         // by wrapping it into a stream data object
-        res.setHeader("content-type", "text/xml")
-        res.setContent( fmtXml)
+        res.setContent( fmtHtml)
         res.setStatus(200)
 
         // associate this result with the orignal event
         // this will trigger the http response
-        ev.replyResult()
-        null
+        ev.replyResult
     }
   }
 
   def getStartActivity(pipe:Pipeline) = new PTask(task1)
-  def onStop(pipe:Pipeline) {}
-  def onError(err:Throwable, curPt:FlowPoint) = null
 
 }
 

@@ -29,6 +29,7 @@
 (import '(javax.servlet.http Cookie HttpServletRequest))
 (import '(java.net HttpCookie))
 (import '(org.eclipse.jetty.continuation Continuation ContinuationSupport))
+(import '(com.zotoh.frwk.server Component))
 (import '(com.zotoh.frwk.core
   Versioned Hierarchial
   Identifiable Disposable Startable))
@@ -82,14 +83,12 @@
           (clrAttr! [_ a] (.mm-r impl a) )
           (getAttr [_ a] (.mm-g impl a) )
 
-        Versioned
+        Component
           (version [_] "1.0")
+          (id [_] eeid)
 
         Hierarchial
           (parent [_] parObj)
-
-        Identifiable
-          (id [_] eeid)
 
         ServletEmitter
           (container [this] (.parent this))

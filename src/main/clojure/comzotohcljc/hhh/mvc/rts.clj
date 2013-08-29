@@ -127,7 +127,10 @@
          mpt (.optString cfile path :mount "")
          pipe (.optString cfile path :pipe "")
          ^comzotohcljc.util.core.MuObj
-         rc (make-route-info path verb pipe) ]
+         rc (make-route-info 
+              path 
+              (if (and stat (SU/nichts? verb)) "GET" verb) 
+              pipe) ]
     (if stat
       (do
         (.setf! rc :mountPoint mpt)

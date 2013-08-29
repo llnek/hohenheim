@@ -177,14 +177,17 @@
          ps (CU/nice-fpath (File. appDir ^String DN_PUBLIC))
          uri (.getUri evt)
          gc (.groupCount mc) ]
+
     (with-local-vars [ mp (StringUtils/replace mpt
                                                "${app.dir}"
                                                (CU/nice-fpath appDir)) ]
-      (for [i (range 1 (+ gc 1)) ]
-        (var-set mp (StringUtils/replace @mp "{}" (.group mc ^long i) 1)))
+      (if (> gc 1)
+        (doseq [ i (range 1 gc) ]
+          (var-set mp (StringUtils/replace ^String @mp "{}" (.group mc (int i)) 1))) )
 
       ;; ONLY serve static assets from *public folder*
       (var-set mp (CU/nice-fpath (File. ^String @mp)))
+      (debug "request to serve static file: " @mp)
       (if (.startsWith ^String @mp ps)
         (handleStatic src ch req evt (File. ^String @mp))
         (do
@@ -226,7 +229,7 @@
 
       (= r1 true)
       (do
-        (debug "matched one route: " (.getPath r2))
+        (debug "matched one route: " (.getPath r2) " , and static = " (.isStatic? r2))
         (if (.isStatic? r2)
           (serveStatic co r2 r3 ch req evt)
           (serveRoute co r2 r3 ch evt)))
