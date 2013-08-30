@@ -59,6 +59,11 @@ else
   check_linux
 fi
 
+# make a sym-link; hhh is much shorter.
+if [ ! -e $HOHENHEIM_BIN/hhh ]; then
+  ln -s $HOHENHEIM_BIN/hohenheim $HOHENHEIM_BIN/hhh
+fi
+
 if [ "$JAVA_HOME" = "" ] ; then
   echo "Attempt to reference standard java location on system: /usr/bin."
   #echo "Please set JAVA_HOME"
@@ -85,7 +90,6 @@ LIBDIR=$HOHENHEIM_HOME/lib/*
 BCP=$BOOT:$DISTRO:$LIBDIR:$CLASSPATH
 
 JAVA_CMD=$JAVA_HOME/bin/java
-DBGOPTS=
 BG=false
 
 VMXRGS=" -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m"
@@ -111,7 +115,7 @@ KPORT=4444
 KILLPORT="-Dhohenheim.kill.port=$KPORT"
 
 show_proc() {
-    pid=$( ps -ef | grep hohenheim.etc.core | grep -v grep | awk '{print $2}' )
+    pid=$( ps -ef | grep comzotohcljc.hhh.etc.core | grep -v grep | awk '{print $2}' )
     if [ -n "$pid" ]; then
       echo "Hohenheim is running with process-id: ${pid}."
     else
@@ -119,7 +123,7 @@ show_proc() {
     fi
 }
 stop_proc() {
-    pid=$( ps -ef | grep hohenheim.etc.core | grep -v grep | awk '{print $2}' )
+    pid=$( ps -ef | grep comzotohcljc.hhh.etc.core | grep -v grep | awk '{print $2}' )
     if [ -n "$pid" ]; then
       #kill $pid
       cd /tmp

@@ -322,7 +322,7 @@
 
 (defn- genEclipseProj [app]
   (let [ cwd (File. (getHomeDir) (str DN_BOXX "/" app))
-         ec (File. (CU/getcwd) "eclipse.projfiles")
+         ec (File. cwd "eclipse.projfiles")
          sb (StringBuilder.)
          lang "scala"
          ulang (.toUpperCase lang) ]
@@ -345,7 +345,7 @@
           (StringUtils/replace "${CLASS.PATH.ENTRIES}" (.toString sb)))
       "utf-8")))
 
-(defn- onIDE [args]
+(defn- onIDE [ & args]
   (if (> (count args) 2)
     (case (nth args 1)
       "eclipse" (genEclipseProj (nth args 2))

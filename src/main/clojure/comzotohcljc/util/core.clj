@@ -235,7 +235,7 @@
     (if (nil? rcPath) nil (.getResource (get-czldr czLoader) rcPath))) )
 
 (defn rc-str "Load the resource as string."
-  (^String [^String rcPath ^String encoding] (rc-str encoding nil))
+  (^String [^String rcPath ^String encoding] (rc-str rcPath encoding nil))
   (^String [^String rcPath] (rc-str rcPath "utf-8" nil))
   (^String [^String rcPath ^String encoding ^ClassLoader czLoader]
     (with-open [ inp (rc-stream rcPath czLoader) ]
