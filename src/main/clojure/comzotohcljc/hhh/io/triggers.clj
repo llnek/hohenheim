@@ -33,12 +33,18 @@
 (import '(java.util List Timer TimerTask))
 (import '(java.net HttpCookie))
 (import '(javax.servlet.http Cookie HttpServletRequest HttpServletResponse))
+(import '(org.jboss.netty.buffer ByteBufferBackedChannelBuffer))
+(import '(java.nio ByteBuffer))
 
 (import '(org.apache.commons.io IOUtils))
 (import '(com.zotoh.frwk.util NCMap))
 (import '(com.zotoh.frwk.io XData))
 (import '(com.zotoh.frwk.core Identifiable))
-(import '(com.zotoh.hohenheim.io HTTPEvent))
+(import '(com.zotoh.hohenheim.io WebSockEvent WebSockResult HTTPEvent))
+(import '(org.jboss.netty.handler.codec.http.websocketx
+  WebSocketFrame
+  BinaryWebSocketFrame
+  TextWebSocketFrame))
 
 (use '[comzotohcljc.netty.comms :only (*HTTP-CODES*) ])
 (require '[comzotohcljc.net.comms :as NU])
@@ -141,6 +147,20 @@
       (.addCookie cke (.getName c)(.getValue c)))
     (.encode cke)))
 
+(defn- netty-ws-reply [^WebSockResult res ^Channel ch ^WebSockEvent evt src]
+  (let [ ^XData xs (.getData res)
+         bits (.javaBytes xs)
+         ^WebSocketFrame 
+         f (cond
+              (.isBinary res)
+              (BinaryWebSocketFrame.
+                (ByteBufferBackedChannelBuffer. 
+                  (ByteBuffer/wrap bits)))
+
+              :else
+              (TextWebSocketFrame. (SU/nsb (CU/stringify bits)))) ]
+    (.write ch f)))
+
 (defn- netty-reply [^comzotohcljc.util.core.MuObj res
                     ^Channel ch
                     ^HTTPEvent evt
@@ -189,7 +209,11 @@
   (reify AsyncWaitTrigger
 
     (resumeWithResult [_ res]
-      (CU/Try! (netty-reply res ch evt src) ))
+      (cond
+        (instance? WebSockEvent evt)
+        (CU/Try! (netty-ws-reply res ch evt src) )
+        :else
+        (CU/Try! (netty-reply res ch evt src) ) ))
 
     (resumeWithError [_]
       (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1

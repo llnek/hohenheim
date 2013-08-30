@@ -20,11 +20,18 @@
 package com.zotoh.hohenheim.io;
 
 
+
 public interface WebSockEvent  extends IOEvent {
 
   public boolean isBinary();
   public boolean isText();
   public Object getData();
+  public boolean isSSL();
+
+  //------------
+
+  public WebSockResult getResultObj();
+  public void replyResult();
 
 }
 

@@ -54,7 +54,6 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
-(use '[comzotohcljc.hhh.io.events :only (make-jms-event) ])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.io.core])
 

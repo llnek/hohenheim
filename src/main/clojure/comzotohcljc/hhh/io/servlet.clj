@@ -44,10 +44,7 @@
 
 
 
-(use '[comzotohcljc.hhh.io.events  :only (make-servlet-event) ])
 (use '[comzotohcljc.hhh.io.http  :only (make-http-result) ])
-
-
 (use '[clojure.tools.logging :only (info warn error debug)])
 (require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])

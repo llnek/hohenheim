@@ -175,6 +175,8 @@
 
 (derive :czc.hhh.io/JettyIO :czc.hhh.io/HTTP)
 (derive :czc.hhh.io/NettyIO :czc.hhh.io/HTTP)
+
+(derive :czc.hhh.io/WebSockIO :czc.hhh.io/NettyIO)
 (derive :czc.hhh.io/NettyMVC :czc.hhh.io/NettyIO)
 
 (derive :czc.hhh.io/RepeatingTimer :czc.hhh.io/Emitter)

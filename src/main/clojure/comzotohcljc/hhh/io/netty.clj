@@ -35,6 +35,18 @@
   ChannelGroup))
 (import '(org.jboss.netty.bootstrap ServerBootstrap))
 (import '(com.zotoh.frwk.core Identifiable))
+(import '(com.zotoh.hohenheim.io WebSockEvent WebSockResult))
+(import '(com.zotoh.frwk.io XData))
+(import '(org.jboss.netty.handler.codec.http.websocketx
+  WebSocketFrame
+  WebSocketServerHandshaker
+  WebSocketServerHandshakerFactory
+  ContinuationWebSocketFrame
+  CloseWebSocketFrame
+  BinaryWebSocketFrame
+  TextWebSocketFrame
+  PingWebSocketFrame
+  PongWebSocketFrame))
 
 
 
@@ -59,6 +71,25 @@
 
 (defmulti netty-service-req "" (fn [a & args] (:typeid (meta a))))
 
+(defn- make-wsock-result []
+  (let [ impl (CU/make-mmap) ]
+    (.mm-s impl :binary false)
+    (.mm-s impl :text false)
+    (.mm-s impl :data nil)
+    (reify
+      MuObj
+      (setf! [_ k v] (.mm-s impl k v) )
+      (seq* [_] (seq (.mm-m* impl)))
+      (getf [_ k] (.mm-g impl k) )
+      (clrf! [_ k] (.mm-r impl k) )
+      (clear! [_] (.mm-c impl))
+
+      WebSockResult
+      (isBinary [_] (.mm-g impl :binary))
+      (isText [_] (.mm-g impl :text))
+      (getData [_] (XData. (.mm-g impl :data)))
+      )))
+
 (defn- cookieToJava [^Cookie c]
   (doto (HttpCookie. (.getName c)(.getValue c))
     (.setComment (.getComment c))
@@ -67,6 +98,45 @@
     (.setPath (.getPath c))
     (.setVersion (.getVersion c))
     (.setHttpOnly (.isHttpOnly c)) ))
+
+
+(defn- make-wsock-event
+  [^comzotohcljc.hhh.io.core.EmitterAPI co ^Channel ch ^XData xdata]
+  (let [ ^WebSockResult res (make-wsock-result)
+         ssl (CU/notnil? (.get (.getPipeline ch) "ssl"))
+         ^InetSocketAddress laddr (.getLocalAddress ch)
+         impl (CU/make-mmap)
+         eeid (SN/next-long) ]
+    (with-meta
+      (reify
+        MuObj
+
+          (setf! [_ k v] (.mm-s impl k v) )
+          (seq* [_] (seq (.mm-m* impl)))
+          (getf [_ k] (.mm-g impl k) )
+          (clrf! [_ k] (.mm-r impl k) )
+          (clear! [_] (.mm-c impl))
+
+        Identifiable
+        (id [_] eeid)
+
+        WebSockEvent
+        (bindSession [_ s] nil)
+        (getSession [_] nil)
+        (getId [_] eeid)
+        (isSSL [_] ssl)
+        (isText [_] (instance? String (.content xdata)))
+        (isBinary [this] (not (.isText this)))
+        (getData [_] xdata)
+        (getResultObj [_] res)
+        (replyResult [this]
+          (let [ ^comzotohcljc.hhh.io.core.WaitEventHolder
+                 wevt (.release co this) ]
+            (when-not (nil? wevt)
+              (.resumeOnResult wevt res))))
+        (emitter [_] co))
+
+      { :typeid :czc.hhh.io/WebSockEvent } )))
 
 (defmethod ioes-reify-event :czc.hhh.io/NettyIO
   [^comzotohcljc.hhh.io.core.EmitterAPI co & args]
@@ -196,7 +266,12 @@
 (defmethod netty-service-req :czc.hhh.io/NettyIO
   [^comzotohcljc.hhh.io.core.EmitterAPI co
    ch req msginfo xdata]
-  (let [ evt (ioes-reify-event co ch req xdata)
+  (let [ mtd (:method msginfo)
+         evt (cond
+                (= "WS" mtd)
+                (make-wsock-event co ch xdata)
+                :else
+                (ioes-reify-event co ch req xdata))
          ^comzotohcljc.hhh.io.core.WaitEventHolder
          w (make-async-wait-holder (make-netty-trigger ch evt co) evt) ]
     (.timeoutMillis w

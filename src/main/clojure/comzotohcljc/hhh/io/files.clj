@@ -44,7 +44,6 @@
 
 (use '[comzotohcljc.hhh.io.loops
        :only (loopable-schedule loopable-oneloop cfg-loopable) ])
-(use '[comzotohcljc.hhh.io.events :only (make-filepicker-event) ])
 (use '[comzotohcljc.hhh.io.core])
 
 (use '[comzotohcljc.util.seqnum :as SN])

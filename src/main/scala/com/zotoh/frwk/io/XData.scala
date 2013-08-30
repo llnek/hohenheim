@@ -92,7 +92,7 @@ object XData {
 
   def resetContent(obj:Any): XData = resetContent(obj, true)
 
-  def content() : Option[Any] = Option(_data)
+  def content() = _data
 
   def hasContent() = _data != null
 

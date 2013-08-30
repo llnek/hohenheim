@@ -22,7 +22,7 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 
 (import '(java.lang.reflect Field))
-(import '(org.apache.commons.io FileUtils))
+(import '(org.apache.commons.io IOUtils FileUtils))
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.io IOException ByteArrayOutputStream File OutputStream InputStream))
 (import '(java.nio ByteBuffer))
@@ -32,6 +32,7 @@
 (import '(javax.net.ssl SSLEngine SSLContext))
 (import '(javax.net.ssl X509TrustManager TrustManager))
 (import '(org.jboss.netty.bootstrap Bootstrap ClientBootstrap ServerBootstrap))
+(import '(org.jboss.netty.buffer ChannelBufferInputStream ChannelBuffer))
 (import '(org.jboss.netty.channel
   ChannelHandlerContext Channel ExceptionEvent MessageEvent
   ChannelFutureListener Channels SimpleChannelHandler ChannelFuture
@@ -62,7 +63,6 @@
   PongWebSocketFrame))
 (import '(com.zotoh.frwk.net NetUtils))
 (import '(com.zotoh.frwk.io XData))
-(import '(org.apache.commons.io IOUtils))
 
 (require '[comzotohcljc.crypto.stores :as ST])
 (require '[comzotohcljc.crypto.core :as CY])
@@ -205,13 +205,13 @@
 ;; private helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- op-complete [chOrGroup success options]
+(defn- op-complete [chOrGroup success error options]
   (cond
     (fn? (:done options))
     (apply (:done options) chOrGroup)
 
     (and (fn? (:nok options)) (not success ))
-    (apply (:nok options) chOrGroup)
+    (apply (:nok options) chOrGroup error)
 
     (and (fn? (:ok options)) success)
     (apply (:ok options) chOrGroup)
@@ -226,7 +226,10 @@
     (-> cf (.addListener
               (reify ChannelGroupFutureListener
                 (operationComplete [_ cff]
-                  (op-complete cg (.isCompleteSuccess ^ChannelGroupFuture cff) options )))))) )
+                  (op-complete cg
+                               (.isCompleteSuccess ^ChannelGroupFuture cff)
+                               nil
+                               options )))))) )
 
 (defmethod ^:private add-listener ChannelFuture
 
@@ -235,7 +238,10 @@
     (-> cf (.addListener
               (reify ChannelFutureListener
                 (operationComplete [_ cff]
-                  (op-complete ch (.isSuccess ^ChannelFuture cff) options )))))) )
+                  (op-complete ch
+                               (.isSuccess ^ChannelFuture cff)
+                               (.getCause ^ChannelFuture cff)
+                               options )))))) )
 
 ;; make channel-future listener to close the channel
 (defn- maybe-keepAlive [^ChannelFuture cf keepAlive]
@@ -266,7 +272,8 @@
 
 ;; extract info from request
 (defn- nio-extract-req [^HttpRequest req]
-  (let [ decr (QueryStringDecoder. (.getUri req))
+  (let [ ws (.toLowerCase (SU/strim (.getHeader req "upgrade")))
+         decr (QueryStringDecoder. (.getUri req))
          md (-> req (.getMethod) (.getName))
          uri (.getPath decr)
          m1 (nio-extract-msg req)
@@ -275,7 +282,10 @@
                       (transient {}) (seq (.getParameters decr)))) ]
 
     (comzotohcljc.net.comms.HTTPMsgInfo.
-      (:protocol m1) md uri (:is-chunked m1)
+      (:protocol m1)
+      (if (= "websocket" ws) "WS" md)
+      uri
+      (:is-chunked m1)
       (:keep-alive m1) (:clen m1) (:headers m1) params)))
 
 ;; extract info from response
@@ -286,7 +296,7 @@
       (:keep-alive m1) (:clen m1) (:headers m1) {})))
 
 (defn- nio-pcomplete
-  [^ChannelHandlerContext ctx ^HttpMessage msg]
+  [^ChannelHandlerContext ctx msg]
   (let [ ch (.getChannel ctx)
          attObj (.getAttachment ch)
          ^XData xdata (:xs attObj)
@@ -306,15 +316,16 @@
                    (.onres usercb ch dir info xdata))
       (instance? HttpRequest dir) (do
                   (.onreq usercb ch dir info xdata))
+      (instance? WebSocketFrame msg) (do
+                  (.onreq usercb ch msg info xdata))
       :else nil)
     ))
 
 (defn- nio-sockit-down
 
-  [^ChannelHandlerContext ctx ^HttpMessage msg]
+  [^ChannelHandlerContext ctx ^ChannelBuffer cbuf]
   (let [ ch (.getChannel ctx)
          attObj (.getAttachment ch)
-         ^ChannelBuffer cbuf (.getContent msg)
          ^XData xdata (:xs attObj)
          ^OutputStream cout (:os attObj)
          csum (:clen attObj)
@@ -345,92 +356,97 @@
          ^OutputStream os (:os att) ]
     (IOUtils/closeQuietly os)))
 
-(defn- wsframe [^ChannelHandlerContext ctx ^WebSocketFrame frame]
-  (let [ cc (.getChannel ctx) ]
-    if (frame instanceof CloseWebSocketFrame) {
-      _handshaker.close(cc, (CloseWebSocketFrame) frame);
-      return; 
-    }
-    else if (frame instanceof PingWebSocketFrame) {
-      cc.write(new PongWebSocketFrame(frame.getBinaryData()));
-      return;
-    }
-    else if ( frame instanceof BinaryWebSocketFrame) {
-      data=getBits(frame);
-    }
-    else if ( frame instanceof TextWebSocketFrame) {
-      data=((TextWebSocketFrame)frame).getText();
-    }
-    else if ( frame instanceof ContinuationWebSocketFrame) {
-      ContinuationWebSocketFrame cf=(ContinuationWebSocketFrame )frame;
-      if (cf.isFinalFragment()) {
-        data=cf.getAggregatedText();
-      } else {
-        return; 
-      }
-    }
-    
-    WaitEvent w= new AsyncWaitEvent( new WebSockEvent(_dev, data),                
-            new WebSockTrigger(_dev, ctx) );
-    final Event ev = w.getInnerEvent();
-    
-    w.timeoutMillis(_dev.getWaitMillis());
-    _dev.holdEvent(w) ;
-    
-    _dev.getDeviceManager().getEngine()
-    .getScheduler().run( new Runnable(){
-        public void run() {                
-            _dev.dispatch(ev) ;
-        }            
-    });
+(defn- nio-frame-chunk [ ^ChannelHandlerContext ctx ^ContinuationWebSocketFrame frame ]
+  (let [ cbuf (.getBinaryData frame)
+         ch (.getChannel ctx)
+         attObj (.getAttachment ch)
+         ^XData xs (:xs attObj) ]
+    (if-not (nil? cbuf) (nio-sockit-down ctx cbuf))
+    (if (.isFinalFragment frame)
+      (do
+        (nio-finz ctx)
+        (if (nil? cbuf)
+          (let [s (SU/nsb (.getAggregatedText frame)) ]
+            (.setAttachment ch (merge attObj { :clen (.length s) } ))
+            (.resetContent xs s)))
+        (nio-pcomplete ctx frame) )) ))
 
-  }
+(defn- getBits [^ChannelHandlerContext ctx ^WebSocketFrame frame]
+  (let [ buf (.getBinaryData frame) ]
+    (nio-sockit-down ctx buf)))
+
+(defn- nio-wsframe [^ChannelHandlerContext ctx ^WebSocketFrame frame
+                    ^comzotohcljc.netty.comms.NettyServiceIO
+                    usercb]
+  (let [ ch (.getChannel ctx)
+         attObj (.getAttachment ch)
+         ^XData xs (:xs attObj)
+         ^WebSocketServerHandshaker hs (:hs attObj) ]
+    (debug "nio-wsframe: received a " (class frame) ", att= " attObj)
+    (cond
+      (instance? CloseWebSocketFrame frame)
+      (.close hs ch ^CloseWebSocketFrame frame)
+
+      (instance? PingWebSocketFrame frame)
+      (.write ch (PongWebSocketFrame. (.getBinaryData frame)))
+
+      (instance? BinaryWebSocketFrame frame)
+      (do
+        (getBits ctx frame)
+        (nio-pcomplete ctx frame))
+
+      (instance? TextWebSocketFrame frame)
+      (let [ s (SU/nsb (.getText ^TextWebSocketFrame frame)) ]
+        (.resetContent xs s)
+        (.setAttachment ch (merge attObj { :clen (.length s) }))
+        (nio-pcomplete ctx frame))
+
+      (instance? ContinuationWebSocketFrame frame)
+      (nio-frame-chunk ctx frame)
+
+      :else ;; what else can this be ????
+      nil) ))
 
 
 (defn- maybeSSL [^ChannelHandlerContext ctx]
   (let [ ssl (-> ctx (.getPipeline) (.get (class SslHandler))) ]
     (if-not (nil? ssl)
       (let [ cf (.handshake ^SslHandler ssl) ]
-        (.addListener cf 
-                      (reify ChannelFutureListener 
-                        (operationComplete [_ fff] 
-                          (if-not (.isSuccess fff) (-> fff (.getChannel)(.close)))))))
-      )))
+        (add-listener cf { :nok (fn [^Channel c] (.close c)) } )))))
 
 (defn- nio-wsock [^ChannelHandlerContext ctx evt ^HttpRequest req usercb]
   (let [ wf (WebSocketServerHandshakerFactory.
-                     (str "ws://" (.getHeader req "host") (.getUri req)) null false)
+                     (str "ws://" (.getHeader req "host") (.getUri req)) nil false)
          ch (.getChannel ctx)
+         attObj (.getAttachment ch)
          hs (.newHandshaker wf req) ]
     (if (nil? hs)
       (.sendUnsupportedWebSocketVersionResponse wf ch)
       (do
-        (.addListener
-          (.handshake hs ch req)
-          (reify ChannelFutureListener
-            (operationComplete [_ fff]
-              (if (.isSuccess fff)
-                (maybeSSL ctx)
-                (Channels/fireExceptionCaught (.getChannel fff) (.getCause fff)))))))
-  )))
+        (.setAttachment ch (merge attObj { :hs hs }))
+        (add-listener (.handshake hs ch req)
+                      { :nok (fn [^Channel c ^Throwable e]
+                               (Channels/fireExceptionCaught c e))
+                        :ok (fn [c] (maybeSSL ctx)) } )))))
 
 (defn- nio-preq [^ChannelHandlerContext ctx ^HttpRequest req usercb]
-  (let [ msginfo (nio-extract-req req)
-         attObj (nio-cfgctx ctx { :dir req :info msginfo } usercb) ]
+  (let [ attObj (.getAttachment (.getChannel ctx))
+         msginfo (:info attObj) ]
     (debug "nio-preq: received a " (:method msginfo ) " request from " (:uri msginfo))
     (when (HttpHeaders/is100ContinueExpected req) (send-100-cont ctx))
     (if (:is-chunked msginfo)
       (debug "nio-preq: request is chunked.")
       ;; msg not chunked, suck all data from the request
       (do (try
-              (nio-sockit-down ctx req)
+              (nio-sockit-down ctx (.getContent req))
             (finally (nio-finz ctx)))
         (nio-pcomplete ctx req)))))
 
 ;; handle a request
 (defn- nio-prequest [^ChannelHandlerContext ctx evt ^HttpRequest req usercb]
-  (let [ x (.getHeader req "upgrade") ]
-    (if (.equalsIgnoreCase ^String x "websocket")
+  (let [ msginfo (nio-extract-req req)
+         attObj (nio-cfgctx ctx { :dir req :info msginfo } usercb) ]
+    (if (= "WS" (:method msginfo))
       (nio-wsock ctx evt req usercb)
       (nio-preq ctx req usercb))))
 
@@ -442,7 +458,7 @@
     (if (.isChunked res)
       (debug "nio-presbody: response is chunked.")
       (try
-          (nio-sockit-down ctx res)
+          (nio-sockit-down ctx (.getContent res))
         (finally (nio-finz ctx)))))
 
 ;; handle a response
@@ -461,7 +477,7 @@
 ;; handle a chunk - part of a message
 (defn- nio-chunk [^ChannelHandlerContext ctx ^HttpChunk msg]
   (let [ done (try
-                  (nio-sockit-down ctx msg)
+                  (nio-sockit-down ctx (.getContent msg))
                   (.isLast msg)
                 (catch Throwable e#
                     (do (nio-finz ctx) (throw e#)))) ]
@@ -490,7 +506,7 @@
         ;;(debug "typeof of USERCB ===== " (type usercb))
         (cond
           (instance? HttpRequest msg) (nio-prequest ctx ev msg usercb)
-          (instance? WebSocketFrame) (nio-wsframe ctx msg)
+          (instance? WebSocketFrame msg) (nio-wsframe ctx msg usercb)
           (instance? HttpResponse msg) (nio-pres ctx ev msg usercb)
           (instance? HttpChunk msg) (nio-chunk ctx msg)
           :else (throw (IOException. "Received some unknown object." ) ))))

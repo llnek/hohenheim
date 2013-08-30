@@ -67,51 +67,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-filepicker-event [src ^String origFile ^File f action]
-  (let [ ^comzotohcljc.util.core.MuObj e (make-event src :czc.hhh.io/FileEvent) ]
-    (.setf! e :originalFile (File. origFile))
-    (.setf! e :file f)
-    (.setf! e :action action)
-    e))
-
-(defn make-email-event [src ^MimeMessage msg]
-  (let [ ^comzotohcljc.util.core.MuObj e (make-event src :czc.hhh.io/EmailEvent) ]
-    (.setf! e :msg msg)
-    e))
-
-(defn make-jms-event [src ^Message msg]
-  (let [ ^comzotohcljc.util.core.MuObj e (make-event src :czc.hhh.io/JMSEvent) ]
-    (.setf! e :msg msg)
-    e))
-
-(defn make-timer-event [src repeating]
-  (let [ ^comzotohcljc.util.core.MuObj e (make-event src :czc.hhh.io/TimerEvent) ]
-    (.setf! e :repeating repeating)
-    e))
-
-(defn make-socket-event [src sock]
-  (let [ ^comzotohcljc.util.core.MuObj e (make-event src :czc.hhh.io/SocketEvent) ]
-    (.setf! e :socket sock)
-    e))
-
-(defn make-servlet-event [src req]
-  (let [ ^comzotohcljc.util.core.MuObj e (make-event src :czc.hhh.io/HTTPEvent) ]
-    (.setf! e :request req)
-    e))
-
-(defn make-netty-event [src msginfo ^XData xdata]
-  (let [ ^comzotohcljc.util.core.MuObj e (make-event src :czc.hhh.io/HTTPEvent) ]
-    (.setf! e :request-data xdata)
-    (.setf! e :request msginfo)
-    e))
-
 (defn eve-unbind [^comzotohcljc.util.core.MuObj ev]
   (.setf! ev :waitHolder nil))
 
 (defn eve-bind [^comzotohcljc.util.core.MuObj ev obj]
   (.setf! ev :waitHolder obj))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod eve-set-session :czc.hhh.io/EmEvent [^comzotohcljc.util.core.MuObj obj s]
   (do
