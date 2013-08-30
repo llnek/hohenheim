@@ -50,6 +50,16 @@
   HttpResponseEncoder))
 (import '(org.jboss.netty.handler.ssl SslHandler))
 (import '(org.jboss.netty.handler.stream ChunkedStream ChunkedWriteHandler))
+(import '(org.jboss.netty.handler.codec.http.websocketx
+  WebSocketFrame
+  WebSocketServerHandshaker
+  WebSocketServerHandshakerFactory
+  ContinuationWebSocketFrame
+  CloseWebSocketFrame
+  BinaryWebSocketFrame
+  TextWebSocketFrame
+  PingWebSocketFrame
+  PongWebSocketFrame))
 (import '(com.zotoh.frwk.net NetUtils))
 (import '(com.zotoh.frwk.io XData))
 (import '(org.apache.commons.io IOUtils))
@@ -335,7 +345,75 @@
          ^OutputStream os (:os att) ]
     (IOUtils/closeQuietly os)))
 
-;; handle a request
+(defn- wsframe [^ChannelHandlerContext ctx ^WebSocketFrame frame]
+  (let [ cc (.getChannel ctx) ]
+    if (frame instanceof CloseWebSocketFrame) {
+      _handshaker.close(cc, (CloseWebSocketFrame) frame);
+      return; 
+    }
+    else if (frame instanceof PingWebSocketFrame) {
+      cc.write(new PongWebSocketFrame(frame.getBinaryData()));
+      return;
+    }
+    else if ( frame instanceof BinaryWebSocketFrame) {
+      data=getBits(frame);
+    }
+    else if ( frame instanceof TextWebSocketFrame) {
+      data=((TextWebSocketFrame)frame).getText();
+    }
+    else if ( frame instanceof ContinuationWebSocketFrame) {
+      ContinuationWebSocketFrame cf=(ContinuationWebSocketFrame )frame;
+      if (cf.isFinalFragment()) {
+        data=cf.getAggregatedText();
+      } else {
+        return; 
+      }
+    }
+    
+    WaitEvent w= new AsyncWaitEvent( new WebSockEvent(_dev, data),                
+            new WebSockTrigger(_dev, ctx) );
+    final Event ev = w.getInnerEvent();
+    
+    w.timeoutMillis(_dev.getWaitMillis());
+    _dev.holdEvent(w) ;
+    
+    _dev.getDeviceManager().getEngine()
+    .getScheduler().run( new Runnable(){
+        public void run() {                
+            _dev.dispatch(ev) ;
+        }            
+    });
+
+  }
+
+
+(defn- maybeSSL [^ChannelHandlerContext ctx]
+  (let [ ssl (-> ctx (.getPipeline) (.get (class SslHandler))) ]
+    (if-not (nil? ssl)
+      (let [ cf (.handshake ^SslHandler ssl) ]
+        (.addListener cf 
+                      (reify ChannelFutureListener 
+                        (operationComplete [_ fff] 
+                          (if-not (.isSuccess fff) (-> fff (.getChannel)(.close)))))))
+      )))
+
+(defn- nio-wsock [^ChannelHandlerContext ctx evt ^HttpRequest req usercb]
+  (let [ wf (WebSocketServerHandshakerFactory.
+                     (str "ws://" (.getHeader req "host") (.getUri req)) null false)
+         ch (.getChannel ctx)
+         hs (.newHandshaker wf req) ]
+    (if (nil? hs)
+      (.sendUnsupportedWebSocketVersionResponse wf ch)
+      (do
+        (.addListener
+          (.handshake hs ch req)
+          (reify ChannelFutureListener
+            (operationComplete [_ fff]
+              (if (.isSuccess fff)
+                (maybeSSL ctx)
+                (Channels/fireExceptionCaught (.getChannel fff) (.getCause fff)))))))
+  )))
+
 (defn- nio-preq [^ChannelHandlerContext ctx ^HttpRequest req usercb]
   (let [ msginfo (nio-extract-req req)
          attObj (nio-cfgctx ctx { :dir req :info msginfo } usercb) ]
@@ -348,6 +426,13 @@
               (nio-sockit-down ctx req)
             (finally (nio-finz ctx)))
         (nio-pcomplete ctx req)))))
+
+;; handle a request
+(defn- nio-prequest [^ChannelHandlerContext ctx evt ^HttpRequest req usercb]
+  (let [ x (.getHeader req "upgrade") ]
+    (if (.equalsIgnoreCase ^String x "websocket")
+      (nio-wsock ctx evt req usercb)
+      (nio-preq ctx req usercb))))
 
 (defn- nio-redirect [^ChannelHandlerContext ctx ^MessageEvent ev]
   ;; TODO: handle redirect properly, for now, same as error
@@ -404,9 +489,10 @@
       (let [ msg (.getMessage ^MessageEvent ev) ]
         ;;(debug "typeof of USERCB ===== " (type usercb))
         (cond
-          (instance? HttpResponse msg) (nio-pres ctx ev ^HttpResponse msg usercb)
-          (instance? HttpRequest msg) (nio-preq ctx ^HttpRequest msg usercb)
-          (instance? HttpChunk msg) (nio-chunk ctx ^HttpChunk msg)
+          (instance? HttpRequest msg) (nio-prequest ctx ev msg usercb)
+          (instance? WebSocketFrame) (nio-wsframe ctx msg)
+          (instance? HttpResponse msg) (nio-pres ctx ev msg usercb)
+          (instance? HttpChunk msg) (nio-chunk ctx msg)
           :else (throw (IOException. "Received some unknown object." ) ))))
 
     ))
@@ -562,7 +648,7 @@
            ^ChannelGroup cg (:cgroup clientr) ]
       (debug "Netty client connecting to " host ":" port)
       (.setPipelineFactory cli pl)
-      (let [ ^ChannelFuture cf (doto (.connect cli 
+      (let [ ^ChannelFuture cf (doto (.connect cli
                                                (InetSocketAddress. host port))
                   (.awaitUninterruptibly))
              ok (.isSuccess cf)
