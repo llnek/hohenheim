@@ -58,7 +58,6 @@
   (getLastAccessedTime [_] )
   (getMaxInactiveInterval [_] ))
 
-
 (defn- resurrect [^comzotohcljc.hhh.mvc.ios.WebSession mvs
                   ^HTTPEvent evt]
   (let [ ctr (.container ^Emitter (.emitter evt))
@@ -90,6 +89,25 @@
 
     (.bindSession evt mvs)
     mvs))
+
+(defn make-ws-session []
+  (let [ now (System/currentTimeMillis)
+         impl (CU/make-mmap) ]
+    (.mm-s impl SSID_FLAG (GU/new-uuid))
+    (.mm-s impl :createTS now)
+    (.mm-s impl :lastTS now)
+    (.mm-s impl :valid false)
+    (.mm-s impl :maxIdleSecs 3600)
+    (.mm-s impl :newOne true)
+    (with-meta
+      (reify
+        IOSession
+          (getImpl [_] nil)
+          (handleResult [_ evt res] nil)
+          (handleEvent [this evt]
+            (resurrect this evt)))
+
+      { :typeid :czc.hhh.io/WebSockSession } )))
 
 (defn make-session []
   (let [ now (System/currentTimeMillis)
@@ -124,11 +142,12 @@
           (getMaxInactiveInterval [_] (* 1000 (.mm-g impl :maxIdleSecs)))
 
         IOSession
+          (getImpl [_] nil)
           (handleResult [_ evt res] nil)
           (handleEvent [this evt]
             (resurrect this evt)))
 
-      { :typeid :czc.hhh.io/Session } )))
+      { :typeid :czc.hhh.io/HttpSession } )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
