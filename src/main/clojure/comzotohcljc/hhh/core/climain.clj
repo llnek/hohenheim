@@ -21,6 +21,8 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
+(import '(org.jboss.netty.channel Channel ChannelFutureListener))
+
 (import '(com.zotoh.hohenheim.core ConfigError))
 (import '(com.zotoh.frwk.server Component ComponentRegistry))
 (import '(com.zotoh.frwk.core
@@ -40,6 +42,7 @@
 (require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.files :as FU])
 (require '[comzotohcljc.util.ini :as WI])
+(use '[comzotohcljc.netty.comms])
 
 (use '[comzotohcljc.hhh.impl.exec :only (make-execvisor) ])
 (use '[comzotohcljc.hhh.core.constants])
@@ -50,6 +53,7 @@
 ;;(set! *warn-on-reflection* true)
 
 (def CLI-TRIGGER (promise))
+(def STOPCLI (atom false))
 
 (defn- inizContext ^comzotohcljc.util.core.MuObj [^File baseDir]
   (let [ cfg (File. baseDir ^String DN_CFG)
@@ -146,29 +150,45 @@
       (info "Execvisor created and synthesized - OK.")
       ctx)))
 
-(defn- enableRemoteShutdown []
-  (let [ port (CU/conv-long (System/getProperty "hohenheim.kill.port") 4444) ]
-    (info "Enabling remote shutdown...")
-    nil))
-
 (defn- stop-cli [^comzotohcljc.util.core.MuObj ctx]
   (let [ ^File pid (.getf ctx K_PIDFILE)
          execv (.getf ctx K_EXECV) ]
-    (when-not (nil? pid) (FileUtils/deleteQuietly pid))
-    (info "about to stop Hohenheim...")
-    (info "applications are shutting down...")
-    (when-not (nil? execv)
-      (.stop ^Startable execv))
-    (info "Hohenheim stopped.")
-    (info "Hohenheim says \"Goodbye\".")
-    (deliver CLI-TRIGGER 911)))
+    (if-not @STOPCLI
+      (do
+        (reset! STOPCLI true)
+        (when-not (nil? pid) (FileUtils/deleteQuietly pid))
+        (info "about to stop Hohenheim...")
+        (info "applications are shutting down...")
+        (when-not (nil? execv)
+          (.stop ^Startable execv))
+        (info "Hohenheim stopped.")
+        (info "Hohenheim says \"Goodbye\".")
+        (deliver CLI-TRIGGER 911)))))
+
+(defn- enableRemoteShutdown [^comzotohcljc.util.core.MuObj ctx]
+  (let [ port (CU/conv-long (System/getProperty "hohenheim.kill.port") 4444) ]
+    (info "Enabling remote shutdown...")
+    (make-mem-httpd
+      "127.0.0.1"
+      port
+      (reify NettyServiceIO
+        (before-send [_ ch msg] nil)
+        (onerror [_ ch msginfo evt] nil)
+        (onreq [_ ch req msginfo xdata]
+          (CU/Try!
+            (.addListener
+              (.write ch (make-resp-status)) 
+              ChannelFutureListener/CLOSE))
+          (stop-cli ctx))
+        (onres [_ ch rsp msginfo xdata] nil))
+      {} )))
 
 (defn- hookShutdown [^comzotohcljc.util.core.MuObj ctx]
   (let [ cli (.getf ctx K_CLISH) ]
     (.addShutdownHook (Runtime/getRuntime)
           (Thread. (reify Runnable
                       (run [_] (CU/Try! (stop-cli ctx))))))
-    (enableRemoteShutdown)
+    (enableRemoteShutdown ctx)
     (info "added shutdown hook.")
     ctx))
 
