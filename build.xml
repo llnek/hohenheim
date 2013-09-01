@@ -356,6 +356,7 @@
        pack api and other docs
        -->
 
+
   <target name="pack_all_docs">
     <mkdir dir="${pack.dir}/docs/api"/>
     <copy todir="${pack.dir}/docs">
@@ -364,6 +365,13 @@
         <exclude name=".svn"/>
       </fileset>
     </copy>
+    <java classname="autodoc.autodoc" fork="true" failonerror="true">
+      <classpath refid="compile.path.id"/>
+      <arg value="--name=Hohenheim"/>
+      <arg value="--root=${basedir}"/>
+      <arg value="--source-path=src/main/clojure"/>
+      <arg value="--output-path=${pack.dir}/docs/api"/>
+    </java>
   </target>
 
 

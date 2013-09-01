@@ -31,7 +31,7 @@
   SSLContext SSLEngine X509TrustManager
   TrustManagerFactorySpi TrustManager
   ManagerFactoryParameters))
-(import '(com.zotoh.frwk.net SSLTrustMgrFactory))
+(import '(com.zotoh.frwk.net NetUtils SSLTrustMgrFactory))
 (import '(com.zotoh.frwk.io XData))
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(org.apache.http.client HttpClient))
@@ -60,14 +60,10 @@
 ;;(set! *warn-on-reflection* false)
 
 
-
 (def ^:dynamic *socket-timeout* 5000)
-(def ^:dynamic  *LHOST* "localhost")
-(def ^:dynamic  *WP_HTTP* "HTTP")
-(def ^:dynamic  *WP_SMTP* "SMTP")
-(def ^:dynamic  *WP_SFTP* "SFTP")
-(def ^:dynamic  *WP_FTP* "FTP")
-(def ^:dynamic  *WP_FILE* "FILE")
+(def LOOPBACK "127.0.0.1")
+(def LHOST "localhost")
+
 
 (defrecord HTTPMsgInfo [^String protocol ^String method ^String uri
                         is-chunked keep-alive
@@ -82,12 +78,13 @@
          pms (.getParams cli) ]
     (HttpConnectionParams/setConnectionTimeout pms *socket-timeout*)
     (HttpConnectionParams/setSoTimeout pms *socket-timeout*)
+    (NetUtils/cfgForRedirect cli)
     cli))
 
 (defn- get-bits ^bytes [^HttpEntity ent] (if (nil? ent) nil (EntityUtils/toByteArray ent)) )
 (defn- get-str ^String [^HttpEntity ent] (EntityUtils/toString ent "utf-8"))
 
-(defn- p-ok [^HttpResponse rsp]
+(defn- processOK [^HttpResponse rsp]
   (let [ ent (.getEntity rsp)
          ct (if (nil? ent) nil (.getContentType ent))
          cv (if (nil? ct) "" (SU/strim (.getValue ct)))
@@ -106,61 +103,63 @@
           ;;(.startsWith cl "application/json")) (get-bits ent) ;;(get-str ent)
       ;;:else (get-bits ent))) )
 
-(defn- p-error [^HttpResponse rsp ^Throwable exp]
+(defn- processError [^HttpResponse rsp ^Throwable exp]
   (do
     (CU/Try! (EntityUtils/consumeQuietly (.getEntity rsp)))
     (throw exp)) )
 
-(defn- p-redirect [^HttpResponse rsp]
+(defn- processRedirect [^HttpResponse rsp]
   ;;TODO - handle redirect
-  (p-error rsp (IOException. "Redirect not supported.")) )
+  (processError rsp (IOException. "Redirect not supported.")) )
 
-(defn- p-reply [^HttpResponse rsp]
+(defn- processReply [^HttpResponse rsp]
   (let [ st (.getStatusLine rsp)
          msg (if (nil? st) "" (.getReasonPhrase st))
          rc (if (nil? st) 0 (.getStatusCode st)) ]
     (cond
       (and (>= rc 200) (< rc 300))
-      (p-ok rsp)
+      (processOK rsp)
 
       (and (>= rc 300) (< rc 400))
-      (p-redirect rsp)
+      (processRedirect rsp)
 
       :else
-      (p-error rsp (IOException. (str "Service Error: code = " rc ": " msg))))) )
+      (processError rsp (IOException. (str "Service Error: code = " rc ": " msg))))) )
 
 
-(defn- do-post [^HttpClient cli ^URL targetUrl ^String contentType ^XData xdata beforeSendFunc]
-  (try
-    (let [ ent (InputStreamEntity. (.stream xdata) (.size xdata))
-           p (HttpPost. (.toURI targetUrl)) ]
-      (.setEntity p (doto ent
-                          (.setContentType contentType)
-                          (.setChunked true)))
-      (when (fn? beforeSendFunc) (beforeSendFunc p))
-      (p-reply (.execute cli p)))
-    (finally
-        (.. cli getConnectionManager shutdown))) )
+(defn- doPOST [^URL targetUrl ^String contentType ^XData xdata beforeSendFunc]
+  (let [ ^HttpClient cli (mkApacheClientHandle) ]
+    (try
+      (let [ ent (InputStreamEntity. (.stream xdata) (.size xdata))
+             p (HttpPost. (.toURI targetUrl)) ]
+        (.setEntity p (doto ent
+                            (.setContentType contentType)
+                            (.setChunked true)))
+        (when (fn? beforeSendFunc) (beforeSendFunc p))
+        (processReply (.execute cli p)))
+      (finally
+          (.. cli getConnectionManager shutdown))) ))
 
-(defn- do-get [^HttpClient cli ^URL targetUrl beforeSendFunc]
-  (try
-    (let [ g (HttpGet. (.toURI targetUrl)) ]
-      (when (fn? beforeSendFunc) (beforeSendFunc g))
-      (p-reply (.execute cli g)))
-    (finally
-      (.. cli getConnectionManager shutdown))) )
+(defn- doGET [^URL targetUrl beforeSendFunc]
+  (let [ ^HttpClient cli (mkApacheClientHandle) ]
+    (try
+      (let [ g (HttpGet. (.toURI targetUrl)) ]
+        (when (fn? beforeSendFunc) (beforeSendFunc g))
+        (processReply (.execute cli g)))
+      (finally
+        (.. cli getConnectionManager shutdown))) ) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn sync-post "Perform a http-post on the target url."
   ([^URL targetUrl contentType ^XData xdata] (sync-post targetUrl contentType xdata nil))
   ([^URL targetUrl contentType ^XData xdata beforeSendFunc]
-    (do-post (mkApacheClientHandle) targetUrl contentType xdata beforeSendFunc)))
+    (doPOST targetUrl contentType xdata beforeSendFunc)))
 
 (defn sync-get "Perform a http-get on the target url."
   ([^URL targetUrl] (sync-get targetUrl nil))
   ([^URL targetUrl beforeSendFunc]
-    (do-get (mkApacheClientHandle) targetUrl beforeSendFunc)))
+    (doGET targetUrl beforeSendFunc)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

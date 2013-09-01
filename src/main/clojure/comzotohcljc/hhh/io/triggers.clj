@@ -46,7 +46,7 @@
   BinaryWebSocketFrame
   TextWebSocketFrame))
 
-(use '[comzotohcljc.netty.comms :only (*HTTP-CODES*) ])
+(use '[comzotohcljc.netty.comms :only (HTTP-CODES) ])
 (require '[comzotohcljc.net.comms :as NU])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
@@ -83,7 +83,7 @@
          code (.getf res :code)
          data (.getf res :data)
          ^HttpResponseStatus
-         status (get *HTTP-CODES* code) ]
+         status (get HTTP-CODES code) ]
 
     (when (nil? status) (throw (IOException. (str "Bad HTTP Status code: " code))))
     (try

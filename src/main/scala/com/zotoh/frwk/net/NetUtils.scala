@@ -25,6 +25,9 @@ import org.jboss.netty.buffer.ChannelBuffer
 import java.io.{OutputStream}
 import org.slf4j._
 import com.zotoh.frwk.io.{IOUtils,XData}
+import org.apache.http.impl.client.{DefaultRedirectStrategy, AbstractHttpClient}
+import org.apache.http.{ProtocolException, HttpResponse, HttpRequest}
+import org.apache.http.protocol.HttpContext
 
 /**
  * @author kenl
@@ -32,7 +35,29 @@ import com.zotoh.frwk.io.{IOUtils,XData}
 object NetUtils {
   
   private val _log=LoggerFactory.getLogger(classOf[NetUtils])
-  
+
+
+  def cfgForRedirect(cli:AbstractHttpClient)  {
+    cli.setRedirectStrategy(new DefaultRedirectStrategy() {
+      override def isRedirected(request:HttpRequest, response:HttpResponse , context:HttpContext )  = {
+        var isRedirect=false
+        try {
+          isRedirect = super.isRedirected(request, response, context)
+        } catch {
+          case e:ProtocolException =>
+          _log.warn("",e)
+        }
+        if (!isRedirect) {
+          val responseCode = response.getStatusLine().getStatusCode()
+          if (responseCode == 301 || responseCode == 302 || responseCode == 307 || responseCode == 308) {
+            isRedirect= true
+          }
+        }
+        isRedirect
+      }
+    })
+  }
+
   def dbgNettyDone(msg:String) = new ChannelFutureListener() {
       def operationComplete(fff:ChannelFuture) {  
           _log.debug("netty-op-complete: {}", msg)        
