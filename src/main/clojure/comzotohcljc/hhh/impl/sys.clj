@@ -60,7 +60,7 @@
     (with-meta
       (reify
 
-        Thingy
+        Element
 
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
@@ -103,7 +103,7 @@
     (comp-clone-context co ctx)))
 
 (defmethod comp-initialize :czc.hhh.impl/Deployer
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          py (.getf ctx K_PLAYDIR)
          pd (.getf ctx K_PODSDIR)
@@ -116,8 +116,8 @@
 
 (defn- maybe-start-pod
 
-  [^comzotohcljc.hhh.core.sys.Thingy knl
-   ^comzotohcljc.hhh.core.sys.Thingy pod]
+  [^comzotohcljc.hhh.core.sys.Element knl
+   ^comzotohcljc.hhh.core.sys.Element pod]
 
   (CU/TryC
     (let [ cache (.getAttr knl K_CONTAINERS)
@@ -138,7 +138,7 @@
     (with-meta
       (reify
 
-        Thingy
+        Element
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
@@ -185,7 +185,7 @@
     (with-meta
       (reify
 
-        Thingy
+        Element
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
@@ -213,7 +213,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod comp-initialize :czc.hhh.impl/PODMeta
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          rcl (.getf ctx K_ROOT_CZLR)
          ^URL url (.srcUrl ^comzotohcljc.hhh.impl.defaults.PODMeta co)

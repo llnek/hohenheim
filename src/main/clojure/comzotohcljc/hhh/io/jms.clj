@@ -85,7 +85,7 @@
   (.dispatch co (ioes-reify-event co msg)))
 
 (defmethod comp-configure :czc.hhh.io/JMS
-  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
+  [^comzotohcljc.hhh.core.sys.Element co cfg]
   (do
     (.setAttr! co :contextFactory (:contextfactory cfg))
     (.setAttr! co :connFactory (:connfactory cfg))
@@ -98,7 +98,7 @@
     (.setAttr! co :destination (:destination cfg))
     co))
 
-(defn- inizFac ^Connection [^comzotohcljc.hhh.core.sys.Thingy co
+(defn- inizFac ^Connection [^comzotohcljc.hhh.core.sys.Element co
                 ^InitialContext ctx
                 ^ConnectionFactory cf]
 
@@ -121,7 +121,7 @@
 
     conn))
 
-(defn- inizTopic ^Connection [^comzotohcljc.hhh.core.sys.Thingy co
+(defn- inizTopic ^Connection [^comzotohcljc.hhh.core.sys.Element co
                   ^InitialContext ctx 
                   ^TopicConnectionFactory cf]
 
@@ -145,7 +145,7 @@
     conn))
 
 
-(defn- inizQueue ^Connection [^comzotohcljc.hhh.core.sys.Thingy co
+(defn- inizQueue ^Connection [^comzotohcljc.hhh.core.sys.Element co
                   ^InitialContext ctx 
                   ^QueueConnectionFactory cf]
 
@@ -168,7 +168,7 @@
 
 
 (defmethod ioes-start :czc.hhh.io/JMS
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^String cf (.getAttr co :contextFactory)
          pl (.getAttr co :providerUrl)
          ^String ju (.getAttr co :jndiUser)
@@ -209,7 +209,7 @@
 
 
 (defmethod ioes-stop :czc.hhh.io/JMS
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^Connection c (.getAttr co :conn) ]
     (when-not (nil? c)
       (CU/TryC (.close c)))

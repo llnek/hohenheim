@@ -115,7 +115,7 @@
     (info "resource bundle found and loaded.")
     ctx))
 
-(defn- pre-parse [^comzotohcljc.hhh.core.sys.Thingy cli args]
+(defn- pre-parse [^comzotohcljc.hhh.core.sys.Element cli args]
   (let [ bh (File. ^String (first args))
          ctx (inizContext bh) ]
     (info "inside pre-parse()")
@@ -218,7 +218,7 @@
   (let [ impl (CU/make-mmap) ]
     (reify
 
-      Thingy
+      Element
 
         (setCtx! [_ x] (.mm-s impl :ctx x))
         (getCtx [_] (.mm-g impl :ctx))

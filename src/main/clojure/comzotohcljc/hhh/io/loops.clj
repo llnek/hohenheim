@@ -71,7 +71,7 @@
       (.schedule tm tt ds))) )
 
 
-(defn- config-timertask [^comzotohcljc.hhh.core.sys.Thingy co]
+(defn- config-timertask [^comzotohcljc.hhh.core.sys.Element co]
   (let [ intv (.getAttr co :intervalMillis)
          t (.getAttr co :timer)
          ds (.getAttr co :delayMillis)
@@ -83,7 +83,7 @@
     co))
 
 
-(defn cfg-loopable [^comzotohcljc.hhh.core.sys.Thingy co cfg]
+(defn cfg-loopable [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ intv (:interval-secs cfg)
          ds (:delay-secs cfg)
          dw (SU/nsb (:delay-when cfg)) ]
@@ -98,12 +98,12 @@
     (info "loopable config: " cfg)
     co))
 
-(defn- start-timer [^comzotohcljc.hhh.core.sys.Thingy co]
+(defn- start-timer [^comzotohcljc.hhh.core.sys.Element co]
   (do
     (.setAttr! co :timer (Timer. true))
     (loopable-schedule co)))
 
-(defn- kill-timer [^comzotohcljc.hhh.core.sys.Thingy co]
+(defn- kill-timer [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^Timer t (.getAttr co :timer) ]
     (CU/TryC
         (when-not (nil? t) (.cancel t)) )))
@@ -206,7 +206,7 @@
 ;;(defmethod loopable-oneloop :default [co] nil)
 
 (defmethod loopable-schedule :czc.hhh.io/ThreadedTimer
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ intv (.getAttr co :intervalMillis)
          cl (MU/get-cldr)
          loopy (atom true)
@@ -227,7 +227,7 @@
 
 
 (defmethod ioes-start :czc.hhh.io/ThreadedTimer
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ds (.getAttr co :delayMillis)
          dw (.getAttr co :delayWhen)
          intv (.getAttr co :intervalMillis)
@@ -242,7 +242,7 @@
 
 
 (defmethod ioes-stop :czc.hhh.io/ThreadedTimer
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ loopy (.getAttr co :loopy) ]
     (reset! loopy false)
     (ioes-stopped co)))

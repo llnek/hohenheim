@@ -258,7 +258,7 @@
       { :typeid :czc.hhh.io/HTTPEvent } )) )
 
 (defmethod comp-configure :czc.hhh.io/NettyIO
-  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
+  [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ c (SU/nsb (:context cfg)) ]
     (.setAttr! co :contextPath (SU/strim c))
     (http-basic-config co cfg) ))
@@ -276,7 +276,7 @@
          w (make-async-wait-holder (make-netty-trigger ch evt co) evt) ]
     (.timeoutMillis w
                     (.getAttr
-                      ^comzotohcljc.hhh.core.sys.Thingy co
+                      ^comzotohcljc.hhh.core.sys.Element co
                       :waitMillis))
     (.hold co w)
     (.dispatch co evt)))
@@ -290,7 +290,7 @@
     (onres [_ ch rsp msginfo xdata] nil)) )
 
 (defn- init-netty
-  [^comzotohcljc.hhh.core.sys.Thingy co reqcb]
+  [^comzotohcljc.hhh.core.sys.Element co reqcb]
   (let [ [^ServerBootstrap bs opts] (NE/server-bootstrap)
          file (.getAttr co :serverKey)
          ssl (CU/notnil? file)
@@ -304,7 +304,7 @@
     co))
 
 (defmethod ioes-start :czc.hhh.io/NettyIO
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ host (SU/nsb (.getAttr co :host))
          ^long port (.getAttr co :port)
          ^comzotohcljc.netty.comms.NettyServer
@@ -325,13 +325,13 @@
     (ioes-started co)))
 
 (defmethod ioes-stop :czc.hhh.io/NettyIO
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ nes (.getAttr co :netty) ]
     (NE/finz-server nes)
     (ioes-stopped co)))
 
 (defmethod comp-initialize :czc.hhh.io/NettyIO
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (init-netty co netty-service-req))
 
 

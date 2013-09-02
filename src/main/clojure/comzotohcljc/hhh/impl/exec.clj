@@ -72,7 +72,7 @@
 
 (defn- chkManifest
 
-  [^comzotohcljc.hhh.core.sys.Thingy execv
+  [^comzotohcljc.hhh.core.sys.Element execv
    app
    ^File des
    mf]
@@ -95,7 +95,7 @@
     ;;.gets("Implementation-Vendor-URL")
     ;;.gets("Implementation-Vendor")
 
-    (let [ ^comzotohcljc.hhh.core.sys.Thingy
+    (let [ ^comzotohcljc.hhh.core.sys.Element
            m (-> (make-podmeta app ver nil cz vid (-> des (.toURI) (.toURL)))
                  (synthesize-component { :ctx ctx })) ]
       (.setf! ^comzotohcljc.util.core.MuObj (.getCtx m) K_EXECV execv)
@@ -119,7 +119,7 @@
         (chkManifest execv app des mf) )))
 
 ;; check all apps to ensure they are kosher.
-(defn- inspect-pods [^comzotohcljc.hhh.core.sys.Thingy co]
+(defn- inspect-pods [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          ^FileFilter ff DirectoryFileFilter/DIRECTORY
          ^File pd (.getf ctx K_PLAYDIR) ]
@@ -134,7 +134,7 @@
     (with-meta
       (reify
 
-        Thingy
+        Element
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
@@ -189,7 +189,7 @@
 )
 
 (defmethod comp-initialize :czc.hhh.impl/Execvisor
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          ^comzotohcljc.util.ini.IWin32Conf
          cf (.getf ctx K_PROPS)
@@ -260,7 +260,7 @@
     (with-meta
       (reify
 
-        Thingy
+        Element
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
@@ -291,7 +291,7 @@
     (CU/test-nonil "Invalid block-meta file, no info section." inf)
     (info "initializing BlockMeta: " url)
     (let [ cz (SU/strim (.optString cfg "info" "block-type" ""))
-           ^comzotohcljc.hhh.core.sys.Thingy co bk  ]
+           ^comzotohcljc.hhh.core.sys.Element co bk  ]
       (when (SU/hgl? cz)
         (.setAttr! co :id (keyword cz))
         (.setAttr! co :active true) )
@@ -300,12 +300,12 @@
       co)))
 
 (defmethod comp-initialize :czc.hhh.impl/BlocksRegistry
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          bDir (.getf ctx K_BKSDIR)
          fs (IOUtils/listFiles ^File bDir "meta" false) ]
     (doseq [ ^File f (seq fs) ]
-      (let [ ^comzotohcljc.hhh.core.sys.Thingy
+      (let [ ^comzotohcljc.hhh.core.sys.Element
              b (-> (make-blockmeta (-> f (.toURI)(.toURL)))
                    (synthesize-component {}) ) ]
         (.reg ^ComponentRegistry co b)

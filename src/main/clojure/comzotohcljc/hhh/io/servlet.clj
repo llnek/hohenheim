@@ -59,7 +59,7 @@
 
 (defn- dispREQ [ ^comzotohcljc.hhh.io.WEBServlet c0
                  ^Continuation ct evt req rsp]
-  (let [ ^comzotohcljc.hhh.core.sys.Thingy dev @(.myState c0)
+  (let [ ^comzotohcljc.hhh.core.sys.Element dev @(.myState c0)
          wm (.getAttr dev :waitMillis) ]
     (doto ct
       (.setTimeout wm)

@@ -28,7 +28,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defprotocol Thingy
+(defprotocol Element
   ""
   (setCtx! [_ ctx] )
   (getCtx [_] )
@@ -44,25 +44,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmulti ^comzotohcljc.hhh.core.sys.Thingy comp-contextualize
+(defmulti ^comzotohcljc.hhh.core.sys.Element comp-contextualize
   ""
   (fn [a ctx] (:typeid (meta a))))
 
-(defmulti ^comzotohcljc.hhh.core.sys.Thingy comp-compose
+(defmulti ^comzotohcljc.hhh.core.sys.Element comp-compose
   ""
   (fn [a rego] (:typeid (meta a))))
 
-(defmulti ^comzotohcljc.hhh.core.sys.Thingy comp-configure
+(defmulti ^comzotohcljc.hhh.core.sys.Element comp-configure
   ""
   (fn [a options] (:typeid (meta a))))
 
-(defmulti ^comzotohcljc.hhh.core.sys.Thingy comp-initialize
+(defmulti ^comzotohcljc.hhh.core.sys.Element comp-initialize
   ""
   (fn [a] (:typeid (meta a))))
 
 (defn synthesize-component ""
 
-  ^comzotohcljc.hhh.core.sys.Thingy
+  ^comzotohcljc.hhh.core.sys.Element
   [c options]
 
   (let [ rego (:rego options)
@@ -85,7 +85,7 @@
       (clear! [_] (.mm-c impl)))) )
 
 (defn comp-clone-context 
-  [^comzotohcljc.hhh.core.sys.Thingy co
+  [^comzotohcljc.hhh.core.sys.Element co
    ^comzotohcljc.util.core.MuObj ctx]
   (do
     (when-not (nil? ctx)

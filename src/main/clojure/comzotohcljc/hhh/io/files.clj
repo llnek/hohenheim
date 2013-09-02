@@ -83,7 +83,7 @@
         (getFile [_] f))
       { :typeid :czc.hhh.io/FileEvent } )))
 
-(defn- postPoll [^comzotohcljc.hhh.core.sys.Thingy co
+(defn- postPoll [^comzotohcljc.hhh.core.sys.Element co
                  ^File f
                  action]
   (let [ ^File des (.getAttr co :dest)
@@ -102,7 +102,7 @@
 
 
 (defmethod comp-configure :czc.hhh.io/FilePicker
-  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
+  [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ ^String root (CU/subs-var (SU/nsb (:target-folder cfg)))
          ^String dest (CU/subs-var (SU/nsb (:recv-folder cfg)))
          ^String mask (SU/nsb (:fmask cfg)) ]
@@ -131,7 +131,7 @@
     co))
 
 (defmethod comp-initialize :czc.hhh.io/FilePicker
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ obs (FileAlterationObserver.
                ^File (.getAttr co :target)
                ^FileFilter (.getAttr co :mask))
@@ -152,7 +152,7 @@
 
 
 (defmethod loopable-schedule :czc.hhh.io/FilePicker
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^FileAlterationMonitor mon (.getAttr co :monitor) ]
     (info "FilePicker's apache io monitor starting...")
     (.start mon)))

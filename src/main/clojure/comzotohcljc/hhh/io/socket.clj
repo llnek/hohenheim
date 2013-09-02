@@ -61,7 +61,7 @@
 
 
 (defmethod comp-configure :czc.hhh.io/SocketIO
-  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
+  [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ tout (:sock-timeout-millis cfg)
          host (:host cfg)
          port (:port cfg)
@@ -75,7 +75,7 @@
 
 
 (defmethod comp-initialize :czc.hhh.io/SocketIO
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
 
   (let [ backlog (.getAttr co :backlog)
          host (.getAttr co :host)
@@ -91,7 +91,7 @@
     (.dispatch co (ioes-reify-event co soc))))
 
 (defmethod ioes-start :czc.hhh.io/SocketIO
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^ServerSocket ssoc (.getAttr co :ssocket)
          cl (MU/get-cldr) ]
     (when-not (nil? ssoc)
@@ -107,7 +107,7 @@
     (ioes-started co)))
 
 (defmethod ioes-stop :czc.hhh.io/SocketIO
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^ServerSocket ssoc (.getAttr co :ssocket) ]
     (IOUtils/closeQuietly ssoc)
     (.setAttr! co :ssocket nil)

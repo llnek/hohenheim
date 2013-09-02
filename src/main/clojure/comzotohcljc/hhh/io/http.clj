@@ -75,7 +75,7 @@
     (with-meta
       (reify
 
-        Thingy
+        Element
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
@@ -93,7 +93,7 @@
         ServletEmitter
           (container [this] (.parent this))
           (doService [this req rsp]
-            (let [ ^comzotohcljc.hhh.core.sys.Thingy dev this
+            (let [ ^comzotohcljc.hhh.core.sys.Element dev this
                    wm (.getAttr dev :waitMillis) ]
               (doto (ContinuationSupport/getContinuation req)
                 (.setTimeout wm)
@@ -145,7 +145,7 @@
       { :typeid :czc.hhh.io/JettyIO } )))
 
 
-(defn http-basic-config [^comzotohcljc.hhh.core.sys.Thingy co cfg]
+(defn http-basic-config [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ ^String file (:server-key cfg)
          port (:port cfg)
          ^String fv (:flavor cfg)
@@ -184,7 +184,7 @@
   (http-basic-config co cfg))
 
 (defmethod comp-configure :czc.hhh.io/JettyIO
-  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
+  [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ c (SU/nsb (:context cfg)) ]
     (.setAttr! co K_APP_CZLR (get cfg K_APP_CZLR))
     (.setAttr! co :contextPath (SU/strim c))
@@ -206,7 +206,7 @@
       (.setIdleTimeout (int 500000)))))
 
 (defmethod comp-initialize :czc.hhh.io/JettyIO
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ conf (doto (HttpConfiguration.)
                 (.setRequestHeaderSize 8192)  ;; from jetty examples
                 (.setOutputBufferSize (int 32768)))
@@ -236,8 +236,8 @@
 
 
 (defmethod ioes-start :czc.hhh.io/JettyIO
-  [^comzotohcljc.hhh.core.sys.Thingy co]
-  (let [ ^comzotohcljc.hhh.core.sys.Thingy ctr (.parent ^Hierarchial co)
+  [^comzotohcljc.hhh.core.sys.Element co]
+  (let [ ^comzotohcljc.hhh.core.sys.Element ctr (.parent ^Hierarchial co)
          ^Server jetty (.getAttr co :jetty)
          ^File app (.getAttr ctr K_APPDIR)
          ^String cp (SU/strim (.getAttr co :contextPath))
@@ -259,7 +259,7 @@
 
 
 (defmethod ioes-stop :czc.hhh.io/JettyIO
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^Server svr (.getAttr co :jetty) ]
     (when-not (nil? svr)
       (CU/TryC

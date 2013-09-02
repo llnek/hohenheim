@@ -77,7 +77,7 @@
           (let [ [n v] (StringUtils/split ^String s ":") ]
             (.setAttribute mvs n v)))))
     (let [ ts (SU/nsb (.getAttribute mvs TS_FLAG))
-           ^comzotohcljc.hhh.core.sys.Thingy
+           ^comzotohcljc.hhh.core.sys.Element
            netty (.emitter evt)
            idleSecs (.getAttr netty :cacheMaxAgeSecs)
            expired (if (SU/hgl? ts)

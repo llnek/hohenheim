@@ -105,7 +105,7 @@
     (with-meta
       (reify
 
-        Thingy
+        Element
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
@@ -168,7 +168,7 @@
       { :typeid emId } )))
 
 (defmethod comp-contextualize :czc.hhh.io/Emitter [co ctx]
-  (let [ ^comzotohcljc.hhh.core.sys.Thingy c ctx ]
+  (let [ ^comzotohcljc.hhh.core.sys.Element c ctx ]
     (comp-clone-context co (.getCtx c))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

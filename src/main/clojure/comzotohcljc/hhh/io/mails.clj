@@ -54,7 +54,7 @@
     (when-not (nil? fd)
       (when (.isOpen fd) (.close fd true))) ))
 
-(defn- closeStore [^comzotohcljc.hhh.core.sys.Thingy co]
+(defn- closeStore [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^Store conn (.getAttr co :store)
          ^Folder fd (.getAttr co :folder) ]
     (closeFolder fd)
@@ -64,7 +64,7 @@
     (.setAttr! co :folder nil)) )
 
 (defn- resolve-provider
-  [^comzotohcljc.hhh.core.sys.Thingy co protos ^String demo ^String mock]
+  [^comzotohcljc.hhh.core.sys.Element co protos ^String demo ^String mock]
 
   (let [ [^String pkey ^String sn]  protos
          props (doto (Properties.)
@@ -119,7 +119,7 @@
   [co & args]
   (ctor-email-event co (first args)))
 
-(defn- connect-pop3 [^comzotohcljc.hhh.core.sys.Thingy co]
+(defn- connect-pop3 [^comzotohcljc.hhh.core.sys.Element co]
   (let [ pwd (SU/nsb (.getAttr co :pwd))
          ^Session session (.getAttr co :session)
          user (.getAttr co :user)
@@ -139,7 +139,7 @@
 
 
 (defn- read-pop3 [^comzotohcljc.hhh.io.core.EmitterAPI co msgs]
-  (let [^comzotohcljc.hhh.core.sys.Thingy src co]
+  (let [^comzotohcljc.hhh.core.sys.Element src co]
     (doseq [ ^MimeMessage mm (seq msgs) ]
       (try
           (doto mm (.getAllHeaders)(.getContent))
@@ -148,7 +148,7 @@
           (when (.getAttr src :deleteMsg)
             (.setFlag mm Flags$Flag/DELETED true)))))) )
 
-(defn- scan-pop3 [^comzotohcljc.hhh.core.sys.Thingy co]
+(defn- scan-pop3 [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^Store s (.getAttr co :store)
          ^Folder fd (.getAttr co :folder) ]
     (when (and (CU/notnil? fd) (not (.isOpen fd)))
@@ -161,7 +161,7 @@
 
 
 (defmethod loopable-oneloop :czc.hhh.io/POP3
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (try
       (connect-pop3 co)
       (scan-pop3 co)
@@ -171,7 +171,7 @@
       (closeStore co))) )
 
 
-(defn- std-config [^comzotohcljc.hhh.core.sys.Thingy co cfg]
+(defn- std-config [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ intv (:interval-secs cfg)
          port (:port cfg)
          pwd (:passwd cfg) ]
@@ -185,7 +185,7 @@
     co))
 
 (defmethod comp-configure :czc.hhh.io/POP3
-  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
+  [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ demo (System/getProperty "hohenheim.demo.pop3" "") ]
     (std-config co cfg)
     (resolve-provider co
@@ -218,7 +218,7 @@
 (defn- scan-imap [co] (scan-pop3 co))
 
 (defmethod loopable-oneloop :czc.hhh.io/IMAP
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (try
       (connect-imap co)
       (scan-imap co)
@@ -229,7 +229,7 @@
 
 
 (defmethod comp-configure :czc.hhh.io/IMAP
-  [^comzotohcljc.hhh.core.sys.Thingy co cfg]
+  [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ demo (System/getProperty "hohenheim.demo.imap" "") ]
     (std-config co cfg)
     (resolve-provider co

@@ -124,7 +124,7 @@
         JobCreator
 
           (update [_  evt options]
-            (let [ ^comzotohcljc.hhh.core.sys.Thingy
+            (let [ ^comzotohcljc.hhh.core.sys.Element
                    src (.emitter ^IOEvent evt)
                    c0 (.getAttr src :router)
                    c1 (:router options)
@@ -153,7 +153,7 @@
 
 (defn- make-service-block [^Identifiable bk container nm cfg]
   (let [ eid (.id bk)
-         ^comzotohcljc.hhh.core.sys.Thingy
+         ^comzotohcljc.hhh.core.sys.Element
          obj (if (= :czc.hhh.io/JettyIO eid)
                (make-servlet-emitter container)
                (make-emitter container eid nm))
@@ -173,7 +173,7 @@
     (with-meta
       (reify
 
-        Thingy
+        Element
 
           (setAttr! [_ a v] (.mm-s impl a v) )
           (clrAttr! [_ a] (.mm-r impl a) )
@@ -284,7 +284,7 @@
 
     { :typeid (keyword "czc.hhh.ext/Container") } )) )
 
-(defn make-container [^comzotohcljc.hhh.core.sys.Thingy pod]
+(defn make-container [^comzotohcljc.hhh.core.sys.Element pod]
   (let [ c (make-app-container pod)
          ^comzotohcljc.util.core.MuObj ctx (.getCtx pod)
          cl (.getf ctx K_APP_CZLR)
@@ -305,7 +305,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod comp-configure :czc.hhh.ext/Container
-  [^comzotohcljc.hhh.core.sys.Thingy co props]
+  [^comzotohcljc.hhh.core.sys.Element co props]
   (let [ ^File appDir (K_APPDIR props)
          cfgDir (File. appDir ^String DN_CONF)
          srg (make-component-registry :EventSources K_SVCS "1.0" co)
@@ -338,7 +338,7 @@
   (.configure obj opts)
   (.initialize obj))
 
-(defn- doJavaApp [^comzotohcljc.hhh.core.sys.Thingy ctr ^AppMain obj]
+(defn- doJavaApp [^comzotohcljc.hhh.core.sys.Element ctr ^AppMain obj]
   (let [ ^File cfg (.getAttr ctr K_APPCONF_FP)
          json (CoreUtils/readJson cfg) ]
   (.contextualize obj ctr)
@@ -346,7 +346,7 @@
   (.initialize obj)) )
 
 (defmethod comp-initialize :czc.hhh.ext/Container
-  [^comzotohcljc.hhh.core.sys.Thingy co]
+  [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^File appDir (.getAttr co K_APPDIR)
          env (.getAttr co K_ENVCONF)
          app (.getAttr co K_APPCONF)

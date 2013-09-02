@@ -69,7 +69,7 @@
     @modd))
 
 (defn- addETag
-  [^comzotohcljc.hhh.core.sys.Thingy src
+  [^comzotohcljc.hhh.core.sys.Element src
    ^HTTPEvent evt ^HttpRequest req ^HttpResponse rsp ^File file ]
 
     (let [ maxAge (.getAttr src :cacheMaxAgeSecs)
@@ -91,7 +91,7 @@
     (WP/getLocalFile appDir (str "pages/errors/" code ".html"))))
 
 (defn- serve-error
-  [^comzotohcljc.hhh.core.sys.Thingy src
+  [^comzotohcljc.hhh.core.sys.Element src
    ^Channel ch
    code]
   (let [ rsp (NE/make-resp-status code) ]
@@ -138,7 +138,7 @@
           (seq rts)) ))
 
 (defn- routeCracker [^HTTPEvent evt]
-  (let [ ^comzotohcljc.hhh.core.sys.Thingy
+  (let [ ^comzotohcljc.hhh.core.sys.Element
          ctr (.container ^Emitter (.emitter evt))
          rts (.getAttr ctr :routes)
          ;;cpath (.contextPath evt)
@@ -161,7 +161,7 @@
     (let [ ^Emitter src (.emitter evt)
            ctr (.container src)
            appDir (.getAppDir ctr)
-           fs (.getAttr ^comzotohcljc.hhh.core.sys.Thingy src :welcomeFiles) ]
+           fs (.getAttr ^comzotohcljc.hhh.core.sys.Element src :welcomeFiles) ]
       (some (fn [^String f]
               (let [ file (File. appDir (str DN_PUBLIC "/" f)) ]
                 (if (and (.exists file)
@@ -196,7 +196,7 @@
           )))))
 
 (defn- serveRoute
-  [^comzotohcljc.hhh.core.sys.Thingy src
+  [^comzotohcljc.hhh.core.sys.Element src
    ^comzotohcljc.hhh.mvc.rts.RouteInfo ri
    ^Matcher mc
    ^Channel ch

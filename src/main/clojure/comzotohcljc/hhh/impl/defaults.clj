@@ -96,7 +96,7 @@
     (with-meta
       (reify
 
-        Thingy
+        Element
 
           (setCtx! [_ x] (.mm-s impl :ctx x))
           (getCtx [_] (.mm-g impl :ctx))
