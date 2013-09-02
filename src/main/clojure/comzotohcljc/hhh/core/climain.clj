@@ -21,7 +21,8 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(import '(org.jboss.netty.channel Channel ChannelFutureListener))
+(import '(org.jboss.netty.channel
+  Channel ChannelFuture ChannelFutureListener))
 
 (import '(com.zotoh.hohenheim.core ConfigError))
 (import '(com.zotoh.frwk.server Component ComponentRegistry))
@@ -177,7 +178,7 @@
         (onreq [_ ch req msginfo xdata]
           (CU/Try!
             (.addListener
-              (.write ch (make-resp-status)) 
+              ^ChannelFuture (.write ^Channel ch (make-resp-status))
               ChannelFutureListener/CLOSE))
           (stop-cli ctx))
         (onres [_ ch rsp msginfo xdata] nil))
@@ -220,35 +221,35 @@
 
       Element
 
-        (setCtx! [_ x] (.mm-s impl :ctx x))
-        (getCtx [_] (.mm-g impl :ctx))
-        (setAttr! [_ a v] (.mm-s impl a v) )
-        (clrAttr! [_ a] (.mm-r impl a) )
-        (getAttr [_ a] (.mm-g impl a) )
+      (setCtx! [_ x] (.mm-s impl :ctx x))
+      (getCtx [_] (.mm-g impl :ctx))
+      (setAttr! [_ a v] (.mm-s impl a v) )
+      (clrAttr! [_ a] (.mm-r impl a) )
+      (getAttr [_ a] (.mm-g impl a) )
 
       Hierarchial
-        (parent [_] nil)
+      (parent [_] nil)
 
       Versioned
-        (version [_] "1.0")
+      (version [_] "1.0")
 
       Identifiable
-        (id [_] K_CLISH)
+      (id [_] K_CLISH)
 
       Startable
 
-        (start [this]
-          (-> (pre-parse this args)
-            (maybeInizLoaders)
-            (loadConf)
-            (setupResources )
-            (primodial)
-            (start-exec)
-            (writePID)
-            (hookShutdown)
-            (pause-cli)) )
+      (start [this]
+        (-> (pre-parse this args)
+          (maybeInizLoaders)
+          (loadConf)
+          (setupResources )
+          (primodial)
+          (start-exec)
+          (writePID)
+          (hookShutdown)
+          (pause-cli)) )
 
-        (stop [_] (.stop ^Startable (.mm-g impl K_EXECV) )))) )
+      (stop [_] (.stop ^Startable (.mm-g impl K_EXECV) )))) )
 
 
 (defn start-main "" [ & args ]

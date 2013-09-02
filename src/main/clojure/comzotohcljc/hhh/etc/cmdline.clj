@@ -250,7 +250,7 @@
              [req pkey] (CC/make-csrreq
                           (CU/conv-long (:size rc) 1024)
                           dn
-                          CC/*PEM_CERT* ) ]
+                          CC/PEM_CERT ) ]
         (println (str "DN entered: " dn))
         (let [ ff (File. (str (:fn rc) ".key")) ]
           (FileUtils/writeByteArrayToFile ff pkey)

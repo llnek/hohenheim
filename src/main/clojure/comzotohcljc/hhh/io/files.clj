@@ -70,24 +70,32 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/FilePicker
   [co & args]
-  (let [ f (nth args 1)  eeid (SN/next-long) ]
+  (let [ eeid (SN/next-long)
+         impl (CU/make-mmap)
+         ^File
+         f (nth args 1) ]
     (with-meta
       (reify
+
         Identifiable
+
         (id [_] eeid)
+
         FileEvent
-        (bindSession [_ s] nil)
-        (getSession [_] nil)
+
+        (bindSession [_ s] (.mm-s impl :ios s))
+        (getSession [_] (.mm-g impl :ios))
         (getId [_] eeid)
         (emitter [_] co)
         (getFile [_] f))
+
       { :typeid :czc.hhh.io/FileEvent } )))
 
 (defn- postPoll [^comzotohcljc.hhh.core.sys.Element co
                  ^File f
                  action]
-  (let [ ^File des (.getAttr co :dest)
-        ^comzotohcljc.hhh.io.core.EmitterAPI src co
+  (let [ ^comzotohcljc.hhh.io.core.EmitterAPI src co
+         ^File des (.getAttr co :dest)
          fname (.getName f)
          cf (cond
               (= action :FP-CREATED)
@@ -135,7 +143,7 @@
   (let [ obs (FileAlterationObserver.
                ^File (.getAttr co :target)
                ^FileFilter (.getAttr co :mask))
-         intv (.getAttr co :intervalMillis)
+         ^long intv (.getAttr co :intervalMillis)
          mon (FileAlterationMonitor. intv)
          lnr (proxy [FileAlterationListenerAdaptor][]
                (onFileCreate [f]

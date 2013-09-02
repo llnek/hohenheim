@@ -14,7 +14,6 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-
 (ns ^{ :doc ""
        :author "kenl" }
 
@@ -41,27 +40,27 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-
-
 (defmulti eve-set-session "" (fn [a b] (:typeid (meta a))))
 (defmulti eve-set-result "" (fn [a b] (:typeid (meta a))))
 (defmulti eve-destroy "" (fn [a] (:typeid (meta a))))
 
 (defn make-event [src evtId]
-  (let [ eeid (SN/next-long) impl (CU/make-mmap) ]
+  (let [ eeid (SN/next-long)
+         impl (CU/make-mmap) ]
     (with-meta
       (reify
 
         MuObj
 
-          (setf! [_ k v] (.mm-s impl k v) )
-          (seq* [_] (seq (.mm-m* impl)))
-          (getf [_ k] (.mm-g impl k) )
-          (clrf! [_ k] (.mm-r impl k) )
-          (clear! [_] (.mm-c impl))
+        (setf! [_ k v] (.mm-s impl k v) )
+        (seq* [_] (seq (.mm-m* impl)))
+        (getf [_ k] (.mm-g impl k) )
+        (clrf! [_ k] (.mm-r impl k) )
+        (clear! [_] (.mm-c impl))
 
         IOEvent
-          (emitter [_] src) )
+
+        (emitter [_] src) )
 
       { :typeid evtId } )))
 

@@ -129,6 +129,7 @@
         (getId [_] eeid)
         (emitter [_] co)
         (isRepeating [_] true))
+
       { :typeid :czc.hhh.io/TimerEvent } )))
 
 (defmethod comp-configure :czc.hhh.io/RepeatingTimer
@@ -177,6 +178,7 @@
         (getId [_] eeid)
         (emitter [_] co)
         (isRepeating [_] false))
+
       { :typeid :czc.hhh.io/TimerEvent } )))
 
 (defmethod comp-configure :czc.hhh.io/OnceTimer

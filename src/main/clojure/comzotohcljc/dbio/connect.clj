@@ -23,11 +23,10 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(import '(java.util HashMap))
+(import '(java.util Map HashMap))
 
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
-
 (require '[comzotohcljc.dbio.core :as DU])
 (use '[comzotohcljc.dbio.composite])
 (use '[comzotohcljc.dbio.simple])
@@ -56,29 +55,27 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
 (defn- hashJdbc ^long [jdbc]
   (.hashCode
     (str (:driver jdbc) (:url jdbc)
          (:user jdbc) (SU/nsb (:pwd jdbc)))))
 
-(defn- maybe-finz-pool [ hc]
+(defn- maybe-finz-pool "" [ hc]
   (let [ tloc (DBIOLocal/getCache) ;; a thread local
-         ^HashMap c (.get tloc) ;; c == java hashmap
-         ^comzotohcljc.dbio.core.JDBCPoolAPI
+         ^Map c (.get tloc) ;; c == java hashmap
+         ^comzotohcljc.dbio.core.JDBCPool
          m (.get c hc) ]
     (when-not (nil? m)
       (CU/Try! (.shutdown m))
       (.remove c hc))))
 
-(defn- maybe-get-pool
+(defn- maybe-get-pool ""
 
-  ^comzotohcljc.dbio.core.JDBCPoolAPI
+  ^comzotohcljc.dbio.core.JDBCPool
   [ hc jdbc options]
 
   (let [ tloc (DBIOLocal/getCache) ;; get the thread local
-         ^HashMap c (.get tloc) ] ;; c == java hashmap
+         ^Map c (.get tloc) ] ;; c == java hashmap
     ;; check if pool is there
     (when-not (.containsKey c hc)
       (debug "no db pool found in thread-local, creating one...")
@@ -86,8 +83,7 @@
         (.put c hc p)))
     (.get c hc)))
 
-
-(defn dbio-connect ""
+(defn dbio-connect "Connect to a datasource."
 
   ^comzotohcljc.dbio.core.DBAPI
   [jdbc metaCache options]
@@ -102,18 +98,17 @@
       (finz [_] (maybe-finz-pool hc))
 
       (open [_]
-        (let [ 
-             ^comzotohcljc.dbio.core.JDBCPoolAPI
-              p (maybe-get-pool hc jdbc options) ]
+        (let [ ^comzotohcljc.dbio.core.JDBCPool
+               p (maybe-get-pool hc jdbc options) ]
           (if (nil? p)
             nil
             (.nextFree p))))
 
       (newCompositeSQLr [this]
-        (compositeSQLr this metaCache))
+        (compositeSQLr metaCache this))
 
       (newSimpleSQLr [this]
-        (simpleSQLr this metaCache)) )))
+        (simpleSQLr metaCache this)) )))
 
 
 

@@ -125,65 +125,63 @@
 (require '[comzotohcljc.util.str :as SU])
 
 
-(def ^:dynamic *DES_EDE3_CBC* CMSAlgorithm/DES_EDE3_CBC)
-(def ^:dynamic *RC2_CBC* CMSAlgorithm/RC2_CBC)
-(def ^:dynamic *IDEA_CBC* CMSAlgorithm/IDEA_CBC)
-(def ^:dynamic *CAST5_CBC* CMSAlgorithm/CAST5_CBC)
-(def ^:dynamic *AES128_CBC* CMSAlgorithm/AES128_CBC)
-(def ^:dynamic *AES192_CBC* CMSAlgorithm/AES192_CBC)
-(def ^:dynamic *AES256_CBC* CMSAlgorithm/AES256_CBC)
-(def ^:dynamic *CAMELLIA128_CBC* CMSAlgorithm/CAMELLIA128_CBC)
-(def ^:dynamic *CAMELLIA192_CBC* CMSAlgorithm/CAMELLIA192_CBC)
-(def ^:dynamic *CAMELLIA256_CBC* CMSAlgorithm/CAMELLIA256_CBC)
-(def ^:dynamic *SEED_CBC* CMSAlgorithm/SEED_CBC)
-(def ^:dynamic *DES_EDE3_WRAP* CMSAlgorithm/DES_EDE3_WRAP)
-(def ^:dynamic *AES128_WRAP* CMSAlgorithm/AES128_WRAP)
-(def ^:dynamic *AES256_WRAP* CMSAlgorithm/AES256_WRAP)
-(def ^:dynamic *CAMELLIA128_WRAP* CMSAlgorithm/CAMELLIA128_WRAP)
-(def ^:dynamic *CAMELLIA192_WRAP* CMSAlgorithm/CAMELLIA192_WRAP)
-(def ^:dynamic *CAMELLIA256_WRAP* CMSAlgorithm/CAMELLIA256_WRAP)
-(def ^:dynamic *SEED_WRAP* CMSAlgorithm/SEED_WRAP)
-(def ^:dynamic *ECDH_SHA1KDF* CMSAlgorithm/ECDH_SHA1KDF)
+(def DES_EDE3_CBC CMSAlgorithm/DES_EDE3_CBC)
+(def RC2_CBC CMSAlgorithm/RC2_CBC)
+(def IDEA_CBC CMSAlgorithm/IDEA_CBC)
+(def CAST5_CBC CMSAlgorithm/CAST5_CBC)
+(def AES128_CBC CMSAlgorithm/AES128_CBC)
+(def AES192_CBC CMSAlgorithm/AES192_CBC)
+(def AES256_CBC CMSAlgorithm/AES256_CBC)
+(def CAMELLIA128_CBC CMSAlgorithm/CAMELLIA128_CBC)
+(def CAMELLIA192_CBC CMSAlgorithm/CAMELLIA192_CBC)
+(def CAMELLIA256_CBC CMSAlgorithm/CAMELLIA256_CBC)
+(def SEED_CBC CMSAlgorithm/SEED_CBC)
+(def DES_EDE3_WRAP CMSAlgorithm/DES_EDE3_WRAP)
+(def AES128_WRAP CMSAlgorithm/AES128_WRAP)
+(def AES256_WRAP CMSAlgorithm/AES256_WRAP)
+(def CAMELLIA128_WRAP CMSAlgorithm/CAMELLIA128_WRAP)
+(def CAMELLIA192_WRAP CMSAlgorithm/CAMELLIA192_WRAP)
+(def CAMELLIA256_WRAP CMSAlgorithm/CAMELLIA256_WRAP)
+(def SEED_WRAP CMSAlgorithm/SEED_WRAP)
+(def ECDH_SHA1KDF CMSAlgorithm/ECDH_SHA1KDF)
 
-(def ^:dynamic *EXPLICIT_SIGNING* :EXPLICIT)
-(def ^:dynamic *IMPLICIT_SIGNING* :IMPLICIT)
-(def ^:dynamic *DER_CERT* :DER)
-(def ^:dynamic *PEM_CERT* :PEM)
+(def EXPLICIT_SIGNING :EXPLICIT)
+(def IMPLICIT_SIGNING :IMPLICIT)
+(def DER_CERT :DER)
+(def PEM_CERT :PEM)
 
-(def ^:dynamic *SHA512* "SHA512withRSA")
-(def ^:dynamic *SHA256* "SHA256withRSA")
-(def ^:dynamic *SHA1* "SHA1withRSA")
-(def ^:dynamic *SHA_512* "SHA-512")
-(def ^:dynamic *SHA_1* "SHA-1")
-(def ^:dynamic *SHA_256* "SHA-256")
-(def ^:dynamic *MD_5* "MD5")
-(def ^:dynamic *MD5* "MD5withRSA")
+(def SHA512 "SHA512withRSA")
+(def SHA256 "SHA256withRSA")
+(def SHA1 "SHA1withRSA")
+(def SHA_512 "SHA-512")
+(def SHA_1 "SHA-1")
+(def SHA_256 "SHA-256")
+(def MD_5 "MD5")
+(def MD5 "MD5withRSA")
 
-(def ^:dynamic *AES256_CBC*  "AES256_CBC")
-(def ^:dynamic *BFISH* "BlowFish")
-(def ^:dynamic *PKCS12* "PKCS12")
-(def ^:dynamic *JKS* "JKS")
-(def ^:dynamic *SHA1* "SHA1")
-(def ^:dynamic *MD5* "MD5")
-(def ^:dynamic *RAS*  "RAS")
-(def ^:dynamic *DES*  "DES")
-(def ^:dynamic *RSA*  "RSA")
-(def ^:dynamic *DSA*  "DSA")
+(def AES256_CBC  "AES256_CBC")
+(def BFISH "BlowFish")
+(def PKCS12 "PKCS12")
+(def JKS "JKS")
+(def SHA1 "SHA1")
+(def MD5 "MD5")
+(def RAS  "RAS")
+(def DES  "DES")
+(def RSA  "RSA")
+(def DSA  "DSA")
 
 (def ^:private DEF_ALGO "SHA1WithRSAEncryption")
 (def ^:private DEF_MAC "HmacSHA512")
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 (defn assert-jce "This function should fail if the non-restricted (unlimited-strength) jce files are not placed in jre-home"
   []
-  (let [ kgen (doto (KeyGenerator/getInstance *BFISH*) (.init 256))
-         cipher (doto (Cipher/getInstance *BFISH*)
+  (let [ kgen (doto (KeyGenerator/getInstance BFISH) (.init 256))
+         cipher (doto (Cipher/getInstance BFISH)
                       (.init (Cipher/ENCRYPT_MODE)
-                             (SecretKeySpec. (.. kgen generateKey getEncoded) *BFISH*))) ]
+                             (SecretKeySpec. (.. kgen generateKey getEncoded) BFISH))) ]
     (.doFinal cipher (CU/bytesify "This is just an example"))))
 
 (def ^Provider _BCProvider (let [ bcp (BouncyCastleProvider.) ] (Security/addProvider bcp) bcp))
@@ -215,8 +213,7 @@
   (let [ r (Random. (.getTime (Date.))) ]
     (BigInteger/valueOf (math/abs (.nextLong r)))) )
 
-(defn dbg-provider ""
-  [^PrintStream os]
+(defn dbg-provider "" [^PrintStream os]
   (CU/Try!
     (.list _BCProvider os)))
 
@@ -225,7 +222,7 @@
   []
   (SecureRandom/getInstance "SHA1PRNG" ))
 
-(defn new-alias ""
+(defn new-alias "Generate a new name."
   ^String []
   (str "" (System/currentTimeMillis) (SN/next-int)))
 
@@ -247,8 +244,9 @@
   [^KeyStore keystore]
   (find-aliases keystore (fn [^KeyStore ks ^String n] (.isKeyEntry ks n))))
 
-(defn- rego-certs [^KeyStore ks
-                   ^comzotohcljc.crypto.codec.Password pwdObj]
+(defn- rego-certs ""
+  [^KeyStore ks 
+   ^comzotohcljc.crypto.codec.Password pwdObj]
   (let [ ^chars ca (if-not (nil? pwdObj)(.toCharArray pwdObj)) ]
     (doseq [ ^String a (pkey-aliases ks) ]
       (let [ ^KeyStore$PrivateKeyEntry pke (.getEntry ks a (KeyStore$PasswordProtection. ca))
@@ -350,7 +348,7 @@
       (Hex/encodeHexString (.doFinal mac)))))
 
 (defn gen-hash "Generate a Message Digest."
-  (^String [^String data] (gen-hash data *SHA_512*))
+  (^String [^String data] (gen-hash data SHA_512))
   (^String [^String data ^String algo]
     (let [ dig (MessageDigest/getInstance algo)
            b (.digest dig (CU/bytesify data)) ]
@@ -401,7 +399,7 @@
   [^PrivateKey pkey ^clojure.lang.Keyword fmt]
 
   (let [ bits (.getEncoded pkey) ]
-    (if (= fmt *PEM_CERT*)
+    (if (= fmt PEM_CERT)
       (fmtPEM "-----BEGIN RSA PRIVATE KEY-----\n"
               "\n-----END RSA PRIVATE KEY-----\n"
               bits)
@@ -412,7 +410,7 @@
   [^X509Certificate cert ^clojure.lang.Keyword fmt]
 
   (let [ bits (.getEncoded cert) ]
-    (if (= fmt *PEM_CERT*)
+    (if (= fmt PEM_CERT)
       (fmtPEM "-----BEGIN CERTIFICATE-----\n"
               "-----END CERTIFICATE-----\n"
               bits)
@@ -422,7 +420,7 @@
   [keylen ^String dnStr ^clojure.lang.Keyword fmt]
   (do
     (debug "make-csrreq: dnStr= " dnStr ", key-len= " keylen)
-    (let [ ^KeyPair kp (make-keypair (SU/nsb *RSA*) keylen)
+    (let [ ^KeyPair kp (make-keypair (SU/nsb RSA) keylen)
            k (.getPrivate kp)
            u (.getPublic kp)
            csb (JcaContentSignerBuilder. (SU/nsb DEF_ALGO))
@@ -430,7 +428,7 @@
            xdn (X500Principal. dnStr)
            rbr (JcaPKCS10CertificationRequestBuilder. xdn u)
            bits (.getEncoded (.build rbr cs))
-           rc (if (= fmt *PEM_CERT*)
+           rc (if (= fmt PEM_CERT)
                 (fmtPEM "-----BEGIN CERTIFICATE REQUEST-----\n"
                         "\n-----END CERTIFICATE REQUEST-----\n"
                         bits)
@@ -465,7 +463,7 @@
       (debug "mkSSV1Cert: dn= " dnStr ", algo= " algo ", start=" start ", end=" end )
       [cert prv]) )
 
-(defn- mkSSV1 
+(defn- mkSSV1
 
   ^bytes
   [^KeyStore ks ^KeyPair kp ^comzotohcljc.crypto.codec.Password pwdObj options]
@@ -501,7 +499,7 @@
   (let [ dft { :keylen 1024 :start (Date.) :end (DU/plus-months 12) :algo DEF_ALGO }
          opts (assoc (merge dft options) :dnStr dnStr)
          ^long keylen (:keylen opts)
-         kp (make-keypair (SU/nsb *RSA*) keylen)
+         kp (make-keypair (SU/nsb RSA) keylen)
          ks (get-pkcsStore)
          rc (mkSSV1 ks kp pwdObj opts) ]
     (FileUtils/writeByteArrayToFile out rc)))
@@ -514,7 +512,7 @@
   (let [ dft { :keylen 1024 :start (Date.) :end (DU/plus-months 12) :algo "SHA1withDSA" }
          opts (assoc (merge dft options) :dnStr dnStr)
          ^long keylen (:keylen opts)
-         kp (make-keypair (SU/nsb *DSA*) keylen)
+         kp (make-keypair (SU/nsb DSA) keylen)
          ks (get-jksStore)
          rc (mkSSV1 ks kp pwdObj opts) ]
     (FileUtils/writeByteArrayToFile out rc)))
@@ -613,7 +611,7 @@
 ;;    "SHA1withRSA"
          ;;cs (.build (.setProvider (JcaContentSignerBuilder. (CMSSignedGenerator/DIGEST_SHA512)) _BCProvider) k)
          cs (.build (.setProvider
-                      (JcaContentSignerBuilder. (SU/nsb *SHA512*)) _BCProvider)
+                      (JcaContentSignerBuilder. (SU/nsb SHA512)) _BCProvider)
                     k)
          gen (CMSSignedDataGenerator.)
          ^X509Certificate x509 (first cl) ]
@@ -1051,12 +1049,12 @@
 (defn fingerprint-sha1 "Generate a fingerprint using SHA-1."
   ^String
   [^bytes data]
-  (finger-print data *SHA_1*))
+  (finger-print data SHA_1))
 
 (defn fingerprint-md5 "Generate a fingerprint using MD5."
   ^String
   [^bytes data]
-  (finger-print data *MD_5*))
+  (finger-print data MD_5))
 
 (defrecord CertDesc
   [ ^X500Principal subj ^X500Principal issuer ^Date notBefore ^Date notAfter ])

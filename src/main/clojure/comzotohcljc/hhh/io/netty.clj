@@ -111,18 +111,18 @@
       (reify
         MuObj
 
-          (setf! [_ k v] (.mm-s impl k v) )
-          (seq* [_] (seq (.mm-m* impl)))
-          (getf [_ k] (.mm-g impl k) )
-          (clrf! [_ k] (.mm-r impl k) )
-          (clear! [_] (.mm-c impl))
+        (setf! [_ k v] (.mm-s impl k v) )
+        (seq* [_] (seq (.mm-m* impl)))
+        (getf [_ k] (.mm-g impl k) )
+        (clrf! [_ k] (.mm-r impl k) )
+        (clear! [_] (.mm-c impl))
 
         Identifiable
         (id [_] eeid)
 
         WebSockEvent
-        (bindSession [_ s] nil)
-        (getSession [_] nil)
+        (bindSession [_ s] (.mm-s impl :ios s))
+        (getSession [_] (.mm-g impl :ios))
         (getId [_] eeid)
         (isSSL [_] ssl)
         (isText [_] (instance? String (.content xdata)))
@@ -153,17 +153,18 @@
 
         MuObj
 
-          (setf! [_ k v] (.mm-s impl k v) )
-          (seq* [_] (seq (.mm-m* impl)))
-          (getf [_ k] (.mm-g impl k) )
-          (clrf! [_ k] (.mm-r impl k) )
-          (clear! [_] (.mm-c impl))
+        (setf! [_ k v] (.mm-s impl k v) )
+        (seq* [_] (seq (.mm-m* impl)))
+        (getf [_ k] (.mm-g impl k) )
+        (clrf! [_ k] (.mm-r impl k) )
+        (clear! [_] (.mm-c impl))
 
         Identifiable
         (id [_] eeid)
+
         HTTPEvent
-        (bindSession [_ s] nil)
-        (getSession [_] nil)
+        (bindSession [_ s] (.mm-s impl :ios s))
+        (getSession [_] (.mm-g impl :ios))
         (getId [_] eeid)
         (emitter [_] co)
         (getCookies [_]
@@ -255,6 +256,7 @@
               (.resumeOnResult wevt res))))
 
       )
+
       { :typeid :czc.hhh.io/HTTPEvent } )) )
 
 (defmethod comp-configure :czc.hhh.io/NettyIO

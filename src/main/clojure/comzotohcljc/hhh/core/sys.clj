@@ -84,7 +84,7 @@
       (clrf! [_ k] (.mm-r impl k) )
       (clear! [_] (.mm-c impl)))) )
 
-(defn comp-clone-context 
+(defn comp-clone-context
   [^comzotohcljc.hhh.core.sys.Element co
    ^comzotohcljc.util.core.MuObj ctx]
   (do

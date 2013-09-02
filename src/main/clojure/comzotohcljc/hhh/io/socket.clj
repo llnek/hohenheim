@@ -38,27 +38,29 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
+(defn make-socketio "" [container]
+  (make-emitter container :czc.hhh.io/SocketIO))
 
 (defmethod ioes-reify-event :czc.hhh.io/SocketIO
   [co & args]
-  (let [ ^Socket soc (first args)  eeid (SN/next-long) ]
+  (let [ ^Socket soc (first args)
+         eeid (SN/next-long) ]
     (with-meta
       (reify
+
         Identifiable
         (id [_] eeid)
+
         SocketEvent
         (bindSession [_ s] nil)
-        (getId [_] eeid)
         (getSession [_] nil)
+        (getId [_] eeid)
         (getSockOut [_] (.getOutputStream soc))
         (getSockIn [_] (.getInputStream soc))
         (emitter [_] co)
         (dispose [_] (IOUtils/closeQuietly soc)))
+
       { :typeid :czc.hhh.io/SocketEvent } )))
-
-(defn make-socketio "" [container]
-  (make-emitter container :czc.hhh.io/SocketIO))
-
 
 (defmethod comp-configure :czc.hhh.io/SocketIO
   [^comzotohcljc.hhh.core.sys.Element co cfg]

@@ -20,8 +20,8 @@
   comzotohcljc.hhh.io.http )
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-
 (import '(org.eclipse.jetty.server Server Connector))
+(import '(java.util.concurrent ConcurrentHashMap))
 (import '(java.net URL))
 (import '(java.util List Map HashMap ArrayList))
 (import '(java.io File))
@@ -71,79 +71,81 @@
 (defn make-servlet-emitter "" [^Container parObj]
   (let [ eeid (SN/next-long)
          impl (CU/make-mmap) ]
-    (.mm-s impl :backlog (HashMap.))
+    (.mm-s impl :backlog (ConcurrentHashMap.))
     (with-meta
       (reify
 
         Element
 
-          (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-g impl :ctx))
-          (setAttr! [_ a v] (.mm-s impl a v) )
-          (clrAttr! [_ a] (.mm-r impl a) )
-          (getAttr [_ a] (.mm-g impl a) )
+        (setCtx! [_ x] (.mm-s impl :ctx x))
+        (getCtx [_] (.mm-g impl :ctx))
+        (setAttr! [_ a v] (.mm-s impl a v) )
+        (clrAttr! [_ a] (.mm-r impl a) )
+        (getAttr [_ a] (.mm-g impl a) )
 
         Component
-          (version [_] "1.0")
-          (id [_] eeid)
+
+        (version [_] "1.0")
+        (id [_] eeid)
 
         Hierarchial
-          (parent [_] parObj)
+
+        (parent [_] parObj)
 
         ServletEmitter
-          (container [this] (.parent this))
-          (doService [this req rsp]
-            (let [ ^comzotohcljc.hhh.core.sys.Element dev this
-                   wm (.getAttr dev :waitMillis) ]
-              (doto (ContinuationSupport/getContinuation req)
-                (.setTimeout wm)
-                (.suspend rsp))
-              (let [ evt (ioes-reify-event this req)
-                     ^comzotohcljc.hhh.io.core.WaitEventHolder
-                       w  (make-async-wait-holder
-                            (make-servlet-trigger req rsp dev) evt)
-                       ^comzotohcljc.hhh.io.core.EmitterAPI  src this ]
-                  (.timeoutMillis w wm)
-                  (.hold src w)
-                  (.dispatch src evt))) )
+
+        (container [this] (.parent this))
+        (doService [this req rsp]
+          (let [ ^comzotohcljc.hhh.core.sys.Element dev this
+                 ^long wm (.getAttr dev :waitMillis) ]
+            (doto (ContinuationSupport/getContinuation req)
+              (.setTimeout wm)
+              (.suspend rsp))
+            (let [ evt (ioes-reify-event this req)
+                   ^comzotohcljc.hhh.io.core.WaitEventHolder
+                     w  (make-async-wait-holder
+                          (make-servlet-trigger req rsp dev) evt)
+                     ^comzotohcljc.hhh.io.core.EmitterAPI  src this ]
+                (.timeoutMillis w wm)
+                (.hold src w)
+                (.dispatch src evt))) )
 
         Disposable
 
-          (dispose [this] (ioes-dispose this))
+        (dispose [this] (ioes-dispose this))
 
         Startable
 
-          (start [this] (ioes-start this))
-          (stop [this] (ioes-stop this))
+        (start [this] (ioes-start this))
+        (stop [this] (ioes-stop this))
 
         EmitterAPI
 
-          (enabled? [_] (if (false? (.mm-g impl :enabled)) false true ))
-          (active? [_] (if (false? (.mm-g impl :active)) false true))
+        (enabled? [_] (if (false? (.mm-g impl :enabled)) false true ))
+        (active? [_] (if (false? (.mm-g impl :active)) false true))
 
-          (suspend [this] (ioes-suspend this))
-          (resume [this] (ioes-resume this))
+        (suspend [this] (ioes-suspend this))
+        (resume [this] (ioes-resume this))
 
-          (release [_ wevt]
-            (when-not (nil? wevt)
-              (let [ ^HashMap b (.mm-g impl :backlog)
-                     wid (.id ^Identifiable wevt) ]
-                (debug "emitter releasing an event with id: " wid)
-                (.remove b wid))))
+        (release [_ wevt]
+          (when-not (nil? wevt)
+            (let [ ^Map b (.mm-g impl :backlog)
+                   wid (.id ^Identifiable wevt) ]
+              (debug "emitter releasing an event with id: " wid)
+              (.remove b wid))))
 
-          (hold [_ wevt]
-            (when-not (nil? wevt)
-              (let [ ^HashMap b (.mm-g impl :backlog)
-                     wid (.id ^Identifiable wevt) ]
-                (debug "emitter holding an event with id: " wid)
-                (.put b wid wevt))))
+        (hold [_ wevt]
+          (when-not (nil? wevt)
+            (let [ ^Map b (.mm-g impl :backlog)
+                   wid (.id ^Identifiable wevt) ]
+              (debug "emitter holding an event with id: " wid)
+              (.put b wid wevt))))
 
-          (dispatch [this ev]
-            (CU/TryC
-                (.notifyObservers parObj ev) )) )
+        (dispatch [this ev]
+          (CU/TryC
+              (.notifyObservers parObj ev) )) )
 
       { :typeid :czc.hhh.io/JettyIO } )))
-
 
 (defn http-basic-config [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ ^String file (:server-key cfg)
@@ -154,6 +156,7 @@
          w (:wait-millis cfg)
          bio (:sync cfg)
          tds (:workers cfg)
+         pkey (:hhh.pkey cfg)
          ssl (SU/hgl? file) ]
 
     (.setAttr! co :port
@@ -164,7 +167,7 @@
     (when (SU/hgl? file)
       (CU/test-cond "server-key file url" (.startsWith file "file:"))
       (.setAttr! co :serverKey (URL. file))
-      (.setAttr! co :pwd (CR/pwdify ^String (:passwd cfg))) )
+      (.setAttr! co :pwd (CR/pwdify ^String (:passwd cfg) pkey)) )
 
     (.setAttr! co :sockTimeOut
                (if (and (number? socto)(pos? socto)) socto 0))
@@ -176,8 +179,6 @@
     (.setAttr! co :waitMillis
                (if (and (number? w)(pos? w)) w 300000)) ;; 5 mins
     co))
-
-
 
 (defmethod comp-configure :czc.hhh.io/HTTP
   [co cfg]
@@ -275,6 +276,7 @@
     (reify
 
       MuObj
+
       (setf! [_ k v] (.mm-s impl k v) )
       (seq* [_] (seq (.mm-m* impl)))
       (getf [_ k] (.mm-g impl k) )
@@ -337,6 +339,7 @@
   [co & args]
   (let [ ^HttpServletRequest req (first args)
          ^HTTPResult result (make-http-result)
+         impl (CU/make-mmap)
          eid (SN/next-long) ]
     (reify
 
@@ -361,8 +364,8 @@
               (.add rc (cookie-to-javaCookie c))))
           rc))
 
-      (bindSession [_ s] nil)
-      (getSession [_] nil)
+      (bindSession [_ s] (.mm-s impl :ios s))
+      (getSession [_] (.mm-g impl :ios))
       (emitter [_] co)
       (isKeepAlive [_]
         (= (-> (SU/nsb (.getHeader req "connection")) (.toLowerCase))

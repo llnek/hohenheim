@@ -44,17 +44,17 @@
       (instance? HTTPEvent ev)
       (PTask. (make-work s))
       :else
-      (throw (FlowError.  
+      (throw (FlowError.
                (str "Unhandled event-type \"" (:typeid (meta ev))  "\"."))))))
 
 (deftype FatalErrorFlow [] PipelineDelegate
-  (getStartActivity [_ pipe] 
+  (getStartActivity [_ pipe]
     (make-internal-flow pipe 500))
   (onStop [_ pipe ] nil)
   (onError [_ error cur] nil))
 
 (deftype OrphanFlow [] PipelineDelegate
-  (getStartActivity [_  pipe] 
+  (getStartActivity [_  pipe]
     (make-internal-flow pipe 501))
   (onStop [_  pipe] nil)
   (onError [_  error cur] nil))

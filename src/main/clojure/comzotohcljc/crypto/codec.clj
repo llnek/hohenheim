@@ -73,7 +73,7 @@
 ;;(def ^:private ALPHA_CHS 26)
 
 
-(defn- ensure-key-size
+(defn- ensure-key-size ""
 
   ^String
   [^String keystr ^String algo]
@@ -83,7 +83,7 @@
       (CU/throw-badarg "Encryption key length must be 24, when using TripleDES"))
     keystr))
 
-(defn- keyAsBits
+(defn- keyAsBits ""
 
   ^bytes
   [^String pwd ^String algo]
@@ -94,12 +94,14 @@
       bits)))
 
 (defprotocol BaseCryptor
+  ""
   (decrypt [_ ^String pkey ^String cipherText] [_ ^String cipherText] )
   (encrypt [_ ^String pkey ^String clearText] [_ ^String clearText] )
   (algo [_] ))
 
 ;; BCrypt.checkpw(candidate, hashed)
 (defprotocol ^:private PasswordAPI
+  ""
   (toCharArray [_] )
   (encoded [_] )
   (stronglyHashed [_] )
@@ -118,22 +120,22 @@
   (let [ idx (some (fn [i] (if (= ch (aget ^chars VISCHS i)) i nil)) (range VISCHS_LEN)) ]
     (if (nil? idx) -1 idx)))
 
-(defn- slide-forward [delta cpos]
+(defn- slide-forward "" [delta cpos]
   (let [ ptr (+ cpos delta)
          np (if (>= ptr VISCHS_LEN) (- ptr VISCHS_LEN) ptr) ]
     (identify-ch np)))
 
-(defn- slide-back [delta cpos]
+(defn- slide-back "" [delta cpos]
   (let [ ptr (- cpos delta)
          np (if (< ptr 0) (+ VISCHS_LEN ptr) ptr) ]
     (identify-ch np)))
 
-(defn- shiftenc [shiftpos delta cpos]
+(defn- shiftenc "" [shiftpos delta cpos]
   (if (< shiftpos 0)
     (slide-forward delta cpos)
     (slide-back delta cpos)))
 
-(defn- shiftdec [shiftpos delta cpos]
+(defn- shiftdec "" [shiftpos delta cpos]
   (if (< shiftpos 0)
     (slide-back delta cpos))
     (slide-forward delta cpos) )
@@ -186,7 +188,8 @@
     (.setPassword c pkey)
     (.encrypt c text)) )
 
-(defn jasypt-cryptor ^comzotohcljc.crypto.codec.BaseCryptor []
+(defn jasypt-cryptor "Make a cryptor using Jasypt lib."
+  ^comzotohcljc.crypto.codec.BaseCryptor []
   (reify BaseCryptor
 
     (decrypt [this cipherText] (decrypt this C_KEY cipherText))
@@ -242,7 +245,8 @@
         (when (> n2 0) (.write baos out 0 n2)))
       (CU/stringify (.toByteArray baos)))) )
 
-(defn java-cryptor ^comzotohcljc.crypto.codec.BaseCryptor []
+(defn java-cryptor "Make a Standard Java cryptor."
+  ^comzotohcljc.crypto.codec.BaseCryptor []
   (reify BaseCryptor
 
     (decrypt [this cipherText] (decrypt this C_KEY cipherText))
@@ -298,7 +302,8 @@
         (when (> c2 0) (.write baos out 0 c2)) )
       (Base64/encodeBase64String (.toByteArray baos)))) )
 
-(defn bouncy-cryptor ^comzotohcljc.crypto.codec.BaseCryptor []
+(defn bouncy-cryptor  "Make a cryptor using BouncyCastle."
+  ^comzotohcljc.crypto.codec.BaseCryptor []
   (reify BaseCryptor
     (decrypt [this cipherText] (decrypt this C_KEY cipherText))
     (decrypt [this pkey cipherText]
@@ -337,10 +342,12 @@
       (String. rc))) )
 
 (deftype Password [^String pwdStr ^String pkey]
+
   Object
   (equals [this obj] (and (instance? Password obj) (= (.toString this) (.toString ^Object obj))) )
   (hashCode [this] (.hashCode (SU/nsb (.pwdStr this))))
   (toString [this] (.text this))
+
   PasswordAPI
   (toCharArray [_] (if (nil? pwdStr) (char-array 0) (.toCharArray pwdStr)))
   (stronglyHashed [_]
@@ -370,14 +377,14 @@
       :else
       (Password. pwdStr pkey)) ))
 
-(defn create-random-string ""
+(defn create-random-string "Randomly generate some text."
 
   ^String
   [ len]
 
   (createXXX len s_asciiChars))
 
-(defn create-strong-pwd ""
+(defn create-strong-pwd "Generate a strong password."
 
   ^comzotohcljc.crypto.codec.Password
   [ len]

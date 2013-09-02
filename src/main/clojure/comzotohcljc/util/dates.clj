@@ -171,6 +171,9 @@
             (.get cal Calendar/MINUTE)
             (.get cal Calendar/SECOND) ] ))))
 
+(defn gmt-cal "" ^GregorianCalendar []
+  (GregorianCalendar. (TimeZone/getTimeZone "GMT")) )
+
 (defn debug-cal "Debug show a calendar's internal data."
   ^String [^Calendar cal]
   (do

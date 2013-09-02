@@ -84,6 +84,7 @@
 (def K_ROUTE_INFO :route-info )
 (def K_CLISH :cli-shell )
 (def K_COMPS :components )
+;;(def K_ENDORSED :endorsed )
 (def K_REGS :registries )
 (def K_KERNEL :kernel )
 (def K_EXECV :execvisor )

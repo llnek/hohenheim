@@ -60,7 +60,7 @@
   (str "DROP TABLE " table " IF EXISTS CASCADE" (genExec db) "\n\n"))
 
 
-;;(println (getDDL (H2.) (make-MetaCache testschema)))
+;;(println (getDDL (make-MetaCache testschema) (H2.) ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

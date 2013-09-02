@@ -100,6 +100,7 @@
         (getId [_] eeid)
         (emitter [_] co)
         (getMsg [_] msg))
+
       { :typeid :czc.hhh.io/EmailEvent } )))
 
 
@@ -174,6 +175,7 @@
 (defn- std-config [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ intv (:interval-secs cfg)
          port (:port cfg)
+         pkey (:hhh.pkey cfg)
          pwd (:passwd cfg) ]
     (.setAttr! co :intervalMillis (* 1000 (if (number? intv) intv 300)))
     (.setAttr! co :ssl (if (false? (:ssl cfg)) false true))
@@ -181,7 +183,7 @@
     (.setAttr! co :host (:host cfg))
     (.setAttr! co :port (if (number? port) port 995))
     (.setAttr! co :user (:username cfg))
-    (.setAttr! co :pwd (CR/pwdify (if (SU/hgl? pwd) pwd "")) )
+    (.setAttr! co :pwd (CR/pwdify (if (SU/hgl? pwd) pwd "") pkey) )
     co))
 
 (defmethod comp-configure :czc.hhh.io/POP3

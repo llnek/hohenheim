@@ -73,7 +73,7 @@
               (recur rc)))))))
 
 (defprotocol CryptoStore
-
+  ""
   (addKeyEntity [_ ^bytes bits ^comzotohcljc.crypto.codec.Password pwdObj] )
   (addCertEntity [_ ^bytes bits] )
   (trustManagerFactory [_] )

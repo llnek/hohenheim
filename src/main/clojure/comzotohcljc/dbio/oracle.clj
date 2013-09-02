@@ -21,7 +21,7 @@
        :author "kenl" }
   comzotohcljc.dbio.oracle)
 
-(import '(java.util HashMap))
+(import '(java.util Map HashMap))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (require '[comzotohcljc.util.core :as CU])
@@ -62,12 +62,12 @@
 
 (defmethod genAutoInteger Oracle [db table fld]
   (do
-    (.put ^HashMap *DDL_BVS* table (:column fld))
+    (.put ^Map *DDL_BVS* table (:column fld))
     (genInteger db fld)))
 
 (defmethod genAutoLong Oracle [db table fld]
   (do
-    (.put ^HashMap *DDL_BVS* table (:column fld))
+    (.put ^Map *DDL_BVS* table (:column fld))
     (genLong db fld)))
 
 (defmethod genEndSQL Oracle [db]
@@ -82,7 +82,7 @@
   (str "DROP TABLE " table " CASCADE CONSTRAINTS PURGE" (genExec db) "\n\n"))
 
 
-;;(println (getDDL (Oracle.) (make-MetaCache testschema)))
+;;(println (getDDL (make-MetaCache testschema) (Oracle.) ))
 
 (def ^:private oracle-eof nil)
 

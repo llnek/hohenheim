@@ -48,7 +48,6 @@
 (use '[comzotohcljc.hhh.io.jms])
 (use '[comzotohcljc.hhh.io.http])
 (use '[comzotohcljc.hhh.io.netty])
-(use '[comzotohcljc.hhh.io.events])
 (use '[comzotohcljc.hhh.io.socket])
 (use '[comzotohcljc.hhh.mvc.handler])
 
@@ -94,19 +93,19 @@
 
         MuObj
 
-          (setf! [_ k v] (.mm-s impl k v))
-          (clear! [_] (.mm-c impl))
-          (seq* [_] (seq (.mm-m* impl)))
-          (getf [_ k] (.mm-g impl k))
-          (clrf! [_ k] (.mm-r impl k))
+        (setf! [_ k v] (.mm-s impl k v))
+        (clear! [_] (.mm-c impl))
+        (seq* [_] (seq (.mm-m* impl)))
+        (getf [_ k] (.mm-g impl k))
+        (clrf! [_ k] (.mm-r impl k))
 
         Job
 
-          (container [_] _container)
-          (setv [this k v] (.setf! this k v))
-          (getv [this k] (.getf this k))
-          (event [_] evt)
-          (id [_] jid))
+        (container [_] _container)
+        (setv [this k v] (.setf! this k v))
+        (getv [this k] (.getf this k))
+        (event [_] evt)
+        (id [_] jid))
 
       { :typeid (keyword "czc.hhh.impl/Job") } )))
 
@@ -123,18 +122,18 @@
 
         JobCreator
 
-          (update [_  evt options]
-            (let [ ^comzotohcljc.hhh.core.sys.Element
-                   src (.emitter ^IOEvent evt)
-                   c0 (.getAttr src :router)
-                   c1 (:router options)
-                   job (make-job parObj evt) ]
-              (try
-                (let [ p (Pipeline. job (if (SU/hgl? c0) c0 c1))
-                       q (if (nil? p) (make-OrphanFlow job) p) ]
-                  (.start ^Pipeline q))
-                (catch Throwable e#
-                  (-> (make-FatalErrorFlow job) (.start)))))))
+        (update [_  evt options]
+          (let [ ^comzotohcljc.hhh.core.sys.Element
+                 src (.emitter ^IOEvent evt)
+                 c0 (.getAttr src :router)
+                 c1 (:router options)
+                 job (make-job parObj evt) ]
+            (try
+              (let [ p (Pipeline. job (if (SU/hgl? c0) c0 c1))
+                     q (if (nil? p) (make-OrphanFlow job) p) ]
+                (.start ^Pipeline q))
+              (catch Throwable e#
+                (-> (make-FatalErrorFlow job) (.start)))))))
 
       { :typeid (keyword "czc.hhh.impl/JobCreator") } )))
 
@@ -157,12 +156,15 @@
          obj (if (= :czc.hhh.io/JettyIO eid)
                (make-servlet-emitter container)
                (make-emitter container eid nm))
+         pkey (.getAppKey ^Container container)
          hid (:handler cfg)
          mm (meta obj) ]
     (info "about to synthesize an emitter: " eid)
     (info "emitter meta: " mm)
     (info "is emitter = " (isa?  (:typeid mm) :czc.hhh.io/Emitter))
-    (synthesize-component obj { :ctx container :props cfg } )
+    (synthesize-component
+      obj
+      { :ctx container :props (assoc cfg :hhh.pkey pkey) })
     (.setAttr! obj :router hid)
     (info "emitter synthesized - OK. handler => " hid)
     obj))
@@ -175,112 +177,117 @@
 
         Element
 
-          (setAttr! [_ a v] (.mm-s impl a v) )
-          (clrAttr! [_ a] (.mm-r impl a) )
-          (getAttr [_ a] (.mm-g impl a) )
-          (setCtx! [_ x] (.mm-s impl :ctx x) )
-          (getCtx [_] (.mm-g impl :ctx) )
+        (setAttr! [_ a v] (.mm-s impl a v) )
+        (clrAttr! [_ a] (.mm-r impl a) )
+        (getAttr [_ a] (.mm-g impl a) )
+        (setCtx! [_ x] (.mm-s impl :ctx x) )
+        (getCtx [_] (.mm-g impl :ctx) )
 
         Container
-          (notifyObservers [this evt]
-            (let [ ^comzotohcljc.hhh.impl.ext.JobCreator
-                   jc (.getAttr this K_JCTOR) ]
-              (.update jc evt {})))
-          (getAppKey [_] (.appKey ^comzotohcljc.hhh.impl.defaults.PODMeta pod))
-          (getAppDir [this] (.getAttr this K_APPDIR))
-          (core [this]
-            (.getAttr this K_SCHEDULER))
-          (hasService [_ serviceId]
-            (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS) ]
-              (.has srg (keyword serviceId))))
 
-          (getService [_ serviceId]
-            (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS) ]
-              (.lookup srg (keyword serviceId))))
+        (notifyObservers [this evt]
+          (let [ ^comzotohcljc.hhh.impl.ext.JobCreator
+                 jc (.getAttr this K_JCTOR) ]
+            (.update jc evt {})))
+        (getAppKey [_] (.appKey ^comzotohcljc.hhh.impl.defaults.PODMeta pod))
+        (getAppDir [this] (.getAttr this K_APPDIR))
+        (core [this]
+          (.getAttr this K_SCHEDULER))
+        (hasService [_ serviceId]
+          (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS) ]
+            (.has srg (keyword serviceId))))
+
+        (getService [_ serviceId]
+          (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS) ]
+            (.lookup srg (keyword serviceId))))
 
         Component
-          (id [_] (.id ^Identifiable pod) )
-          (version [_] "1.0")
+
+        (id [_] (.id ^Identifiable pod) )
+        (version [_] "1.0")
 
         Hierarchial
-          (parent [_] nil)
+
+        (parent [_] nil)
 
         Startable
-          (start [_]
-            (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
-                   main (.mm-g impl :main-app) ]
-              (info "container starting all services...")
-              (doseq [ [k v] (seq* srg) ]
-                (info "service: " k " about to start...")
-                (.start ^Startable v))
-              (info "container starting main app...")
-              (cond
-                (satisfies? CljAppMain main)
-                (.start ^comzotohcljc.hhh.impl.ext.CljAppMain main)
-                (instance? AppMain main)
-                (.start ^AppMain main)
-                :else nil)))
 
-          (stop [_]
-            (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
-                   main (.mm-g impl :main-app) ]
-              (info "container stopping all services...")
-              (doseq [ [k v] (seq* srg) ]
-                (.stop ^Startable v))
-              (info "container stopping main app...")
-              (cond
-                (satisfies? CljAppMain main)
-                (.stop ^comzotohcljc.hhh.impl.ext.CljAppMain main)
-                (instance? AppMain main)
-                (.stop ^AppMain main)
-                :else nil)))
+        (start [_]
+          (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
+                 main (.mm-g impl :main-app) ]
+            (info "container starting all services...")
+            (doseq [ [k v] (seq* srg) ]
+              (info "service: " k " about to start...")
+              (.start ^Startable v))
+            (info "container starting main app...")
+            (cond
+              (satisfies? CljAppMain main)
+              (.start ^comzotohcljc.hhh.impl.ext.CljAppMain main)
+              (instance? AppMain main)
+              (.start ^AppMain main)
+              :else nil)))
+
+        (stop [_]
+          (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
+                 main (.mm-g impl :main-app) ]
+            (info "container stopping all services...")
+            (doseq [ [k v] (seq* srg) ]
+              (.stop ^Startable v))
+            (info "container stopping main app...")
+            (cond
+              (satisfies? CljAppMain main)
+              (.stop ^comzotohcljc.hhh.impl.ext.CljAppMain main)
+              (instance? AppMain main)
+              (.stop ^AppMain main)
+              :else nil)))
 
         Disposable
-          (dispose [_]
-            (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
-                   main (.mm-g impl :main-app) ]
-              (doseq [ [k v] (seq* srg) ]
-                (.dispose ^Disposable v))
-              (info "container dispose() - main app getting disposed.")
-              (cond
-                (satisfies? CljAppMain main)
-                (.stop ^comzotohcljc.hhh.impl.ext.CljAppMain main)
-                (instance? AppMain main)
-                (.stop ^AppMain main)
-                :else nil)))
+
+        (dispose [_]
+          (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
+                 main (.mm-g impl :main-app) ]
+            (doseq [ [k v] (seq* srg) ]
+              (.dispose ^Disposable v))
+            (info "container dispose() - main app getting disposed.")
+            (cond
+              (satisfies? CljAppMain main)
+              (.stop ^comzotohcljc.hhh.impl.ext.CljAppMain main)
+              (instance? AppMain main)
+              (.stop ^AppMain main)
+              :else nil)))
 
         ContainerAPI
 
-          (enabled? [_]
-            (let [ env (.mm-g impl K_ENVCONF)
-                   c (:container env) ]
-              (if (false? (:enabled c))
-                false
-                true)))
+        (enabled? [_]
+          (let [ env (.mm-g impl K_ENVCONF)
+                 c (:container env) ]
+            (if (false? (:enabled c))
+              false
+              true)))
 
-          (reifyServices [this]
-            (let [ env (.mm-g impl K_ENVCONF)
-                   s (:services env) ]
-              (if-not (empty? s)
-                  (doseq [ [k v] (seq s) ]
-                    (reifyOneService this k v)))))
+        (reifyServices [this]
+          (let [ env (.mm-g impl K_ENVCONF)
+                 s (:services env) ]
+            (if-not (empty? s)
+                (doseq [ [k v] (seq s) ]
+                  (reifyOneService this k v)))))
 
-          (reifyOneService [this nm cfg]
-            (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS)
-                   svc (SU/nsb (:service cfg))
-                   b (:enabled cfg) ]
-              (if-not (or (false? b) (SU/nichts? svc))
-                (let [ s (reifyService this svc nm cfg) ]
-                  (.reg srg s)))))
+        (reifyOneService [this nm cfg]
+          (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS)
+                 svc (SU/nsb (:service cfg))
+                 b (:enabled cfg) ]
+            (if-not (or (false? b) (SU/nichts? svc))
+              (let [ s (reifyService this svc nm cfg) ]
+                (.reg srg s)))))
 
-          (reifyService [this svc nm cfg]
-            (let [^comzotohcljc.util.core.MuObj ctx (.getCtx this)
-                   ^ComponentRegistry root (.getf ctx K_COMPS)
-                   ^ComponentRegistry bks (.lookup root K_BLOCKS)
-                   ^ComponentRegistry bk (.lookup bks (keyword svc)) ]
-              (when (nil? bk)
-                (throw (ServiceError. (str "No such Service: " svc "."))))
-              (make-service-block bk this nm cfg))) )
+        (reifyService [this svc nm cfg]
+          (let [^comzotohcljc.util.core.MuObj ctx (.getCtx this)
+                 ^ComponentRegistry root (.getf ctx K_COMPS)
+                 ^ComponentRegistry bks (.lookup root K_BLOCKS)
+                 ^ComponentRegistry bk (.lookup bks (keyword svc)) ]
+            (when (nil? bk)
+              (throw (ServiceError. (str "No such Service: " svc "."))))
+            (make-service-block bk this nm cfg))) )
 
     { :typeid (keyword "czc.hhh.ext/Container") } )) )
 
@@ -384,7 +391,7 @@
     (let [ svcs (:services env) ]
       (if (empty? svcs)
           (warn "No system service defined in env.conf.")
-          (.reifyServices ^comzotohcljc.hhh.impl.ext.ContainerAPI  co)))
+          (.reifyServices ^comzotohcljc.hhh.impl.ext.ContainerAPI co)))
 
     ;; start the scheduler
     (.activate sc cfg)

@@ -14,36 +14,32 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-
-
 (ns ^{ :doc ""
        :author "kenl" }
 
   comzotohcljc.dbio.composite )
 
-(import '(java.sql Connection))
-
 (use '[clojure.tools.logging :only (info warn error debug)])
+(import '(java.sql Connection))
 
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
-
 (require '[comzotohcljc.dbio.core :as DU])
+
 (use '[comzotohcljc.dbio.sql])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
+(defn- mk-tx ""
 
-
-(defn- mk-tx 
-  
   ^comzotohcljc.dbio.sql.SQLr
-  [^comzotohcljc.dbio.core.DBAPI db
-   ^comzotohcljc.dbio.core.MetaCacheAPI metaCache 
-   ^comzotohcljc.dbio.sql.SQLProcAPI proc 
-   ^Connection conn]
+
+  [^comzotohcljc.dbio.core.MetaCache metaCache
+   ^comzotohcljc.dbio.core.DBAPI        db
+   ^comzotohcljc.dbio.sql.SQLProcAPI    proc
+   ^Connection                          conn]
 
   (reify SQLr
 
@@ -54,7 +50,7 @@
       (let [ rset (findSome this model filters "") ]
         (if (empty? rset) nil (first rset))))
 
-    (findSome [this  model filters] (findSome this model filters ""))
+    (findSome [this model filters] (findSome this model filters ""))
     (findSome [_ model filters ordering]
       (let [ zm (get metaCache model)
              tbl (table-name zm)
@@ -72,7 +68,7 @@
     (insert [_ obj] (.doInsert proc conn obj) )
 
     (executeWithOutput [_ sql pms]
-      (.doExecuteWithOutput proc conn sql pms { :pkey "dbio_rowid" } ) )
+      (.doExecuteWithOutput proc conn sql pms { :pkey "DBIO_ROWID" } ) )
 
     (execute [_ sql pms] (.doExecute proc conn sql pms) )
 
@@ -80,20 +76,20 @@
     (purge [_ model] (.doPurge proc conn model) )  ) )
 
 
-(defn compositeSQLr 
-  
-  ^comzotohcljc.dbio.sql.Transactable
-  [^comzotohcljc.dbio.core.DBAPI db 
-   ^comzotohcljc.dbio.core.MetaCacheAPI metaCache]
+(defn compositeSQLr
 
-  (let [ proc (make-proc db metaCache) ]
+  ^comzotohcljc.dbio.sql.Transactable
+  [ ^comzotohcljc.dbio.core.MetaCache metaCache
+    ^comzotohcljc.dbio.core.DBAPI db ]
+
+  (let [ proc (make-proc metaCache db) ]
     (reify Transactable
 
       (execWith [this func]
         (with-local-vars [ rc nil ]
           (with-open [ conn (begin this) ]
             (try
-              (var-set rc (func (mk-tx db metaCache proc conn)))
+              (var-set rc (func (mk-tx metaCache db proc conn)))
               (commit this conn)
               @rc
               (catch Throwable e#
@@ -103,7 +99,8 @@
       (commit [_ conn] (.commit ^Connection conn))
       (begin [_]
         (let [ ^Connection conn (.open db) ]
-          (.setAutoCommit conn false)))   )) )
+          (.setAutoCommit conn false)
+          conn))   )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

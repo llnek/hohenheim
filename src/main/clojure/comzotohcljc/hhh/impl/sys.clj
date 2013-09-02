@@ -21,6 +21,8 @@
   comzotohcljc.hhh.impl.sys )
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
+(import '(org.apache.commons.lang3 StringUtils))
+
 (import '(com.zotoh.hohenheim.loaders AppClassLoader))
 (import '(com.zotoh.frwk.server Component ComponentRegistry))
 (import '(com.zotoh.frwk.core
@@ -62,33 +64,33 @@
 
         Element
 
-          (setAttr! [_ a v] (.mm-s impl a v) )
-          (clrAttr! [_ a] (.mm-r impl a) )
-          (getAttr [_ a] (.mm-g impl a) )
-          (setCtx! [_ x] (.mm-s impl :ctx x) )
-          (getCtx [_] (.mm-g impl :ctx) )
+        (setAttr! [_ a v] (.mm-s impl a v) )
+        (clrAttr! [_ a] (.mm-r impl a) )
+        (getAttr [_ a] (.mm-g impl a) )
+        (setCtx! [_ x] (.mm-s impl :ctx x) )
+        (getCtx [_] (.mm-g impl :ctx) )
 
         Component
-          (id [_] K_DEPLOYER )
-          (version [_] "1.0" )
+        (id [_] K_DEPLOYER )
+        (version [_] "1.0" )
 
         Hierarchial
-          (parent [_] nil)
+        (parent [_] nil)
 
         Deployer
 
-          (undeploy [this app]
-            (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
-                   dir (File. ^File (.getf ctx K_PLAYDIR) ^String app) ]
-              (when (.exists dir)
-                  (FileUtils/deleteDirectory dir))))
+        (undeploy [this app]
+          (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
+                 dir (File. ^File (.getf ctx K_PLAYDIR) ^String app) ]
+            (when (.exists dir)
+                (FileUtils/deleteDirectory dir))))
 
-          (deploy [this src]
-            (let [ app (FilenameUtils/getBaseName (CU/nice-fpath src))
-                   ^comzotohcljc.util.core.MuObj ctx (getCtx this)
-                   des (File. ^File (.getf ctx K_PLAYDIR) ^String app) ]
-              (when-not (.exists des)
-                (FU/unzip src des)))) )
+        (deploy [this src]
+          (let [ app (FilenameUtils/getBaseName (CU/nice-fpath src))
+                 ^comzotohcljc.util.core.MuObj ctx (getCtx this)
+                 des (File. ^File (.getf ctx K_PLAYDIR) ^String app) ]
+            (when-not (.exists des)
+              (FU/unzip src des)))) )
 
       { :typeid (keyword "czc.hhh.impl/Deployer") } )))
 
@@ -117,18 +119,27 @@
 (defn- maybe-start-pod
 
   [^comzotohcljc.hhh.core.sys.Element knl
+   cset
    ^comzotohcljc.hhh.core.sys.Element pod]
 
   (CU/TryC
     (let [ cache (.getAttr knl K_CONTAINERS)
            cid (.id ^Identifiable pod)
-           ctr (make-container pod) ]
+           app (.moniker ^comzotohcljc.hhh.impl.defaults.PODMeta pod)
+           ctr (if (and (not (empty? cset))
+                        (not (contains? cset app)))
+                 nil
+                 (make-container pod)) ]
+      (debug "start-pod? cid = " cid ", app = " app " !! cset = " cset)
       (if (CU/notnil? ctr)
         (do
           (.setAttr! knl K_CONTAINERS (assoc cache cid ctr))
         ;;_jmx.register(ctr,"", c.name)
+          true
           )
-        (info "kernel: container " cid " disabled.")) ) ))
+        (do
+          (info "kernel: container " cid " disabled.")
+          false) ) )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -140,39 +151,49 @@
 
         Element
 
-          (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-g impl :ctx))
-          (setAttr! [_ a v] (.mm-s impl a v) )
-          (clrAttr! [_ a] (.mm-r impl a) )
-          (getAttr [_ a] (.mm-g impl a) )
+        (setCtx! [_ x] (.mm-s impl :ctx x))
+        (getCtx [_] (.mm-g impl :ctx))
+        (setAttr! [_ a v] (.mm-s impl a v) )
+        (clrAttr! [_ a] (.mm-r impl a) )
+        (getAttr [_ a] (.mm-g impl a) )
 
         Component
-          (version [_] "1.0")
-          (id [_] K_KERNEL )
+        (version [_] "1.0")
+        (id [_] K_KERNEL )
 
         Hierarchial
-          (parent [_] nil)
+        (parent [_] nil)
 
         Kernel
-        Startable
-          (start [this]
-            (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
-                   ^ComponentRegistry root (.getf ctx K_COMPS)
-                   ^comzotohcljc.hhh.core.sys.Registry
-                   apps (.lookup root K_APPS) ]
-              ;; need this to prevent deadlocks amongst pods
-              ;; when there are dependencies
-              ;; TODO: need to handle this better
-              (doseq [ [k v] (seq* apps) ]
-                (let [ r (-> (CU/new-random) (.nextInt 6)) ]
-                  (maybe-start-pod this v)
-                  (PU/safe-wait (* 1000 (Math/max (int 1) r)))))))
 
-          (stop [this]
-            (let [ cs (.mm-g impl K_CONTAINERS) ]
-              (doseq [ [k v] (seq cs) ]
-                (.stop ^Startable v))
-              (.mm-s impl K_CONTAINERS {}))) )
+        Startable
+        (start [this]
+          (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
+                 ^ComponentRegistry root (.getf ctx K_COMPS)
+                 ^comzotohcljc.util.ini.IWin32Conf
+                  wc (.getf ctx K_PROPS)
+                  endorsed (SU/strim (.optString wc K_APPS "endorsed" ""))
+                 ^comzotohcljc.hhh.core.sys.Registry
+                 apps (.lookup root K_APPS)
+                 cs (if (= "*" endorsed)
+                      #{}
+                      (into #{}
+                            (filter (fn [^String s] (> (.length s) 0))
+                                    (map #(SU/strim %)
+                                         (seq (StringUtils/split endorsed ",;"))) ) )) ]
+            ;; need this to prevent deadlocks amongst pods
+            ;; when there are dependencies
+            ;; TODO: need to handle this better
+            (doseq [ [k v] (seq* apps) ]
+              (let [ r (-> (CU/new-random) (.nextInt 6)) ]
+                (if (maybe-start-pod this cs v)
+                  (PU/safe-wait (* 1000 (Math/max (int 1) r))))))) )
+
+        (stop [this]
+          (let [ cs (.mm-g impl K_CONTAINERS) ]
+            (doseq [ [k v] (seq cs) ]
+              (.stop ^Startable v))
+            (.mm-s impl K_CONTAINERS {}))) )
 
       { :typeid (keyword "czc.hhh.impl/Kernel") } )))
 
@@ -187,25 +208,26 @@
 
         Element
 
-          (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-g impl :ctx))
-          (setAttr! [_ a v] (.mm-s impl a v) )
-          (clrAttr! [_ a] (.mm-r impl a) )
-          (getAttr [_ a] (.mm-g impl a) )
+        (setCtx! [_ x] (.mm-s impl :ctx x))
+        (getCtx [_] (.mm-g impl :ctx))
+        (setAttr! [_ a v] (.mm-s impl a v) )
+        (clrAttr! [_ a] (.mm-r impl a) )
+        (getAttr [_ a] (.mm-g impl a) )
 
         Component
-          (version [_] ver)
-          (id [_] pid )
+        (version [_] ver)
+        (id [_] pid )
 
         Hierarchial
-          (parent [_] parObj)
+        (parent [_] parObj)
 
 
         PODMeta
 
-          (srcUrl [_] pathToPOD)
-          (appKey [_] appid)
-          (typeof [_] podType))
+        (srcUrl [_] pathToPOD)
+        (moniker [_] app)
+        (appKey [_] appid)
+        (typeof [_] podType))
 
       { :typeid (keyword "czc.hhh.impl/PODMeta") } )))
 

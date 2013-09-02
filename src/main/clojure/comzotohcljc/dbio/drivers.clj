@@ -27,14 +27,14 @@
 (use '[comzotohcljc.dbio.core])
 
 (import '(com.zotoh.frwk.dbio DBIOError))
-(import '(java.util HashMap))
-
+(import '(java.util Map HashMap))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 
-(defprotocol DBDriver ""
+(defprotocol DBDriver
+  ""
   (getTestString [_] )
   (getId [_] ))
 
@@ -52,7 +52,7 @@
   (if opt? (getNull db) (getNotNull db)))
 
 (defn- genSep ^String [db]
-  (if *USE_DDL_SEP* *DDL_SEP* ""))
+  (if *USE_DDL_SEP* DDL_SEP ""))
 
 (defn genCol ^String [fld]
   (.toUpperCase ^String (:column fld)))
@@ -130,26 +130,26 @@
   (genColDef  db (:column fld)
     (str (getStringKeyword db) "(" (:size fld) ")")
     (:null fld)
-    (if (:default fld) (:default-value fld) nil)))
+    (if (:dft fld) (first (:dft fld)) nil)))
 
 (defmethod genInteger :default [db fld]
   (genColDef db (:column fld) (getIntKeyword db) (:null fld)
-    (if (:default fld) (:default-value fld) nil)))
+    (if (:dft fld) (first (:dft fld)) nil)))
 
 (defmethod genAutoInteger :default [db table fld] "")
 
 (defmethod genDouble :default [db fld]
   (genColDef db (:column fld) (getDoubleKeyword db) (:null fld)
-    (if (:default fld) (:default-value fld) nil)))
+    (if (:dft fld) (first (:dft fld)) nil)))
 
 
 (defmethod genFloat :default [db fld]
   (genColDef db (:column fld) (getFloatKeyword db) (:null fld)
-    (if (:default fld) (:default-value fld) nil)))
+    (if (:dft fld) (first (:dft fld)) nil)))
 
 (defmethod genLong :default [db fld]
   (genColDef db (:column fld) (getLongKeyword db) (:null fld)
-    (if (:default fld) (:default-value fld) nil)))
+    (if (:dft fld) (first (:dft fld)) nil)))
 
 (defmethod genAutoLong :default [db table fld] "")
 
@@ -157,17 +157,17 @@
 
 (defmethod genTimestamp :default [db fld]
   (genColDef db (:column fld) (getTSKeyword db) (:null fld)
-    (if (:default fld) (getTSDefault db) nil)))
+    (if (:dft fld) (getTSDefault db) nil)))
 
 (defmethod genDate :default [db fld]
   (genColDef db (:column fld) (getDateKeyword db) (:null fld)
-    (if (:default fld) (getTSDefault db) nil)))
+    (if (:dft fld) (getTSDefault db) nil)))
 
 (defmethod genCal :default [db fld] (genTimestamp db fld))
 
 (defmethod genBool :default [db fld]
   (genColDef db (:column fld) (getBoolKeyword db) (:null fld)
-      (if (:default fld) (:default-value fld) nil)))
+      (if (:dft fld) (first (:dft fld)) nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -249,11 +249,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn getDDL  "" 
+(defn getDDL  ""
 
-  ^String 
-  [^comzotohcljc.dbio.core.DBAPI db
-   ^comzotohcljc.dbio.core.MetaCacheAPI metaCache]
+  ^String
+  [ ^comzotohcljc.dbio.core.MetaCache metaCache
+   ^comzotohcljc.dbio.core.DBAPI db ]
 
   (binding [ *DDL_BVS* (HashMap.) ]
     (let [ ms (.getMetas metaCache)

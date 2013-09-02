@@ -21,7 +21,7 @@
   comzotohcljc.hhh.io.core )
 
 (import '(java.util.concurrent ConcurrentHashMap))
-(import '(com.zotoh.frwk.server Service))
+(import '(com.zotoh.frwk.server Component Service))
 
 (import '(com.zotoh.frwk.core
   Versioned Hierarchial
@@ -29,7 +29,7 @@
 (import '(com.zotoh.hohenheim.core Container))
 (import '(com.zotoh.hohenheim.io ServletEmitter Emitter))
 
-(import '(java.util HashMap))
+(import '(java.util Map))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.hhh.core.sys])
@@ -107,63 +107,65 @@
 
         Element
 
-          (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-g impl :ctx))
-          (setAttr! [_ a v] (.mm-s impl a v) )
-          (clrAttr! [_ a] (.mm-r impl a) )
-          (getAttr [_ a] (.mm-g impl a) )
+        (setCtx! [_ x] (.mm-s impl :ctx x))
+        (getCtx [_] (.mm-g impl :ctx))
+        (setAttr! [_ a v] (.mm-s impl a v) )
+        (clrAttr! [_ a] (.mm-r impl a) )
+        (getAttr [_ a] (.mm-g impl a) )
 
-        Versioned
-          (version [_] "1.0")
+        Component
+
+        (version [_] "1.0")
+        (id [_] eeid)
 
         Hierarchial
-          (parent [_] parObj)
 
-        Identifiable
-          (id [_] eeid)
+        (parent [_] parObj)
 
         Emitter
-          (container [this] (.parent this))
+
+        (container [this] (.parent this))
 
         Disposable
 
-          (dispose [this] (ioes-dispose this))
+        (dispose [this] (ioes-dispose this))
 
         Startable
 
-          (start [this] (ioes-start this))
-          (stop [this] (ioes-stop this))
+        (start [this] (ioes-start this))
+        (stop [this] (ioes-stop this))
 
         Service
-          (getv [_ k] (.mm-g impl (keyword k)))
-          (setv [_ k v]
-                (.mm-s impl (keyword k) v))
+
+        (getv [_ k] (.mm-g impl (keyword k)))
+        (setv [_ k v]
+              (.mm-s impl (keyword k) v))
 
         EmitterAPI
 
-          (enabled? [_] (if (false? (.mm-g impl :enabled)) false true ))
-          (active? [_] (if (false? (.mm-g impl :active)) false true))
+        (enabled? [_] (if (false? (.mm-g impl :enabled)) false true ))
+        (active? [_] (if (false? (.mm-g impl :active)) false true))
 
-          (suspend [this] (ioes-suspend this))
-          (resume [this] (ioes-resume this))
+        (suspend [this] (ioes-suspend this))
+        (resume [this] (ioes-resume this))
 
-          (release [_ wevt]
-            (when-not (nil? wevt)
-              (let [ ^HashMap b (.mm-g impl :backlog)
-                     wid (.id ^Identifiable wevt) ]
-                (debug "emitter releasing an event with id: " wid)
-                (.remove b wid))))
+        (release [_ wevt]
+          (when-not (nil? wevt)
+            (let [ ^Map b (.mm-g impl :backlog)
+                   wid (.id ^Identifiable wevt) ]
+              (debug "emitter releasing an event with id: " wid)
+              (.remove b wid))))
 
-          (hold [_ wevt]
-            (when-not (nil? wevt)
-              (let [ ^HashMap b (.mm-g impl :backlog)
-                     wid (.id ^Identifiable wevt) ]
-                (debug "emitter holding an event with id: " wid)
-                (.put b wid wevt))))
+        (hold [_ wevt]
+          (when-not (nil? wevt)
+            (let [ ^Map b (.mm-g impl :backlog)
+                   wid (.id ^Identifiable wevt) ]
+              (debug "emitter holding an event with id: " wid)
+              (.put b wid wevt))))
 
-          (dispatch [this ev]
-            (CU/TryC
-                (.notifyObservers parObj ev) )) )
+        (dispatch [_ ev]
+          (CU/TryC
+              (.notifyObservers parObj ev) )) )
 
       { :typeid emId } )))
 
@@ -172,7 +174,6 @@
     (comp-clone-context co (.getCtx c))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (derive :czc.hhh.io/HTTP :czc.hhh.io/Emitter)
 

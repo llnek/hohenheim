@@ -67,17 +67,22 @@
 
 (defmethod ioes-reify-event :czc.hhh.io/JMS
   [co & args]
-  (let [ msg (first args)  eeid (SN/next-long) ]
+  (let [ eeid (SN/next-long)
+         impl (CU/make-mmap)
+         msg (first args) ]
     (with-meta
-      (reify 
+      (reify
+
         Identifiable
         (id [_] eeid)
+
         JMSEvent
-        (bindSession [_ s] nil)
-        (getSession [_] nil)
+        (bindSession [_ s] (.mm-s impl :ios s))
+        (getSession [_] (.mm-g impl :ios))
         (getId [_] eeid)
         (emitter [_] co)
         (getMsg [_] msg))
+
       { :typeid :czc.hhh.io/JMSEvent } )))
 
 (defn- onMessage [^comzotohcljc.hhh.io.core.EmitterAPI co msg]
@@ -86,13 +91,13 @@
 
 (defmethod comp-configure :czc.hhh.io/JMS
   [^comzotohcljc.hhh.core.sys.Element co cfg]
-  (do
+  (let [ pkey (:hhh.pkey cfg) ]
     (.setAttr! co :contextFactory (:contextfactory cfg))
     (.setAttr! co :connFactory (:connfactory cfg))
     (.setAttr! co :jndiUser (:jndiuser cfg))
-    (.setAttr! co :jndiPwd (CR/pwdify (:jndipwd cfg)))
+    (.setAttr! co :jndiPwd (CR/pwdify (:jndipwd cfg) pkey))
     (.setAttr! co :jmsUser (:jmsuser cfg))
-    (.setAttr! co :jmsPwd (CR/pwdify (:jmspwd cfg)))
+    (.setAttr! co :jmsPwd (CR/pwdify (:jmspwd cfg) pkey))
     (.setAttr! co :durable (:durable cfg))
     (.setAttr! co :providerUrl (:providerurl cfg))
     (.setAttr! co :destination (:destination cfg))
@@ -122,7 +127,7 @@
     conn))
 
 (defn- inizTopic ^Connection [^comzotohcljc.hhh.core.sys.Element co
-                  ^InitialContext ctx 
+                  ^InitialContext ctx
                   ^TopicConnectionFactory cf]
 
   (let [ ^String jp (SU/nsb (.getAttr co :jmsPwd))
@@ -146,7 +151,7 @@
 
 
 (defn- inizQueue ^Connection [^comzotohcljc.hhh.core.sys.Element co
-                  ^InitialContext ctx 
+                  ^InitialContext ctx
                   ^QueueConnectionFactory cf]
 
   (let [ ^String jp (SU/nsb (.getAttr co :jmsPwd))

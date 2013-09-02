@@ -79,6 +79,7 @@
 (defprotocol PODMeta
   ""
   (typeof [_ ] )
+  (moniker [_] )
   (appKey [_ ] )
   (srcUrl [_ ]))
 
@@ -98,18 +99,18 @@
 
         Element
 
-          (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-g impl :ctx))
-          (setAttr! [_ a v] (.mm-s impl a v) )
-          (clrAttr! [_ a] (.mm-r impl a) )
-          (getAttr [_ a] (.mm-g impl a) )
+        (setCtx! [_ x] (.mm-s impl :ctx x))
+        (getCtx [_] (.mm-g impl :ctx))
+        (setAttr! [_ a v] (.mm-s impl a v) )
+        (clrAttr! [_ a] (.mm-r impl a) )
+        (getAttr [_ a] (.mm-g impl a) )
 
         Hierarchial
-          (parent [_] parObj)
+        (parent [_] parObj)
 
         Component
-          (version [_] ver)
-          (id [_] regoId)
+        (version [_] ver)
+        (id [_] regoId)
 
         ComponentRegistry
         (has [this cid]

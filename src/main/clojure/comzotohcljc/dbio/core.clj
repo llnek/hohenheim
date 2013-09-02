@@ -15,7 +15,6 @@
 ;;
 
 
-
 (ns ^{ :doc ""
        :author "kenl" }
 
@@ -42,15 +41,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(def ^:dynamic *GMT-CAL* (GregorianCalendar. (TimeZone/getTimeZone "GMT")) )
 (def ^:dynamic *USE_DDL_SEP* true)
-(def ^:dynamic *DDL_SEP* "-- :")
 (def ^:dynamic *DDL_BVS* nil)
+(def DDL_SEP "-- :")
 
 (defrecord JDBCInfo [^String driver ^String url ^String user
                      ^comzotohcljc.crypto.codec.Password pwdObj] )
 
-(defprotocol DBAPI ""
+(defprotocol DBAPI
+  ""
   (supportsOptimisticLock [_] )
   (vendor [_]  )
   (finz [_] )
@@ -58,21 +57,19 @@
   (newCompositeSQLr [_] )
   (newSimpleSQLr [_] ) )
 
-
-(defn make-jdbc
+(defn make-jdbc "Make a JDBCInfo record."
   ^comzotohcljc.dbio.core.JDBCInfo
   [^String driver ^String url ^String user
    ^comzotohcljc.crypto.codec.Password pwdObj]
   (JDBCInfo. driver url user pwdObj))
 
-(def ^:dynamic *DBTYPES* {
+(def DBTYPES {
     :sqlserver { :test-string "select count(*) from sysusers" }
     :postgresql { :test-string "select 1" }
     :mysql { :test-string "select version()" }
     :h2  { :test-string "select 1" }
     :oracle { :test-string "select 1 from DUAL" }
   })
-
 
 (defn dbio-error [^String msg] (throw (DBIOError. msg)))
 
@@ -81,13 +78,13 @@
     (cond
       (SU/has-nocase? lp "microsoft") :sqlserver
       (SU/has-nocase? lp "postgres") :postgresql
-      (SU/has-nocase? lp "h2") :h2
       (SU/has-nocase? lp "oracle") :oracle
       (SU/has-nocase? lp "mysql") :mysql
+      (SU/has-nocase? lp "h2") :h2
       :else (dbio-error (str "Unknown db product " product)))))
 
 (defn match-dbtype "" [^String dbtype]
-  (*DBTYPES* (keyword (.toLowerCase dbtype))))
+  (DBTYPES (keyword (.toLowerCase dbtype))))
 
 (defn match-jdbc-url "" [^String url]
   (let [ ss (seq (.split url ":")) ]
@@ -96,16 +93,17 @@
       nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;; data modelling
+;;
 (def BASEMODEL-MONIKER :dbio-basemodel)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn dbio-model [^String nm]
   {
+    :table (.toUpperCase nm)
     :id (keyword nm)
     :parent nil
-    :table nm
     :abstract false
     :system false
     :indexes {}
@@ -113,100 +111,100 @@
     :fields {}
     :assocs {} })
 
-(defmacro defmodel "" [model-name & body]
+(defmacro defmodel "Define a data model." [model-name & body]
   `(let [ p#  (-> (dbio-model ~(name model-name))
                ~@body) ]
      (def ~model-name  p#)))
 
-(defn with-db-parent-model [pojo par]
+(defn with-db-parent-model "" [pojo par]
   (assoc pojo :parent par))
 
-(defn with-db-table-name [pojo tablename]
+(defn with-db-table-name "" [pojo tablename]
   (assoc pojo :table tablename))
 
-(defn with-db-indexes [pojo indices]
-  (let [ a (:indexes pojo) ]
-    (assoc pojo :indexes (merge a indices))))
+(defn with-db-indexes "" [pojo indices]
+  (let [ m (:indexes pojo) ]
+    (assoc pojo :indexes (merge m indices))))
 
-(defn with-db-uniques [pojo uniqs]
-  (let [ a (:uniques pojo) ]
-    (assoc pojo :uniques (merge a uniqs))))
+(defn with-db-uniques "" [pojo uniqs]
+  (let [ m (:uniques pojo) ]
+    (assoc pojo :uniques (merge m uniqs))))
 
-(defn with-db-field [pojo fid fdef]
-  (let [ dft { :column (name fid)
+(defn with-db-field "" [pojo fid fdef]
+  (let [ dft { :column (.toUpperCase (name fid))
                :size 255
                :domain :string
                :assoc-key false
                :pkey false
                :null true
                :auto false
-               :dft false
-               :dft-value ""
+               :dft nil
                :updatable true
                :system false
                :index "" }
-         fd (assoc (merge dft fdef) :id fid)
+         fd (assoc (merge dft fdef) :id (keyword fid))
          fm (:fields pojo)
-         nm (assoc fm fid fd) ]
-    (assoc pojo :fields nm)))
+         mm (assoc fm fid fd) ]
+    (assoc pojo :fields mm)))
 
-(defn with-db-fields [pojo flddefs]
+(defn with-db-fields "" [pojo flddefs]
   (with-local-vars [rcmap pojo]
     (doseq [ [k v] (seq flddefs) ]
       (var-set rcmap (with-db-field @rcmap k v)))
     @rcmap))
 
-(defn with-db-assoc [pojo aid adef]
+(defn with-db-assoc "" [pojo aid adef]
   (let [ dft { :kind nil :rhs nil :fkey "" :singly false }
          ad (merge dft adef)
          am (:assocs pojo)
-         nm (assoc am aid ad) ]
-    (assoc pojo :assocs nm)))
+         mm (assoc am aid ad) ]
+    (assoc pojo :assocs mm)))
 
-(defn with-db-assocs [pojo assocs]
+(defn with-db-assocs "" [pojo assocs]
   (with-local-vars [ rcmap pojo ]
     (doseq [ [k v] (seq assocs) ]
       (var-set rcmap (with-db-assoc @rcmap k v)))
     @rcmap))
 
-(defn with-db-abstract [pojo] (assoc pojo :abstract true))
+(defn with-db-abstract "" [pojo] (assoc pojo :abstract true))
 
-(defn- with-db-system [pojo] (assoc pojo :system true))
+(defn- with-db-system "" [pojo] (assoc pojo :system true))
 
-(defn- nested-merge [src des]
+(defn- nested-merge "" [src des]
   (cond
     (and (map? src)(map? des)) (merge src des)
     (and (set? src)(set? des)) (union src des)
     :else des))
 
+;; Defining the base model here.
 (defmodel dbio-basemodel
   (with-db-abstract)
   (with-db-system)
   (with-db-fields {
-    :rowid {:column "dbio_rowid" :pkey true :domain :long
+    :rowid {:column "DBIO_ROWID" :pkey true :domain :long
             :auto true :system true :updatable false}
-    :verid {:column "dbio_version" :domain :long :system true
-            :default true :default-value 0}
-    :last-modify {:column "dbio_lastchanged" :domain :timestamp
-               :system true :default true}
-    :created-on {:column "dbio_created_on" :domain :timestamp
-                  :system true :default true :updatable false}
-    :created-by {:column "dbio_created_by" :system true :domain :string } }))
+    :verid {:column "DBIO_VERSION" :domain :long :system true
+            :dft [ 0 ] }
+    :last-modify {:column "DBIO_LASTCHANGED" :domain :timestamp
+               :system true :dft [""] }
+    :created-on {:column "DBIO_CREATED_ON" :domain :timestamp
+                  :system true :dft [""] :updatable false}
+    :created-by {:column "DBIO_CREATED_BY" :system true :domain :string } }))
 
-(defprotocol MetaCacheAPI (getMetas [_] ))
+(defprotocol MetaCache "" (getMetas [_] ))
 
-(defprotocol SchemaAPI (getModels [_] ))
+(defprotocol Schema "" (getModels [_] ))
 
-(defn make-Schema
+(defn make-Schema ""
 
-  ^comzotohcljc.dbio.core.SchemaAPI
+  ^comzotohcljc.dbio.core.Schema
   [theModels]
 
-  (reify SchemaAPI
+  (reify Schema
     (getModels [_] theModels)) )
 
 
-(defn- resolve-local-assoc [ms zm]
+(defn- resolve-local-assoc "" [ms zm]
   (let [ socs (:assocs zm)
          zid (:id zm) ]
     (if (or (nil? socs) (empty? socs))
@@ -233,19 +231,19 @@
               (var-set rc (conj! @rc col)))))
         (persistent! @rc) ))))
 
-(defn- resolve-assoc [ms m]
+(defn- resolve-assoc "" [ms m]
   (let [ par (:parent m) ]
     (if (nil? par)
       (union #{} (resolve-local-assoc ms m))
       (union #{} (resolve-local-assoc ms m) (resolve-assoc ms (get ms par))))))
 
-(defn- resolve-assocs [ms]
+(defn- resolve-assocs "" [ms]
   (with-local-vars [ rc #{} ]
     (doseq [ en (seq ms) ]
       (var-set rc (union @rc (resolve-assoc ms (last en)) )))
     @rc))
 
-(defn- inject-fkeys-models [ms fks]
+(defn- inject-fkeys-models "" [ms fks]
   (with-local-vars [ rc (merge {} ms) ]
     (doseq [ ^String k (seq fks) ]
       (let [ ss (.split k "\\|")
@@ -258,7 +256,7 @@
                                        { :domain :long :assoc-key true } )))))
     @rc))
 
-(defn- resolve-parent [ms m]
+(defn- resolve-parent "" [ms m]
   (let [ par (:parent m) ]
     (cond
       (keyword? par) (if (nil? (get ms par))
@@ -269,20 +267,20 @@
 
       :else (dbio-error (str "Invalid parent " par)))))
 
-(defn- resolve-parents [ms]
+(defn- resolve-parents "" [ms]
   (persistent! (reduce (fn [sum en]
                           (let [ rc (resolve-parent ms (last en)) ]
                             (assoc! sum (:id rc) rc)))
                        (transient {})
                        (seq ms))) )
 
-(defn- mapize-models [ms]
+(defn- mapize-models "" [ms]
   (persistent! (reduce (fn [sum n]
                          (assoc! sum (:id n) n))
                        (transient {})
                        (seq ms))) )
 
-(defn- collect-db-xxx-filter [a b]
+(defn- collect-db-xxx-filter "" [a b]
   (cond
     (keyword? b) :keyword
     (map? b) :map
@@ -321,7 +319,7 @@
       (merge {} (:uniques zm))
       (merge {} (:uniques zm) (collect-db-uniques cache par)))))
 
-(defn- colmap-fields [flds]
+(defn- colmap-fields "" [flds]
   (with-local-vars [ sum (transient {}) ]
     (doseq [ [k v] (seq flds) ]
       (let [ cn (.toUpperCase (SU/nsb (:column v))) ]
@@ -341,17 +339,16 @@
 
 (defn make-MetaCache ""
 
-  ^comzotohcljc.dbio.core.MetaCacheAPI
-  [^comzotohcljc.dbio.core.SchemaAPI schema]
+  ^comzotohcljc.dbio.core.MetaCache
+  [^comzotohcljc.dbio.core.Schema schema]
 
   (let [ ms (if (nil? schema) {} (mapize-models (.getModels schema)))
          m1 (if (empty? ms) {} (resolve-parents ms))
          m2 (assoc m1 BASEMODEL-MONIKER dbio-basemodel)
          m3 (inject-fkeys-models m2 (resolve-assocs m2))
          m4 (meta-models m3) ]
-    (reify MetaCacheAPI
+    (reify MetaCache
       (getMetas [_] m4))))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -378,7 +375,7 @@
         (warn "Expected " dv ", loaded with driver: " (.getClass d)))
     (.connect d url p)))
 
-(defn make-connection "" 
+(defn make-connection ""
 
   ^Connection
   [^comzotohcljc.dbio.core.JDBCInfo jdbc]
@@ -498,15 +495,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol JDBCPoolAPI ""
+(defprotocol JDBCPool
+  ""
   (shutdown [_] )
   (nextFree [_] ))
 
-(defn- makePool 
+(defn- makePool
 
-  ^comzotohcljc.dbio.core.JDBCPoolAPI
+  ^comzotohcljc.dbio.core.JDBCPool
   [jdbc ^BoneCP impl]
-  (reify JDBCPoolAPI
+  (reify JDBCPool
 
     (shutdown [_] (.shutdown impl))
     (nextFree  [_]
@@ -544,13 +542,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- splitLines [^String lines]
-  (with-local-vars [ w (.length ^String *DDL_SEP*) rc [] s2 lines ]
-    (loop [ sum (transient []) ddl lines pos (.indexOf ddl (SU/nsb *DDL_SEP*)) ]
+  (with-local-vars [ w (.length ^String DDL_SEP)
+                     rc []
+                     s2 lines ]
+    (loop [ sum (transient [])
+            ddl lines
+            pos (.indexOf ddl ^String DDL_SEP) ]
       (if (< pos 0)
         (do (var-set rc (persistent! sum)) (var-set s2 (SU/strim ddl)))
         (let [ nl (SU/strim (.substring ddl 0 pos))
                d2 (.substring ddl (+ pos w))
-               p2 (.indexOf d2 (SU/nsb *DDL_SEP*)) ]
+               p2 (.indexOf d2 ^String DDL_SEP) ]
           (recur (conj! sum nl) d2 p2))))
     (if (SU/hgl? @s2)
       (conj @rc @s2)
@@ -585,7 +587,9 @@
               (with-open [ stmt (.createStatement conn) ]
                 (.executeUpdate stmt ln))
               (catch SQLException e#
-                (maybeOK dbn e#))))))))
+                (maybeOK dbn e#))))
+          ))))
+
 
 
 

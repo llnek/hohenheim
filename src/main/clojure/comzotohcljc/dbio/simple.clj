@@ -14,36 +14,32 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-
-
 (ns ^{ :doc ""
        :author "kenl" }
 
   comzotohcljc.dbio.simple )
 
-(import '(java.sql Connection))
-
 (use '[clojure.tools.logging :only (info warn error debug)])
+(import '(java.sql Connection))
 
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
-
 (require '[comzotohcljc.dbio.core :as DU])
+
 (use '[comzotohcljc.dbio.sql])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-
 (defn simpleSQLr ""
 
   ^comzotohcljc.dbio.sql.SQLr
 
-  [^comzotohcljc.dbio.core.DBAPI db
-   ^comzotohcljc.dbio.core.MetaCacheAPI metaCache]
+  [ ^comzotohcljc.dbio.core.MetaCache metaCache
+    ^comzotohcljc.dbio.core.DBAPI db ]
 
-  (let [ ^comzotohcljc.dbio.sql.SQLProcAPI proc (make-proc db metaCache) ]
+  (let [ ^comzotohcljc.dbio.sql.SQLProcAPI proc (make-proc metaCache db) ]
     (reify SQLr
 
       (findAll [this model ordering] (findSome this model {} ordering))
@@ -96,7 +92,7 @@
         (let [ ^Connection dbc (.open db) ]
         (with-open [ conn dbc ]
             (.setAutoCommit conn true)
-            (.doExecuteWithOutput proc conn sql pms { :pkey "dbio_rowid" } ) )) )
+            (.doExecuteWithOutput proc conn sql pms { :pkey "DBIO_ROWID" } ) )) )
 
       (execute [this sql pms]
         (let [ ^Connection dbc (.open db) ]

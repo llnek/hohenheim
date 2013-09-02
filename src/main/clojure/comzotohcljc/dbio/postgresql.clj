@@ -53,7 +53,7 @@
   (str "DROP TABLE IF EXISTS " table " CASCADE" (genExec db) "\n\n"))
 
 ;;(def XXX (.getMetas (make-MetaCache testschema)))
-;;(println (getDDL (Postgresql.) (make-MetaCache testschema)))
+;;(println (getDDL (make-MetaCache testschema) (Postgresql.) ))
 
 
 (def ^:private postgresql-eof nil)

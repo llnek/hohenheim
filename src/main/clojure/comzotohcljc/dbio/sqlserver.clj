@@ -54,7 +54,7 @@
        table "')) DROP TABLE " table (genExec db) "\n\n"))
 
 
-;;(println (getDDL (SQLServer.) (make-MetaCache testschema)))
+;;(println (getDDL (make-MetaCache testschema) (SQLServer.) ))
 
 
 (def ^:private sqlserver-eof nil)

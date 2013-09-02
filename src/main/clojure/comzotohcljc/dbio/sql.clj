@@ -27,6 +27,7 @@
 (require '[comzotohcljc.util.meta :as MU])
 (require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.io :as IO])
+(require '[comzotohcljc.util.dates :as DT])
 (require '[comzotohcljc.dbio.core :as DU])
 
 (import '(java.util Calendar GregorianCalendar TimeZone))
@@ -101,8 +102,8 @@
 
 (defn- readOneCol [sqlType pos ^ResultSet rset]
   (case sqlType
-      Types/TIMESTAMP (.getTimestamp rset (int pos) ^Calendar DU/*GMT-CAL*)
-      Types/DATE (.getDate rset (int pos) ^Calendar DU/*GMT-CAL*)
+      Types/TIMESTAMP (.getTimestamp rset (int pos) (DT/gmt-cal))
+      Types/DATE (.getDate rset (int pos) (DT/gmt-cal))
       (readCol sqlType pos rset)) )
 
 ;; row is a transient object.
@@ -154,11 +155,11 @@
     (instance? Double p) (.setDouble ps pos p)
     (instance? Float p) (.setFloat ps pos p)
 
-    (instance? Timestamp p) (.setTimestamp ps pos p ^Calendar DU/*GMT-CAL*)
-    (instance? Date p) (.setDate ps pos p ^Calendar DU/*GMT-CAL*)
-    (instance? Calendar p) (.setTimestamp ps pos 
+    (instance? Timestamp p) (.setTimestamp ps pos p (DT/gmt-cal))
+    (instance? Date p) (.setDate ps pos p (DT/gmt-cal))
+    (instance? Calendar p) (.setTimestamp ps pos
                                           (Timestamp. (.getTimeInMillis ^Calendar p))
-                                          ^Calendar DU/*GMT-CAL*)
+                                          (DT/gmt-cal))
 
     :else (DU/dbio-error (str "Unsupported param type: " (type p)))) )
 
@@ -186,8 +187,8 @@
         :else sql)
       sql)))
 
-(defn- build-stmt 
-  
+(defn- build-stmt
+
   ^PreparedStatement
   [db ^Connection conn ^String sqlstr params]
   (let [ sql sqlstr ;; (jiggleSQL db sqlstr)
@@ -212,7 +213,7 @@
 (defn- make-sql
 
   ^comzotohcljc.dbio.sql.SQueryAPI
-  [db ^comzotohcljc.dbio.core.MetaCacheAPI metaCache ^Connection conn]
+  [^comzotohcljc.dbio.core.MetaCache metaCache db ^Connection conn]
 
   (reify SQueryAPI
 
@@ -248,7 +249,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol SQLProcAPI ""
+(defprotocol SQLProcAPI
+  ""
   (doQuery [_ conn sql params model] [_ conn sql params] )
   (doExecuteWithOutput [_ conn sql params options] )
   (doExecute [_ conn sql params] )
@@ -292,8 +294,8 @@
 
   ^comzotohcljc.dbio.sql.SQLProcAPI
 
-  [^comzotohcljc.dbio.core.DBAPI db 
-   ^comzotohcljc.dbio.core.MetaCacheAPI metaCache]
+  [ ^comzotohcljc.dbio.core.MetaCache metaCache
+    ^comzotohcljc.dbio.core.DBAPI db  ]
 
   (reify SQLProcAPI
 
@@ -301,13 +303,13 @@
       (let [ zm (get metaCache model) ]
         (when (nil? zm)
           (DU/dbio-error (str "Unknown model " model)))
-        (let [ px (partial model-injtor metaCache zm) 
+        (let [ px (partial model-injtor metaCache zm)
                pf (partial row2obj px) ]
-          (-> (make-sql db metaCache conn) (.sql-select sql pms pf )))))
+          (-> (make-sql  metaCache db conn) (.sql-select sql pms pf )))))
 
     (doQuery [_ conn sql pms]
       (let [ pf (partial row2obj std-injtor) ]
-        (-> (make-sql db metaCache conn) (.sql-select sql pms pf ))) )
+        (-> (make-sql  metaCache db conn) (.sql-select sql pms pf ))) )
 
     (doCount [this conn model]
       (let [ rc (doQuery this conn
@@ -319,7 +321,7 @@
 
     (doPurge [_ conn model]
       (let [ sql (str "DELETE FROM " (ese (table-name model metaCache))) ]
-        (do (-> (make-sql db metaCache conn) (.sql-execute sql [])) nil)))
+        (do (-> (make-sql metaCache db conn) (.sql-execute sql [])) nil)))
 
     (doDelete [this conn obj]
       (let [ info (meta obj) model (:typeid info)
@@ -351,7 +353,7 @@
           (if (= (.length s1) 0)
             nil
             (let [ out (doExecuteWithOutput this conn
-                          (str "INSERT INTO " (ese table) "(" s1 ") VALUES (" s2 ")" ) 
+                          (str "INSERT INTO " (ese table) "(" s1 ") VALUES (" s2 ")" )
                           pms { :pkey (col-name :rowid zm) } ) ]
               (when (empty? out)
                 (DU/dbio-error (str "Insert requires row-id to be returned.")))
@@ -392,25 +394,27 @@
                                 (fmtUpdateWhere lock zm))
                                     (persistent! @ps)) ]
                 (when lock (lockError "update" cnt table rowid))
-                (vary-meta obj merge-meta 
+                (vary-meta obj merge-meta
                            { :verid nver :last-modify now }))))
       )))
 
       (doExecuteWithOutput [this conn sql pms options]
-        (-> (make-sql db metaCache conn)
+        (-> (make-sql metaCache db conn)
             (.sql-executeWithOutput sql pms options)))
 
       (doExecute [this conn sql pms]
-        (-> (make-sql db metaCache conn) (.sql-execute sql pms)))
+        (-> (make-sql metaCache db conn) (.sql-execute sql pms)))
   ))
 
 (defprotocol Transactable
+  ""
   (execWith [_ func] )
   (^Connection begin [_] )
   (commit [_ conn] )
   (rollback [_ conn] ))
 
 (defprotocol SQLr
+  ""
   (findSome [_  model filters ordering] [_   model filters]  )
   (findAll [_ model ordering] [_ model] )
   (findOne [_  model filters] )

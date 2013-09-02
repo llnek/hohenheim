@@ -55,7 +55,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defprotocol ExecvisorAPI ""
+(defprotocol ExecvisorAPI
+  ""
   (homeDir [_] )
   (confDir [_] )
   (podsDir [_] )
@@ -136,49 +137,49 @@
 
         Element
 
-          (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-g impl :ctx))
-          (setAttr! [_ a v] (.mm-s impl a v) )
-          (clrAttr! [_ a] (.mm-r impl a) )
-          (getAttr [_ a] (.mm-g impl a) )
+        (setCtx! [_ x] (.mm-s impl :ctx x))
+        (getCtx [_] (.mm-g impl :ctx))
+        (setAttr! [_ a v] (.mm-s impl a v) )
+        (clrAttr! [_ a] (.mm-r impl a) )
+        (getAttr [_ a] (.mm-g impl a) )
 
         Versioned
-          (version [_] "1.0")
+        (version [_] "1.0")
 
         Hierarchial
-          (parent [_] parObj)
+        (parent [_] parObj)
 
         Identifiable
-          (id [_] K_EXECV )
+        (id [_] K_EXECV )
 
         ExecvisorAPI
 
-          (getStartTime [_] START-TIME)
-          (getUpTimeInMillis [_]
-            (- (System/currentTimeMillis) START-TIME))
-          (homeDir [this] (maybeDir (getCtx this) K_BASEDIR))
-          (confDir [this] (maybeDir (getCtx this) K_CFGDIR))
-          (podsDir [this] (maybeDir (getCtx this) K_PODSDIR))
-          (playDir [this] (maybeDir (getCtx this) K_PLAYDIR))
-          (logDir [this] (maybeDir (getCtx this) K_LOGDIR))
-          (tmpDir [this] (maybeDir (getCtx this) K_TMPDIR))
-          (dbDir [this] (maybeDir (getCtx this) K_DBSDIR))
-          (blocksDir [this] (maybeDir (getCtx this) K_BKSDIR))
-          (kill9 [this] (.stop ^Startable parObj))
+        (getStartTime [_] START-TIME)
+        (getUpTimeInMillis [_]
+          (- (System/currentTimeMillis) START-TIME))
+        (homeDir [this] (maybeDir (getCtx this) K_BASEDIR))
+        (confDir [this] (maybeDir (getCtx this) K_CFGDIR))
+        (podsDir [this] (maybeDir (getCtx this) K_PODSDIR))
+        (playDir [this] (maybeDir (getCtx this) K_PLAYDIR))
+        (logDir [this] (maybeDir (getCtx this) K_LOGDIR))
+        (tmpDir [this] (maybeDir (getCtx this) K_TMPDIR))
+        (dbDir [this] (maybeDir (getCtx this) K_DBSDIR))
+        (blocksDir [this] (maybeDir (getCtx this) K_BKSDIR))
+        (kill9 [this] (.stop ^Startable parObj))
 
         Startable
-          (start [this]
-            (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
-                   ^ComponentRegistry root (.getf ctx K_COMPS)
-                   ^Startable k (.lookup root K_KERNEL) ]
-              (inspect-pods this)
-              (.start k)))
-          (stop [this]
-            (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
-                   ^ComponentRegistry
-                   root (.getf ctx K_COMPS)
-                   ^Startable k (.lookup root K_KERNEL) ]
-              (.stop k)))  )
+        (start [this]
+          (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
+                 ^ComponentRegistry root (.getf ctx K_COMPS)
+                 ^Startable k (.lookup root K_KERNEL) ]
+            (inspect-pods this)
+            (.start k)))
+        (stop [this]
+          (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this)
+                 ^ComponentRegistry
+                 root (.getf ctx K_COMPS)
+                 ^Startable k (.lookup root K_KERNEL) ]
+            (.stop k)))  )
 
        { :typeid (keyword "czc.hhh.impl/Execvisor") } )))
 
@@ -262,23 +263,23 @@
 
         Element
 
-          (setCtx! [_ x] (.mm-s impl :ctx x))
-          (getCtx [_] (.mm-g impl :ctx))
-          (setAttr! [_ a v] (.mm-s impl a v) )
-          (clrAttr! [_ a] (.mm-r impl a) )
-          (getAttr [_ a] (.mm-g impl a) )
+        (setCtx! [_ x] (.mm-s impl :ctx x))
+        (getCtx [_] (.mm-g impl :ctx))
+        (setAttr! [_ a v] (.mm-s impl a v) )
+        (clrAttr! [_ a] (.mm-r impl a) )
+        (getAttr [_ a] (.mm-g impl a) )
 
         Component
-          (id [_] (.mm-g impl :id))
-          (version [_] "1.0")
+        (id [_] (.mm-g impl :id))
+        (version [_] "1.0")
 
         Hierarchial
-          (parent [_] nil)
+        (parent [_] nil)
 
         BlockMeta
 
-          (enabled? [_] (true? (.mm-g impl :active)))
-          (metaUrl [_] (.mm-g impl K_META)) )
+        (enabled? [_] (true? (.mm-g impl :active)))
+        (metaUrl [_] (.mm-g impl K_META)) )
 
       { :typeid (keyword "czc.hhh.impl/BlockMeta") } )))
 

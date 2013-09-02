@@ -75,7 +75,9 @@
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
       <arg value="comzotohcljc.hhh.io.context"/>
       <arg value="comzotohcljc.hhh.io.core"/>
+      <!--
       <arg value="comzotohcljc.hhh.io.events"/>
+      -->
       <arg value="comzotohcljc.hhh.io.socket"/>
       <arg value="comzotohcljc.hhh.io.files"/>
       <arg value="comzotohcljc.hhh.io.http"/>
