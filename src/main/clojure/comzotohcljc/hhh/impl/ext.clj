@@ -162,6 +162,7 @@
     (info "about to synthesize an emitter: " eid)
     (info "emitter meta: " mm)
     (info "is emitter = " (isa?  (:typeid mm) :czc.hhh.io/Emitter))
+    (info "config params = " cfg)
     (synthesize-component
       obj
       { :ctx container :props (assoc cfg :hhh.pkey pkey) })

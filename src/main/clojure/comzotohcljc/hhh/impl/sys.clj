@@ -203,6 +203,7 @@
 (defn make-podmeta "" [app ver parObj podType appid pathToPOD]
   (let [ pid (str podType "#" (SN/next-long))
          impl (CU/make-mmap) ]
+    (info "PODMeta: " app ", " ver ", " podType ", " appid ", " pathToPOD )
     (with-meta
       (reify
 

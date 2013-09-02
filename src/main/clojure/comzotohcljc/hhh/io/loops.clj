@@ -95,7 +95,6 @@
                                      (int (if (number? ds) ds 3)))))))
     (when (number? intv)
       (.setAttr! co :intervalMillis (* 1000 intv)))
-    (info "loopable config: " cfg)
     co))
 
 (defn- start-timer [^comzotohcljc.hhh.core.sys.Element co]
