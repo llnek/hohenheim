@@ -69,7 +69,7 @@
   ^chars [^bytes bits]
   (let [ len (* 2 (if (nil? bits) 0 (alength bits)))
          out (char-array len) ]
-    (when-not (<= len 0)
+    (when (> len 0)
       (loop [ k 0 pos 0 ]
         (if (>= pos len)
           nil
@@ -122,7 +122,7 @@
   (if (nil? bits) nil (Base64/encodeBase64String (gzip bits))) )
 
 (defn available "Get the available bytes in this stream."
-  ^Integer [^InputStream inp]
+  [^InputStream inp]
   (if (nil? inp) 0 (.available inp)) )
 
 (defn copy-stream "Copy content from this input-stream to a temp file."
@@ -136,7 +136,7 @@
 
 (defn copy-bytes "Copy x number of bytes from the source input-stream."
   [^InputStream src ^OutputStream out bytesToCopy]
-  (when-not (<= bytesToCopy 0)
+  (when (> bytesToCopy 0)
     (IOUtils/copyLarge src out 0 ^long bytesToCopy)) )
 
 (defn reset-source! "Reset an input source."
@@ -146,7 +146,6 @@
            ism (.getByteStream inpsrc) ]
       (CU/Try!
         (when-not (nil? ism) (.reset ism)) )
-
       (CU/Try!
         (when-not (nil? rdr) (.reset rdr)) ))))
 
@@ -154,16 +153,13 @@
   (^XData [] (make-xdata false))
   (^XData [usefile] (if usefile (XData. (make-tmpfile)) (XData.)) ))
 
-(defn- swap-bytes
-  [^ByteArrayOutputStream baos]
+(defn- swap-bytes "" [^ByteArrayOutputStream baos]
   (let [ [^File fp ^OutputStream os] (newly-tmpfile true) ]
     (doto os (.write (.toByteArray baos)) (.flush))
     (.close baos)
     [fp os]))
 
-(defn- swap-read-bytes
-  [^InputStream inp ^ByteArrayOutputStream baos]
-
+(defn- swap-read-bytes "" [^InputStream inp ^ByteArrayOutputStream baos]
   (let [ [^File fp ^OutputStream os] (swap-bytes baos)
          bits (byte-array 4096) ]
     (try
@@ -177,9 +173,7 @@
       (finally
         (IOUtils/closeQuietly os)))) )
 
-(defn- slurp-bytes
-  ^XData [^InputStream inp lmt]
-
+(defn- slurp-bytes ^XData [^InputStream inp lmt]
   (let [ bits (byte-array 4096)
          baos (make-baos) ]
     (loop [ c (.read inp bits) cnt 0 ]
@@ -193,7 +187,7 @@
               (swap-read-bytes inp baos)
               (recur (.read inp bits) (+ c cnt)) )))))) )
 
-(defn- swap-chars [^CharArrayWriter wtr]
+(defn- swap-chars ""  [^CharArrayWriter wtr]
   (let [ [^File fp ^OutputStream out] (newly-tmpfile true)
          bits (.toCharArray wtr)
          os (OutputStreamWriter. out "utf-8") ]
@@ -201,9 +195,7 @@
     (IOUtils/closeQuietly wtr)
     [fp os]))
 
-(defn- swap-read-chars
-  ^XData [^Reader inp ^CharArrayWriter wtr]
-
+(defn- swap-read-chars ^XData [^Reader inp ^CharArrayWriter wtr]
   (let [ [^File fp ^Writer os] (swap-chars wtr)
          bits (char-array 4096) ]
     (try
@@ -217,8 +209,7 @@
       (finally
         (IOUtils/closeQuietly os)))) )
 
-(defn- slurp-chars
-  ^XData [^Reader inp lmt]
+(defn- slurp-chars ^XData [^Reader inp lmt]
   (let [ wtr (CharArrayWriter. (int 10000))
          bits (char-array 4096) ]
     (loop [ c (.read inp bits) cnt 0 ]

@@ -90,12 +90,12 @@
     path
     (.getParent (File. path))) )
 
-(defn- jiggleZipEntryName
+(defn- jiggleZipEntryName ""
   ^String [^ZipEntry en]
   (do
     (.replaceAll (.getName en) "^[\\/]+","")) )
 
-(defn- doOneEntry [^ZipFile src ^File des ^ZipEntry en]
+(defn- doOneEntry "" [^ZipFile src ^File des ^ZipEntry en]
   (let [ f (File. des (jiggleZipEntryName en) ) ]
     (if (.isDirectory en)
       (.mkdirs f)
@@ -127,7 +127,8 @@
 
 (defn get-file "Get a file from a directory."
   ^XData [^File dir ^String fname]
-  (let [ fp (File. dir fname) rc (XData.) ]
+  (let [ fp (File. dir fname)
+         rc (XData.) ]
     (if (and (.exists fp) (.canRead fp))
       (doto rc (.setDeleteFile false)
               (.resetContent fp) )

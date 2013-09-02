@@ -41,7 +41,7 @@
 (def ^:private LONG_MASK "0000000000000000")
 (def ^:private INT_MASK "00000000")
 
-(defn- fmt
+(defn- fmt ""
   ^String [^String pad ^String mask]
   (let [ mlen (.length mask)
          plen (.length pad) ]
@@ -52,8 +52,9 @@
 (defn- fmt-int ^String [nm] (fmt INT_MASK (Integer/toHexString nm)))
 (defn- fmt-long ^String [nm] (fmt LONG_MASK (Long/toHexString nm)))
 
-(defn- splitHiLoTime []
-  (let [ s (fmt-long (CU/now-millis)) n (.length s) ]
+(defn- splitTime []
+  (let [ s (fmt-long (CU/now-millis))
+         n (.length s) ]
     [ (SU/left s (/ n 2)) (SU/right s (max 0 (- n (/ n 2 )) )) ] ))
 
 (defn- maybeSetIP ^long []
@@ -86,7 +87,7 @@
 (defn new-wwid "Return a new guid based on time and ip-address."
   ^String []
   (let [ seed (.nextInt (CU/new-random) (Integer/MAX_VALUE))
-         ts (splitHiLoTime) ]
+         ts (splitTime) ]
       (str (nth ts 0)
            (fmt-long _IP)
            (fmt-int seed)

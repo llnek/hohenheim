@@ -35,8 +35,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defprotocol IWin32Conf "A Windows INI file object."
-
+(defprotocol IWin32Conf 
+  "A Windows INI file object."
   (getSection [_ sectionName] )
   (sectionKeys [_ ] )
   (dbgShow [_])
@@ -52,7 +52,7 @@
 (defmulti ^comzotohcljc.util.ini.IWin32Conf parse-inifile "Parse a INI config file." class)
 
 
-(defn- throwBadIni [^LineNumberReader rdr]
+(defn- throwBadIni "" [^LineNumberReader rdr]
   (throw (IOException. (str "Bad ini line: " (.getLineNumber rdr)))))
 
 (defn- throwBadKey [k] (throw (Exception. (str "No such property " k "."))))

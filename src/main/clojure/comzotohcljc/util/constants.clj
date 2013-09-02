@@ -15,7 +15,10 @@
 ;;
 
 
-(ns comzotohcljc.util.constants)
+(ns ^{ :doc ""
+       :author "kenl" }
+
+  comzotohcljc.util.constants)
 
 (def TS_REGEX "^\\d\\d\\d\\d-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])\\s\\d\\d:\\d\\d:\\d\\d")
 (def DT_REGEX "^\\d\\d\\d\\d-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$")
@@ -40,7 +43,11 @@
 (def MONTHS [ "JAN" "FEB" "MAR" "APR" "MAY" "JUN" "JUL" "AUG" "SEP" "OCT" "NOV" "DEC" ] )
 
 
-(def COPYRIGHT "COPYRIGHT (C) 2013 CHERIMOIA LLC. ALL RIGHTS RESERVED.")
+(def COPYRIGHT "Copyright (c) 2013 Cherimoia, LLC. All rights reserved.")
+
+
+
+
 (def ^:private constants-eof nil)
 
 

@@ -33,18 +33,22 @@
 
 ;;(defrecord CmdSeqQ [qid qline choices dft must onok] )
 
-(defn make-CmdSeqQ ""
-  [qid qline choices dft must onok]
+(defn make-CmdSeqQ "Make a command line question."
+  [ ^String questionId
+    ^String questionLine
+    ^String choices
+    ^String defaultValue
+    mandatory
+    fnOK ]
   {
     :choices choices
-    :qline qline
-    :qid qid
-    :dft dft
-    :must must
-    :onok onok } )
+    :qline questionLine
+    :qid questionId
+    :dft defaultValue
+    :must mandatory
+    :onok fnOK } )
 
-(defn- readData
-  ^String [^Writer cout ^Reader cin]
+(defn- readData "Read user input." ^String [^Writer cout ^Reader cin]
   (let [ buf (StringBuilder.)
          ms (loop [ c (.read cin) ]
                   ;; windows has '\r\n' linux has '\n'
@@ -66,8 +70,7 @@
                       (recur (.read cin))))) ]
     (if (contains? ms :quit) nil (.trim (.toString buf)))) )
 
-
-(defn- popQQ [^Writer cout ^Reader cin cmdQ ^Properties props]
+(defn- popQQ "" [^Writer cout ^Reader cin cmdQ ^Properties props]
   (let [ must (:must cmdQ)
          dft (SU/nsb (:dft cmdQ))
          onResp (:onok cmdQ)
@@ -91,31 +94,32 @@
         (do (.write cout "\n") nil )
         (do (onResp (if (StringUtils/isEmpty rc) dft rc) props))))) )
 
-(defn- popQ [^Writer cout ^Reader cin cmdQ ^Properties props]
+(defn- popQ "" [^Writer cout ^Reader cin cmdQ ^Properties props]
   (if (nil? cmdQ)
     ""
     (popQQ cout cin cmdQ props)) )
 
-(defn- cycleQ [^Writer cout ^Reader cin cmdQNs ^String start ^Properties props]
+(defn- cycleQ "" [^Writer cout ^Reader cin cmdQNs ^String start ^Properties props]
   (do
     (loop [ rc (popQ cout cin (get cmdQNs start) props) ]
       (cond
-        (StringUtils/isEmpty rc)
-        (CU/into-map props)
-
         (nil? rc)
         nil
+
+        (StringUtils/isEmpty rc)
+        (CU/into-map props)
 
         :else
         (recur (popQ cout cin (get cmdQNs rc) props))))))
 
-(defn cli-converse [cmdQs ^String q1]
+(defn cli-converse "Prompt a sequence of questions via console."
+  [cmdQs ^String question1]
   (let [ cout (OutputStreamWriter. (BufferedOutputStream. (System/out)))
          kp (if (CU/is-windows?) "<Ctrl-C>" "<Ctrl-D>")
          cin (InputStreamReader. (System/in))
          props (Properties.) ]
     (.write cout (str ">>> Press " kp "<Enter> to cancel...\n"))
-    (cycleQ cout cin cmdQs q1 props)))
+    (cycleQ cout cin cmdQs question1 props)))
 
 (comment
 (def q1 (make-CmdSeqQ "q1" "hello ken" "q|b|c" "c" true

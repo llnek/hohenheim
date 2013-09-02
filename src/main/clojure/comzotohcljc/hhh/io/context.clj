@@ -14,7 +14,6 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-
 (ns ^{ :doc ""
        :author "kenl" }
 

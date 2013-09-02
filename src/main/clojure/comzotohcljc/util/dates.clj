@@ -138,21 +138,21 @@
   ^Calendar [^Calendar cal days]
   (add cal Calendar/DAY_OF_YEAR days))
 
-(defn plus-months ""
+(defn plus-months "Add n months."
   ^Date
   [months]
   (let [ now (make-cal (Date.)) ]
     (-> (add-months now months)
       (.getTime))))
 
-(defn plus-years ""
+(defn plus-years "Add n years."
   ^Date
   [years]
   (let [ now (make-cal (Date.)) ]
     (-> (add-years now years)
       (.getTime))))
 
-(defn plus-days ""
+(defn plus-days "Add n days."
   ^Date
   [days]
   (let [ now (make-cal (Date.)) ]

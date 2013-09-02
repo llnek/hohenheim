@@ -37,24 +37,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defmulti ^String nice-fpath "Convert the path into nice format (no) backslashes." class)
+(defmulti ^String nice-fpath "Convert the path into nice format (no) backslash." class)
 (defmulti ^Properties load-javaprops "Load java properties from input-stream." class)
 
 (def ^:private _BOOLS #{ "true" "yes"  "on"  "ok"  "active"  "1"} )
 (def ^:private _PUNCS #{ \_ \- \. \( \) \space } )
+(deftype TYPE_NICHTS [])
 
-(defmacro TryC
+(defmacro TryC "Catch exception and log it."
   [ & exprs ]
   `(try (do ~@exprs) (catch Throwable e# (warn e# "") nil )) )
 
-(defmacro Try!
+(defmacro Try! "Eat all exceptions."
   [ & exprs ]
   `(try (do ~@exprs) (catch Throwable e# nil )) )
 
+(defmacro notnil? "True is x is not nil."
+  [x]
+  `(not (nil? ~x)))
 
-(deftype NICHTS [])
-(def ^:dynamic *NICHTS* (NICHTS.) )
-
+(def NICHTS (TYPE_NICHTS.) )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- nsb ^String [s] (if (nil? s) "" (.toString ^Object s)))
@@ -64,22 +66,20 @@
   (^ClassLoader [^ClassLoader cl]
     (if (nil? cl) (.getContextClassLoader (Thread/currentThread)) cl)))
 
-(defn nil-nichts ^Object [obj] (if (nil? obj) *NICHTS* obj))
+(defn nil-nichts "" ^Object [obj] (if (nil? obj) NICHTS obj))
 
-(defn is-nichts? [obj] (identical? obj *NICHTS*))
+(defn is-nichts? "" [obj] (identical? obj NICHTS))
 
-(defn notnil? [x] (not (nil? x)))
-
-(defn flatten-nil "get rid of any nil(s) in a sequence."
+(defn flatten-nil "Get rid of any nil(s) in a sequence."
   [vs]
   (cond
     (nil? vs) nil
     (empty? vs) []
     :else (into [] (remove nil? vs))))
 
-(defn ndz ^double [d] (if (nil? d) 0.0 d))
-(defn nnz ^long [n] (if (nil? n) 0 n))
-(defn nbf [b] (if (nil? b) false b))
+(defn ndz "Returns 0.0 if param is nil." ^double [d] (if (nil? d) 0.0 d))
+(defn nnz "Returns 0 is param is nil." ^long [n] (if (nil? n) 0 n))
+(defn nbf "Returns false if param is nil." [b] (if (nil? b) false b))
 
 (defn match-char? "Returns true if this char exists inside this set of chars."
   [ch setOfChars]

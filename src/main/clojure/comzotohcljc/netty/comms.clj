@@ -112,7 +112,7 @@
   (onreq [_ ^Channel ch req msginfo ^XData xdata] )
   (onres [_ ^Channel ch rsp msginfo ^XData xdata] ))
 
-(defn make-resp-status ""
+(defn make-resp-status "Make a http response object."
 
   (^HttpResponse [] (make-resp-status 200))
 
@@ -120,13 +120,13 @@
     (DefaultHttpResponse. HttpVersion/HTTP_1_1
                           (get HTTP-CODES status))))
 
-(defn chKeepAlive?  "" [^HttpMessage msg]
+(defn chKeepAlive?  "True if keep connection alive." [^HttpMessage msg]
   (HttpHeaders/isKeepAlive msg))
 
-(defn msgSize "" [^HttpMessage msg]
+(defn msgSize "Get message's content-length." [^HttpMessage msg]
   (HttpHeaders/getContentLength msg))
 
-(defn closeCF "" [doit ^ChannelFuture cf]
+(defn closeCF "Maybe close the channel." [doit ^ChannelFuture cf]
   (if (and doit (CU/notnil? cf))
     (.addListener cf ChannelFutureListener/CLOSE)))
 
@@ -136,7 +136,7 @@
     (.setHeader rsp "location" targetUrl)
     (closeCF true (.write ch rsp))))
 
-(defn make-nilServiceIO ""
+(defn make-nilServiceIO "Reify a no-op service-io object."
 
   ^comzotohcljc.netty.comms.NettyServiceIO
   []
@@ -429,7 +429,7 @@
          msginfo (:info attObj) ]
     (debug "nioWReq: received a " (:method msginfo ) " request from " (:uri msginfo))
     (when (HttpHeaders/is100ContinueExpected req) (send-100-cont ctx))
-    (when (:is-chunked msginfo)
+    (if (:is-chunked msginfo)
       (debug "nioWReq: request is chunked.")
       ;; msg not chunked, suck all data from the request
       (do (try
@@ -449,7 +449,7 @@
   (nioPError ctx ev))
 
 (defn- nioPResBody "" [^ChannelHandlerContext ctx ^HttpResponse res]
-  (when (.isChunked res)
+  (if (.isChunked res)
     (debug "nioPResBody: response is chunked.")
     (try
         (nioSockitDown ctx (.getContent res))
@@ -475,7 +475,7 @@
                   (.isLast msg)
                 (catch Throwable e#
                     (do (nioFinz ctx) (throw e#)))) ]
-    (when done (nioComplete ctx msg) nil)))
+    (if done (nioComplete ctx msg) nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; make our channel handler

@@ -20,6 +20,7 @@
 
   comzotohcljc.hhh.io.core )
 
+(import '(java.util.concurrent ConcurrentHashMap))
 (import '(com.zotoh.frwk.server Service))
 
 (import '(com.zotoh.frwk.core
@@ -36,7 +37,6 @@
 (require '[comzotohcljc.util.seqnum :as SN])
 (require '[comzotohcljc.util.core :as CU])
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
@@ -52,40 +52,43 @@
   (hold [_ wevt] )
   (dispatch [_ ev] ))
 
-(defprotocol WaitEventHolder ""
+(defprotocol WaitEventHolder
+  ""
   (resumeOnResult [_ res] )
   (timeoutMillis [_ millis] )
   (onExpiry [_])
   (timeoutSecs [_ secs] ) )
 
-(defprotocol AsyncWaitTrigger ""
+(defprotocol AsyncWaitTrigger
+  ""
   (resumeWithResult [_ res] )
   (resumeWithError [_] )
   (emitter [_] ))
 
-
-
+(defmulti ioes-reify-event "" (fn [a & args] (:typeid (meta a))))
 (defmulti ioes-dispatch "" (fn [a & args] (:typeid (meta a))))
 (defmulti ioes-dispose "" (fn [a] (:typeid (meta a))))
-(defmulti ioes-reify-event "" (fn [a & args] (:typeid (meta a))))
 
+(defmulti ioes-suspend "" (fn [a] (:typeid (meta a))))
 (defmulti ioes-start "" (fn [a] (:typeid (meta a))))
 (defmulti ioes-stop "" (fn [a] (:typeid (meta a))))
-(defmulti ioes-suspend "" (fn [a] (:typeid (meta a))))
 (defmulti ioes-resume "" (fn [a] (:typeid (meta a))))
 
 (defmulti ioes-stopped "" (fn [a] (:typeid (meta a))))
 (defmulti ioes-started "" (fn [a] (:typeid (meta a))))
 
-
 (defmethod ioes-started :default [co]
-  (info "Emitter " (:typeid (meta co)) " started - OK"))
+  (info "Emitter "
+        (:typeid (meta co))
+        " started - OK"))
 
 (defmethod ioes-stopped :default [co]
-  (info "Emitter "  (:typeid (meta co))  " stopped - OK"))
+  (info "Emitter "
+        (:typeid (meta co))  " stopped - OK"))
 
 (defmethod ioes-dispose :default [co]
-  (info "Emitter "  (:typeid (meta co))  " disposed - OK"))
+  (info "Emitter "
+        (:typeid (meta co))  " disposed - OK"))
 
 (defmethod ioes-suspend :default [co]
   (throw (Exception. "Not Implemented")))
@@ -96,9 +99,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn make-emitter "" [^Container parObj emId emAlias]
-  (let [ eeid emAlias ;;(SN/next-long)
-         impl (CU/make-mmap) ]
-    (.mm-s impl :backlog (HashMap.))
+  (let [ impl (CU/make-mmap)
+         eeid emAlias ]
+    (.mm-s impl :backlog (ConcurrentHashMap.))
     (with-meta
       (reify
 

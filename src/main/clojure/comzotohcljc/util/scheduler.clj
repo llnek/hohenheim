@@ -40,7 +40,7 @@
 (defn- xrefPID [w]
   (if (instance? RunnableWithId w)
     (let [ p (.getId ^RunnableWithId w) ]
-      (debug "runnable-with-(pid): " p)
+      ;;(debug "runnable-with-(pid): " p)
       p)
     nil))
 
@@ -49,9 +49,9 @@
   (preRun [_ w] )
   (activate [_ options] )
   (deactivate [_] )
-  (addTimer [this task dely] ) )
+  (addTimer [_ task dely] ) )
 
-(defn make-scheduler "" [parObj]
+(defn make-scheduler "Make a Scheduler." [parObj]
   (let [ ;;^comzotohcljc.util.core.MutableMapAPI
          impl (CU/make-mmap) ]
     (with-meta

@@ -14,7 +14,7 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns ^{ :doc "String utilities." 
+(ns ^{ :doc "String utilities."
        :author "kenl" }
 
   comzotohcljc.util.str)
