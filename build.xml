@@ -128,6 +128,14 @@
     </java>
   </target>
 
+  <target name="clj-jmx">
+    <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
+      <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
+      <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="comzotohcljc.jmx.bean" />
+    </java>
+  </target>
+
   <target name="clj-crypto">
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
@@ -168,6 +176,7 @@
     <antcall target="clj-util"/>
     <antcall target="clj-crypto"/>
     <antcall target="clj-net"/>
+    <antcall target="clj-jmx"/>
     <antcall target="clj-dbio"/>
     <antcall target="clj-hhh-io"/>
     <antcall target="clj-hhh-mvc"/>
