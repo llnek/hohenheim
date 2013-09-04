@@ -19,5 +19,28 @@
 
 package com.zotoh.frwk.jmx
 
+import java.util.Arrays
+
 object JMXUtils {
+}
+
+class NameParams(private val _name:String, private val _pms:Array[String]) {
+
+  override def hashCode() = {
+    var hash= 31 * (31 + _name.hashCode)
+    if (_pms != null) {
+      hash += Arrays.hashCode(_pms.toArray[Object] )
+    }
+    hash
+  }
+
+  override def equals(obj:Any) = {
+    if (obj == null || getClass() != obj.getClass) false else {
+      val other = obj.asInstanceOf[NameParams]
+      if ( _name != other._name) false else {
+        Arrays.equals(_pms.toArray[Object], other._pms.toArray[Object])
+      }
+    }
+  }
+
 }

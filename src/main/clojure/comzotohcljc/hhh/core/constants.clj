@@ -93,6 +93,7 @@
 (def K_SCHEDULER :scheduler )
 (def K_CONTAINERS :containers)
 (def K_BLOCKS :blocks )
+(def K_JMXSVR :jmxsvr )
 (def K_APPS :apps )
 (def K_PODS :pods )
 (def K_SVCS :services )

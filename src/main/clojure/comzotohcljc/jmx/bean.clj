@@ -1,3 +1,19 @@
+;;
+;; Copyright (c) 2013 Cherimoia, LLC. All rights reserved.
+;;
+;; This library is distributed in the hope that it will be useful
+;; but without any warranty; without even the implied warranty of
+;; merchantability or fitness for a particular purpose.
+;;
+;; The use and distribution terms for this software are covered by the
+;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
+;; which can be found in the file epl-v10.html at the root of this distribution.
+;;
+;; By using this software in any fashion, you are agreeing to be bound by
+;; the terms of this license.
+;; You must not remove this notice, or any other, from this software.
+;;
+
 (ns ^{ :doc ""
        :author "kenl" }
 
@@ -8,7 +24,10 @@
 
 
 (import '(org.apache.commons.lang3 StringUtils))
+(import '(com.zotoh.frwk.jmx NameParams))
+
 (import '(java.lang.reflect Field Method))
+(import '(java.lang Exception IllegalArgumentException))
 (import '(java.util Arrays))
 (import '(javax.management
   Attribute
@@ -27,24 +46,6 @@
 (require '[comzotohcljc.util.meta :as MU])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(deftype NameParams [_name _pms]
-  Object
-  (hashCode [_]
-    (let [ hv (* 31  (+ 31 (.hashCode _name))) ]
-      (if (empty? _pms)
-        hv
-        (+ hv (Arrays/hashCode (into-array Object _pms))) )))
-
-  (equals [this obj]
-    (if (or (nil? obj)
-            (not= (.getClass obj) (.getClass this)))
-      false
-      (let [ ^comzotohcljc.jmx.bean.NameParams other obj]
-        (if (not= _name (._name other))
-          false
-          (Arrays/equals (into-array Object _pms)
-                         (into-array Object (._pms other))))))))
 
 (defprotocol ^:private BFieldInfo
   ""
@@ -104,15 +105,15 @@
 (defn- unknownError [attr]
   (AttributeNotFoundException. (str "Unknown property " attr)))
 
-(defn- beanError [msg]
+(defn- beanError [^String msg]
   (MBeanException. (Exception. msg)))
 
-(defn- badArg [msg]
+(defn- badArg [^String msg]
   (IllegalArgumentException. msg))
 
 (defn- assertArgs [mtd ptypes n]
   (when (not (== n (count ptypes)))
-    (throw badArg (str "\"" mtd "\" needs " n "args.") )))
+    (throw (badArg (str "\"" mtd "\" needs " n "args.") ))))
 
 (defn- maybeGetPropName ^String [^String mn]
   (let [ pos (cond
@@ -131,53 +132,50 @@
   (with-local-vars [ ptypes (.getParameterTypes mtd)
                      ctr 1
                      rc (transient []) ]
-    (doseq [ t (seq @ptypes) ]
+    (doseq [ ^Class t (seq @ptypes) ]
       (conj! @rc (MBeanParameterInfo. (str "p" @ctr) (.getName t) ""))
       (var-set ctr (inc @ctr)))
-    (persistent! rc)))
+    (persistent! @rc)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- handleProps [mtds]
-  (with-local-vars [ props (transient {}) ]
+  (with-local-vars [ props (transient {}) ba (transient []) ]
     (doseq [ ^Method mtd (seq mtds) ]
       (let [ mn (.getName mtd)
              ptypes (.getParameterTypes mtd)
              rtype (.getReturnType mtd)
-             pname (maybeGetPropName mtd)
+             pname (maybeGetPropName mn)
             ^comzotohcljc.jmx.bean.BPropInfo
              methodInfo (get props pname) ]
         (cond
           (or (.startsWith mn "is")
               (.startsWith mn "get"))
-          (do
-            (assertArgs mn ptypes 0)
+          (if (== 0 (count ptypes))
             (if (nil? methodInfo)
-              (assoc! props pname
+              (assoc! @props pname
                     (mkBPropInfo pname "" mtd nil))
               (.setGetter methodInfo mtd)))
 
           (.startsWith mn "set")
-          (do
-            (assertArgs mn ptypes 1)
+          (if (== 1 (count ptypes))
             (if (nil? methodInfo)
-              (assoc! props pname
+              (assoc! @props pname
                     (mkBPropInfo pname "" nil mtd))
               (.setSetter methodInfo mtd)))
           :else nil)))
-    (let [ rc (persistent! props)
-           ba (transient []) ]
-      (doseq [ [k v] (seq rc) ]
-        (conj! ba
+    (let [ rc (persistent! @props) ]
+      (doseq [ [k ^comzotohcljc.jmx.bean.BPropInfo v] (seq rc) ]
+        (conj! @ba
                (MBeanAttributeInfo.
                  (.getName v)
                  ;; could NPE here if type is nil!
-                 (-> v (.getType)(.getName))
+                 (let [ ^Class c (.getType v) ] (.getName c))
                  (.desc v)
                  (CU/notnil? (.getter v))
                  (CU/notnil? (.setter v))
                  (.isQuery v))))
-      [ (persistent! ba) rc ] )) )
+      [ (persistent! @ba) rc ] )) )
 
 (defn- handleFlds [^Class cz]
   (with-local-vars [ flds (transient {})
@@ -185,8 +183,8 @@
     (doseq [ ^Field field (seq (.getDeclaredFields cz)) ]
       (let [ fnm (.getName field) ]
         (when (.isAccessible field)
-          (assoc! flds fnm (mkBFieldInfo field true true))
-          (conj! rc
+          (assoc! @flds fnm (mkBFieldInfo field true true))
+          (conj! @rc
                  (MBeanAttributeInfo.
                    fnm
                    (-> field (.getType)(.getName) )
@@ -195,7 +193,7 @@
                    true
                    (and (.startsWith fnm "is")
                         (MU/is-boolean? (.getType field))))))))
-    [ (persistent! rc)(persistent! flds) ] ))
+    [ (persistent! @rc)(persistent! @flds) ] ))
 
 (defn- handleMethods [mtds]
   (with-local-vars [ metds (transient {}) rc (transient []) ]
@@ -206,16 +204,16 @@
                       (.startsWith mn "set"))
           (let [ ptypes (.getParameterTypes m)
                  pns (map (fn [^Class c] (.getName c)) (seq ptypes))
-                 nameParams (NameParams. mn pns)
+                 nameParams (NameParams. mn (into-array String pns))
                  pmInfos (mkParameterInfo m) ]
-            (assoc! metds nameParams m)
-            (conj! rc (MBeanOperationInfo.
+            (assoc! @metds nameParams m)
+            (conj! @rc (MBeanOperationInfo.
                         mn
                         (str mn " attribute")
                         (into-array MBeanParameterInfo pmInfos)
                         (-> m (.getReturnType)(.getName))
                         MBeanOperationInfo/ACTION_INFO ))))))
-    [ (persistent! rc) (persistent! metds)] ))
+    [ (persistent! @rc) (persistent! @metds)] ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -228,7 +226,7 @@
          [ms mtdsMap] (handleMethods ms)
          bi (MBeanInfo. (.getName cz)
                         (str "Information about " cz)
-                        (into-array MBeanAttributeInfo (conj ps fs))
+                        (into-array MBeanAttributeInfo (concat ps fs))
                         nil
                         (into-array MBeanOperationInfo ms)
                         nil) ]
@@ -252,8 +250,8 @@
             (throw (unknownError attrName))
 
             :else
-            (let [ ^Field f (.getter prop) ]
-              (.invoke f obj)))))
+            (let [ ^Method f (.getter prop) ]
+              (.invoke f obj (into-array Object []))))))
 
       (getAttributes [this attrNames]
         (let [ rcl (AttributeList.) ]
@@ -285,7 +283,7 @@
             (throw unknownError an)
 
             :else
-            (let [ ^Field f (.setter prop) ]
+            (let [ ^Method f (.setter prop) ]
               (.invoke f obj v)))))
 
       (setAttributes [this attrs]
@@ -301,11 +299,11 @@
           rcl))
 
       (invoke [_ opName params sig]
-        (let [ mtd (get mtdsMap (NameParams. opName sig)) ]
+        (let [ ^Method mtd (get mtdsMap (NameParams. opName sig)) ]
           (when (nil? mtd)
             (throw (beanError (str "Unknown operation \"" opName "\""))))
           (if (empty? params)
-            (.invoke mtd obj)
+            (.invoke mtd obj (into-array Object []))
             (.invoke mtd obj params))))
 
       )))

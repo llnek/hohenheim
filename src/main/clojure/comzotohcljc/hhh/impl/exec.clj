@@ -34,6 +34,7 @@
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.impl.defaults])
+(use '[comzotohcljc.jmx.core])
 
 (use '[comzotohcljc.hhh.impl.sys :only (make-kernel make-podmeta make-deployer) ])
 
@@ -185,9 +186,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- start-jmx []
-  (info "no JMS yet")
-)
+(defn- start-jmx [^comzotohcljc.hhh.core.sys.Element co cfg]
+  (info "JMX config " cfg)
+  (CU/TryC
+    (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
+           port (CU/conv-long (SU/nsb (get cfg "port")) 7777)
+           ^String host (SU/nsb (get cfg "host"))
+           ^comzotohcljc.jmx.core.JMXServer jmx (make-jmxServer host) ]
+      (.setRegistryPort jmx port)
+      (.start ^Startable jmx)
+      (.reg jmx co "com.zotoh" "execvisor" ["root=hohenheim"])
+      (.setf! ctx K_JMXSVR jmx)
+      (info (str "JMXserver listening on: " host ":"  port)) )) )
 
 (defmethod comp-initialize :czc.hhh.impl/Execvisor
   [^comzotohcljc.hhh.core.sys.Element co]
@@ -230,8 +240,8 @@
           (.setf! K_LOGDIR log)
           (.setf! K_DBSDIR db)
           (.setf! K_TMPDIR tmp)
-          (.setf! K_BKSDIR bks)) )
-    (start-jmx)
+          (.setf! K_BKSDIR bks)))
+    (start-jmx co jmx)
     (let [ ^ComponentRegistry root (make-component-registry :SystemRegistry K_COMPS "1.0" co)
            bks (make-component-registry :BlocksRegistry K_BLOCKS "1.0" nil)
            apps (make-component-registry :AppsRegistry K_APPS "1.0" nil)

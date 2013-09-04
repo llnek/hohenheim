@@ -1,3 +1,20 @@
+;;
+;; Copyright (c) 2013 Cherimoia, LLC. All rights reserved.
+;;
+;; This library is distributed in the hope that it will be useful
+;; but without any warranty; without even the implied warranty of
+;; merchantability or fitness for a particular purpose.
+;;
+;; The use and distribution terms for this software are covered by the
+;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
+;; which can be found in the file epl-v10.html at the root of this distribution.
+;;
+;; By using this software in any fashion, you are agreeing to be bound by
+;; the terms of this license.
+;; You must not remove this notice, or any other, from this software.
+;;
+
+
 (ns ^{ :doc ""
        :author "kenl" }
 
@@ -13,44 +30,25 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def make-objectName ""
-  ([rc ^String domain ^String beanName paths]
+(defn make-objectName
+  "domain: com.acme
+   beanName: mybean
+   paths: [ \"a=b\" \"c=d\" ]"
+  ^ObjectName
+  ([^String domain ^String beanName paths]
     (let [ sb (StringBuilder.)
-           p1 (seq paths)
-           p2 (seq (.paths rc)) ]
-      (with-local-vars [ comma false nnum 0 ]
-        (.append sb (if (SU/hgl? domain) domain (.domain rc)))
-        (.append sb ":")
-        (doseq [ fns (if (> (count p1) 0) p1 p2) ]
-          (when @comma (.append sb ","))
-          (when (< (.indexOf fns \=) 0)
-            (do
-              (.append sb (String/format "%1$02d" asJObj(@nnum)))
-              (.append sb "=")
-              (var-set nnum (inc @nnum))))
-          (.append sb fns)
-          (var-set comma true))
-      (when @comma (.append sb ","))
-      (.append sb "name=")
-      (.append sb
-          (if (SU/hgl? beanName) beanName (.beanName rc)))
-      (ObjectName. (.toString sb)))))
+           cs (seq paths) ]
+      (doto sb
+        (.append domain)
+        (.append ":")
+        (.append (clojure.string/join "," cs)))
+      (when-not (empty? cs) (.append sb ","))
+      (doto sb
+        (.append "name=")
+        (.append beanName))
+      (ObjectName. (.toString sb))))
 
-  ([rc] (make-objectName rc "" "" []))
-
-  ([domain beanName]
-    (ObjectName. (str domain ":name=" beanName))) )
-
-(defn inferObjectNameEx [obj ^String domain ^String beanName paths]
-  (let [ rc (:jms-resource (meta obj)) ]
-    (CU/test-nonil "jms-resource meta-data" rc)
-    (make-objectName rc domain beanName paths)))
-
-(defn inferObjectName [obj]
-  (let [ rc (:jmx-resource (meta obj)) ]
-    (CU/test-nonil "jms-resource meta-data" rc)
-    (make-objectName rc)))
-
+  ([domain beanName] (make-objectName domain beanName [])) )
 
 (def ^:private names-eof nil)
 

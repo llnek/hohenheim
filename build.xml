@@ -132,7 +132,9 @@
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" maxmemory="2048m" classpathref="compile.path.id">
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
+      <arg value="comzotohcljc.jmx.names" />
       <arg value="comzotohcljc.jmx.bean" />
+      <arg value="comzotohcljc.jmx.core" />
     </java>
   </target>
 
