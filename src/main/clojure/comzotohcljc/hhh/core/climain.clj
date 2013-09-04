@@ -249,7 +249,9 @@
           (hookShutdown)
           (pause-cli)) )
 
-      (stop [_] (.stop ^Startable (.mm-g impl K_EXECV) )))) )
+      (stop [this]
+        (let [ ^comzotohcljc.util.core.MuObj ctx (getCtx this) ]
+          (stop-cli ctx))))) )
 
 
 (defn start-main "" [ & args ]

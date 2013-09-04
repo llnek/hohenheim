@@ -96,9 +96,8 @@
    ^String path]
 
   (let [ tknz (StringTokenizer. path "/" true)
-         buff (StringBuilder.)
-         phs (transient []) ]
-    (with-local-vars [ cg 0 gn "" ts "" ]
+         buff (StringBuilder.) ]
+    (with-local-vars [ cg 0 gn "" ts "" phs (transient []) ]
       (while (.hasMoreTokens tknz)
         (var-set ts (.nextToken tknz))
         (if (= @ts "/")
@@ -113,13 +112,13 @@
               (let [ c (StringUtils/countMatches @ts "(") ]
                 (if (> c 0)
                   (var-set cg (+ @cg c)))))
-            (.append buff @ts)))))
-    (let [ pp (.toString buff) ]
-      (info "route added: " path " \ncanonicalized to: " pp)
-      (.setf! rc :regex (Pattern. pp))
-      (.setf! rc :path pp))
-    (.setf! rc :placeHolders (persistent! phs))
-    rc))
+            (.append buff @ts))))
+      (let [ pp (.toString buff) ]
+        (info "route added: " path " \ncanonicalized to: " pp)
+        (.setf! rc :regex (Pattern. pp))
+        (.setf! rc :path pp))
+      (.setf! rc :placeHolders (persistent! @phs))
+      rc)) )
 
 (defn- mkRoute [stat path ^comzotohcljc.util.ini.IWin32Conf cfile]
   (let [ tpl (.optString cfile path :template "")

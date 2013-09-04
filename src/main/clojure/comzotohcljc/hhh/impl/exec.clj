@@ -128,11 +128,36 @@
     (doseq [ f (seq (.listFiles pd ff)) ]
       (inspect-pod co f)) ))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- start-jmx [^comzotohcljc.hhh.core.sys.Element co cfg]
+  (info "JMX config " cfg)
+  (CU/TryC
+    (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
+           port (CU/conv-long (SU/nsb (get cfg "port")) 7777)
+           ^String host (SU/nsb (get cfg "host"))
+           ^comzotohcljc.jmx.core.JMXServer jmx (make-jmxServer host) ]
+      (.setRegistryPort jmx port)
+      (.start ^Startable jmx)
+      (.reg jmx co "com.zotoh" "execvisor" ["root=hohenheim"])
+      (.setf! ctx K_JMXSVR jmx)
+      (info (str "JMXserver listening on: " host " "  port)) )) )
+
+(defn- stop-jmx [^comzotohcljc.hhh.core.sys.Element co]
+  (CU/TryC
+    (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
+           ^Startable jmx (.getf ctx K_JMXSVR) ]
+      (when-not (nil? jmx)
+        (.stop jmx))
+      (.setf! ctx K_JMXSVR nil)))
+  (info "JMX connection terminated."))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn make-execvisor "" [parObj]
   (let [ impl (CU/make-mmap) ]
+    (info "creating execvisor, parent = " parObj)
     (with-meta
       (reify
 
@@ -180,24 +205,12 @@
                  ^ComponentRegistry
                  root (.getf ctx K_COMPS)
                  ^Startable k (.lookup root K_KERNEL) ]
+            (stop-jmx this)
             (.stop k)))  )
 
        { :typeid (keyword "czc.hhh.impl/Execvisor") } )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn- start-jmx [^comzotohcljc.hhh.core.sys.Element co cfg]
-  (info "JMX config " cfg)
-  (CU/TryC
-    (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
-           port (CU/conv-long (SU/nsb (get cfg "port")) 7777)
-           ^String host (SU/nsb (get cfg "host"))
-           ^comzotohcljc.jmx.core.JMXServer jmx (make-jmxServer host) ]
-      (.setRegistryPort jmx port)
-      (.start ^Startable jmx)
-      (.reg jmx co "com.zotoh" "execvisor" ["root=hohenheim"])
-      (.setf! ctx K_JMXSVR jmx)
-      (info (str "JMXserver listening on: " host ":"  port)) )) )
 
 (defmethod comp-initialize :czc.hhh.impl/Execvisor
   [^comzotohcljc.hhh.core.sys.Element co]

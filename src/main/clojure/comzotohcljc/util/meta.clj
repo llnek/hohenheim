@@ -58,6 +58,10 @@
   [^Class classObj]
   (SU/eq-any? (.getName classObj) ["boolean" "Boolean" "java.lang.Boolean"] ))
 
+(defn is-void? "True if class is Void."
+  [^Class classObj]
+  (SU/eq-any? (.getName classObj) ["void" "Void" "java.lang.Void"] ))
+
 (defn is-char? "True if class is Char."
   [^Class classObj]
   (SU/eq-any? (.getName classObj) [ "char" "Char" "java.lang.Character" ] ))
@@ -89,6 +93,10 @@
 (defn is-string? "True if class is String."
   [^Class classObj]
   (SU/eq-any? (.getName classObj) [ "String" "java.lang.String" ]))
+
+(defn is-object? "True if class is Object."
+  [^Class classObj]
+  (SU/eq-any? (.getName classObj) [ "Object" "java.lang.Object" ]))
 
 (defn is-bytes? "True if class is byte[]."
   [^Class classObj]

@@ -26,6 +26,10 @@ object JMXUtils {
 
 class NameParams(private val _name:String, private val _pms:Array[String]) {
 
+  override def toString() = {
+    "" + _name + "/" + _pms.mkString("#")
+  }
+
   override def hashCode() = {
     var hash= 31 * (31 + _name.hashCode)
     if (_pms != null) {
