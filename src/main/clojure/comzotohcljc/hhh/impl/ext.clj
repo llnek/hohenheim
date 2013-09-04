@@ -353,6 +353,13 @@
   (.configure obj json)
   (.initialize obj)) )
 
+(defn- reifyOneDB [cfg]
+  )
+
+(defn- reifyDatabases [cfg]
+  (doseq [ [k v] (seq cfg) ]
+    (reifyOneDB v)))
+
 (defmethod comp-initialize :czc.hhh.ext/Container
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^File appDir (.getAttr co K_APPDIR)
@@ -371,6 +378,8 @@
 
     (when (SU/nichts? mCZ) (warn "no main-class defined."))
     ;;(CU/test-nestr "Main-Class" mCZ)
+
+    (reifyDatabases (:databases env))
 
     (when (SU/hgl? mCZ)
       (let [ obj (MU/make-obj mCZ) ]
