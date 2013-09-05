@@ -196,9 +196,10 @@
          ps (if (insert? sql)
               (.prepareStatement conn sql Statement/RETURN_GENERATED_KEYS)
               (.prepareStatement conn sql)) ]
-    (debug "SQL: {}" sql)
+    (debug "building SQLStmt: {}" sql)
     (doseq [n (seq (range 0 (count params))) ]
-      (setBindVar ps (inc n) (nth params n)))))
+      (setBindVar ps (inc n) (nth params n)))
+    ps))
 
 (defn- handleGKeys [^ResultSet rs cnt options]
   (let [ rc (cond

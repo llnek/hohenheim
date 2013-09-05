@@ -405,6 +405,7 @@
     (.setAttr! co K_JCTOR jc)
 
     ;; build the user data-models or create a default one.
+    (info "application data-model schema-class: " dmCZ )
     (.setAttr! co K_MCACHE (DB/make-MetaCache
                              (if (SU/hgl? dmCZ)
                                (let [ sc (MU/make-obj dmCZ) ]

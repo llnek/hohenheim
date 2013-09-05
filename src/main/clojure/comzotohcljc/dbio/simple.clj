@@ -86,9 +86,8 @@
             (.doInsert proc conn obj) )) )
 
       (select [this sql params]
-        (let [ ^Connection dbc (.open db) ]
-        (with-open [ conn dbc ]
-            (.doQuery proc conn sql params) )) )
+        (with-open [ conn (.open db) ]
+            (.doQuery proc conn sql params) ))
 
       (executeWithOutput [this sql pms]
         (let [ ^Connection dbc (.open db) ]

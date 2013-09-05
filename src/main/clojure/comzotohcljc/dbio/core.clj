@@ -50,6 +50,7 @@
 (defn make-jdbc "Make a JDBCInfo record."
   ^JDBCInfo
   [^String id cfg ^comzotohcljc.crypto.codec.Password pwdObj]
+  ;;(debug "JDBC id= " id ", cfg = " cfg)
   (reify JDBCInfo
     (getId [_] id)
     (getDriver [_] (:d cfg))
@@ -484,8 +485,9 @@
     (reify
 
       Object
+
       (finalize [this]
-        (.shutdown this))
+        (CU/Try! (.shutdown this)))
 
       JDBCPool
 
@@ -499,19 +501,19 @@
 
 (defn make-db-pool ""
 
-  ([jdbc] (make-db-pool jdbc {}))
-  ([jdbc options]
+  ([^JDBCInfo jdbc] (make-db-pool jdbc {}))
+  ([^JDBCInfo jdbc options]
     (let [ bcf (BoneCPConfig.)
-           ^String dv (:driver jdbc) ]
-      (debug "Driver : " dv)
-      (debug "URL : "  (:url jdbc))
+           ^String dv (.getDriver jdbc) ]
+      ;;(debug "Driver : " dv)
+      ;;(debug "URL : "  (.getUrl jdbc))
       (when (SU/hgl? dv) (MU/for-name dv))
       (doto bcf
         (.setPartitionCount (Math/max 1 (CU/nnz (:partitions options))))
         (.setLogStatementsEnabled (CU/nbf (:debug options)))
-        (.setPassword (SU/nsb (:pwdObj jdbc)))
-        (.setJdbcUrl (:url jdbc))
-        (.setUsername (:user jdbc))
+        (.setPassword (SU/nsb (.getPwd jdbc)))
+        (.setJdbcUrl (.getUrl jdbc))
+        (.setUsername (.getUser jdbc))
         (.setIdleMaxAgeInSeconds (* 60 60 24)) ;; 1 day
         (.setMaxConnectionsPerPartition (Math/max 2 (CU/nnz (:max-conns options))))
         (.setMinConnectionsPerPartition (Math/max 1 (CU/nnz (:min-conns options))))

@@ -19,6 +19,7 @@
 package com.zotoh.frwk.dbio
 
 import java.sql.Connection
+import java.util.{List=>JList,Map=>JMap}
 
 trait JDBCInfo {
   def getDriver() : String
@@ -53,17 +54,17 @@ trait Transactable {
 }
 
 trait SQLr {
-  def findSome(model:Any, filters:Map[String,Any], ordering:String) : Seq[Any]
-  def findSome(model:Any, filters:Map[String,Any]) : Seq[Any]
-  def findAll(model:Any, ordering:String) : Seq[Any]
-  def findAll(model:Any) : Seq[Any]
-  def findOne(model:Any,filters:Map[String,Any]) : Any
+  def findSome(model:Any, filters:JMap[String,Any], ordering:String) : JList[Any]
+  def findSome(model:Any, filters:JMap[String,Any]) : JList[Any]
+  def findAll(model:Any, ordering:String) : JList[Any]
+  def findAll(model:Any) : JList[Any]
+  def findOne(model:Any,filters:JMap[String,Any]) : Any
   def update(obj:Any) : Int
   def delete(obj:Any) : Int
   def insert(obj:Any) : Int
-  def select(sql:String, params:Seq[Any] ) : Any
-  def executeWithOutput(sql:String,params:Seq[Any]) : Any
-  def execute(sql:String, params:Seq[Any])
+  def select(sql:String, params:JList[Any] ) : JList[Any]
+  def executeWithOutput(sql:String,params:JList[Any]) : Any
+  def execute(sql:String, params:JList[Any]) : Int
   def countAll(model:Any): Int
   def purge(model:Any): Unit
 }

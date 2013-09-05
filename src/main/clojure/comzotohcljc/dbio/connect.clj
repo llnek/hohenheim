@@ -86,6 +86,7 @@
   (let [ tloc (DBIOLocal/getCache) ;; get the thread local
          ^Map c (.get tloc)
          rc (.get c hc) ]
+    ;;(debug "trying to get a db-pool from thread-local: id = " hc ", pool = " rc)
     rc))
 
 (defn dbio-connect "Connect to a datasource."
