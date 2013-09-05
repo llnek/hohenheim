@@ -38,11 +38,11 @@
 (use '[comzotohcljc.dbio.h2])
 
 (import '(com.zotoh.frwk.dbio
+  DBAPI JDBCPool
   DBIOLocal DBIOError OptLockError))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
-
 
 (def POSTGRESQL-DRIVER "org.postgresql.Driver")
 (def MYSQL-DRIVER "com.mysql.jdbc.Driver")
@@ -55,42 +55,49 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- hashJdbc ^long [jdbc]
+(defn hashJdbc ^long [jdbc]
   (.hashCode
     (str (:driver jdbc) (:url jdbc)
-         (:user jdbc) (SU/nsb (:pwd jdbc)))))
+         (:user jdbc) (SU/nsb (:pwdObj jdbc)))))
+
+(defn registerJdbcTL "" [jdbc options]
+  (let [ tloc (DBIOLocal/getCache)
+         ^Map c (.get tloc)
+         hc (hashJdbc jdbc) ]
+    (when-not (.containsKey c hc)
+      (debug "no db pool found in thread-local, creating one...")
+      (let [ p (DU/make-db-pool hc jdbc options) ]
+        (.put c hc p)))
+    (.get c hc)))
 
 (defn- maybe-finz-pool "" [ hc]
   (let [ tloc (DBIOLocal/getCache) ;; a thread local
          ^Map c (.get tloc) ;; c == java hashmap
-         ^comzotohcljc.dbio.core.JDBCPool
-         m (.get c hc) ]
-    (when-not (nil? m)
-      (CU/Try! (.shutdown m))
+         p (.get c hc) ]
+    (when-not (nil? p)
+      (CU/Try! (.shutdown ^JDBCPool p))
       (.remove c hc))))
 
 (defn- maybe-get-pool ""
 
-  ^comzotohcljc.dbio.core.JDBCPool
+  ^JDBCPool
   [ hc jdbc options]
 
   (let [ tloc (DBIOLocal/getCache) ;; get the thread local
-         ^Map c (.get tloc) ] ;; c == java hashmap
-    ;; check if pool is there
-    (when-not (.containsKey c hc)
-      (debug "no db pool found in thread-local, creating one...")
-      (let [ p (DU/make-db-pool jdbc options) ]
-        (.put c hc p)))
-    (.get c hc)))
+         ^Map c (.get tloc)
+         rc (.get c hc) ]
+    (if (nil? rc)
+      (registerJdbcTL jdbc options)
+      rc)))
 
 (defn dbio-connect "Connect to a datasource."
 
-  ^comzotohcljc.dbio.core.DBAPI
+  ^DBAPI
   [jdbc metaCache options]
 
   (let [ dbv (DU/resolve-vendor jdbc)
          hc (hashJdbc jdbc) ]
-    (reify comzotohcljc.dbio.core.DBAPI
+    (reify DBAPI
 
       (supportsOptimisticLock [_]
         (if (false? (:opt-lock options)) false true))
@@ -98,7 +105,7 @@
       (finz [_] (maybe-finz-pool hc))
 
       (open [_]
-        (let [ ^comzotohcljc.dbio.core.JDBCPool
+        (let [ ^JDBCPool
                p (maybe-get-pool hc jdbc options) ]
           (if (nil? p)
             nil

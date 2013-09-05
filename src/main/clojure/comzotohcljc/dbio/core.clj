@@ -23,6 +23,8 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[clojure.set])
 
+(import '(com.zotoh.frwk.dbio
+  MetaCache Schema JDBCPool JDBCInfo))
 (import '(java.sql
   SQLException DatabaseMetaData
   Connection Driver DriverManager))
@@ -45,23 +47,15 @@
 (def ^:dynamic *DDL_BVS* nil)
 (def DDL_SEP "-- :")
 
-(defrecord JDBCInfo [^String driver ^String url ^String user
-                     ^comzotohcljc.crypto.codec.Password pwdObj] )
-
-(defprotocol DBAPI
-  ""
-  (supportsOptimisticLock [_] )
-  (vendor [_]  )
-  (finz [_] )
-  (^Connection open [_] )
-  (newCompositeSQLr [_] )
-  (newSimpleSQLr [_] ) )
-
 (defn make-jdbc "Make a JDBCInfo record."
-  ^comzotohcljc.dbio.core.JDBCInfo
+  ^JDBCInfo
   [^String driver ^String url ^String user
    ^comzotohcljc.crypto.codec.Password pwdObj]
-  (JDBCInfo. driver url user pwdObj))
+  (reify JDBCInfo
+    (getDriver [_] driver)
+    (getUrl [_] url)
+    (getUser [_] user)
+    (getPwd [_] (SU/nsb pwdObj))))
 
 (def DBTYPES {
     :sqlserver { :test-string "select count(*) from sysusers" }
@@ -191,15 +185,7 @@
                   :system true :dft [""] :updatable false}
     :created-by {:column "DBIO_CREATED_BY" :system true :domain :string } }))
 
-(defprotocol MetaCache "" (getMetas [_] ))
-
-(defprotocol Schema "" (getModels [_] ))
-
-(defn make-Schema ""
-
-  ^comzotohcljc.dbio.core.Schema
-  [theModels]
-
+(defn make-Schema "" ^Schema [theModels]
   (reify Schema
     (getModels [_] theModels)) )
 
@@ -339,8 +325,7 @@
 
 (defn make-MetaCache ""
 
-  ^comzotohcljc.dbio.core.MetaCache
-  [^comzotohcljc.dbio.core.Schema schema]
+  ^MetaCache [^Schema schema]
 
   (let [ ms (if (nil? schema) {} (mapize-models (.getModels schema)))
          m1 (if (empty? ms) {} (resolve-parents ms))
@@ -350,20 +335,19 @@
     (reify MetaCache
       (getMetas [_] m4))))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- safeGetConn
 
   ^Connection
-  [^comzotohcljc.dbio.core.JDBCInfo jdbc]
+  [^JDBCInfo jdbc]
 
-  (let [ ^String user (:user jdbc)
-         ^String url (:url jdbc)
-         ^String dv (:driver jdbc)
+  (let [ user (.getUser jdbc)
+         url (.getUrl jdbc)
+         dv (.getDriver jdbc)
          d (if (SU/hgl? url) (DriverManager/getDriver url))
          p (if (SU/hgl? user)
-               (doto (Properties.) (.put "password" (SU/nsb (:pwdObj jdbc)))
+               (doto (Properties.) (.put "password" (SU/nsb (.getPwd jdbc)))
                                    (.put "user" user)
                                    (.put "username" user))
                (Properties.)) ]
@@ -378,10 +362,10 @@
 (defn make-connection ""
 
   ^Connection
-  [^comzotohcljc.dbio.core.JDBCInfo jdbc]
+  [^JDBCInfo jdbc]
 
-  (let [ ^String url (:url jdbc)
-         ^Connection conn (if (SU/hgl? (:user jdbc))
+  (let [ url (.getUrl jdbc)
+         ^Connection conn (if (SU/hgl? (.getUser jdbc))
                 (safeGetConn jdbc)
                 (DriverManager/getConnection url)) ]
     (when (nil? conn)
@@ -495,15 +479,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol JDBCPool
-  ""
-  (shutdown [_] )
-  (nextFree [_] ))
-
-(defn- makePool
-
-  ^comzotohcljc.dbio.core.JDBCPool
-  [jdbc ^BoneCP impl]
+(defn- makePool ^JDBCPool [jdbc ^BoneCP impl]
   (reify JDBCPool
 
     (shutdown [_] (.shutdown impl))

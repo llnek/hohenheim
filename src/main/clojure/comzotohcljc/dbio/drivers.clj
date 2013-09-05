@@ -26,7 +26,7 @@
 (require '[comzotohcljc.util.str :as SU])
 (use '[comzotohcljc.dbio.core])
 
-(import '(com.zotoh.frwk.dbio DBIOError))
+(import '(com.zotoh.frwk.dbio MetaCache DBAPI DBIOError))
 (import '(java.util Map HashMap))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -252,8 +252,8 @@
 (defn getDDL  ""
 
   ^String
-  [ ^comzotohcljc.dbio.core.MetaCache metaCache
-   ^comzotohcljc.dbio.core.DBAPI db ]
+  [ ^MetaCache metaCache
+   ^DBAPI db ]
 
   (binding [ *DDL_BVS* (HashMap.) ]
     (let [ ms (.getMetas metaCache)

@@ -20,6 +20,8 @@
   comzotohcljc.dbio.composite )
 
 (use '[clojure.tools.logging :only (info warn error debug)])
+(import '(com.zotoh.frwk.dbio
+  Transactable SQLr MetaCache DBAPI))
 (import '(java.sql Connection))
 
 (require '[comzotohcljc.util.core :as CU])
@@ -34,66 +36,65 @@
 
 (defn- mk-tx ""
 
-  ^comzotohcljc.dbio.sql.SQLr
+  ^SQLr
 
-  [^comzotohcljc.dbio.core.MetaCache metaCache
-   ^comzotohcljc.dbio.core.DBAPI        db
-   ^comzotohcljc.dbio.sql.SQLProcAPI    proc
-   ^Connection                          conn]
+  [^MetaCache metaCache
+   ^DBAPI db
+   ^comzotohcljc.dbio.sql.SQLProcAPI proc
+   ^Connection conn]
+  (let [ metas (.getMetas metaCache) ]
+    (reify SQLr
 
-  (reify SQLr
+      (findAll [this model ordering] (.findSome this model {} ordering))
+      (findAll [this model] (.findAll this model ""))
 
-    (findAll [this model ordering] (findSome this model {} ordering))
-    (findAll [this model] (findAll this model ""))
+      (findOne [this model filters]
+        (let [ rset (.findSome this model filters "") ]
+          (if (empty? rset) nil (first rset))))
 
-    (findOne [this model filters]
-      (let [ rset (findSome this model filters "") ]
-        (if (empty? rset) nil (first rset))))
+      (findSome [this model filters] (.findSome this model filters ""))
+      (findSome [_ model filters ordering]
+        (let [ zm (get metas model)
+               tbl (table-name zm)
+               s (str "SELECT * FROM " (ese tbl))
+               [wc pms] (sql-filter-clause filters)
+               extra (if (SU/hgl? ordering) (str " ORDER BY " ordering) "") ]
+          (if (SU/hgl? wc)
+            (.doQuery proc conn (str s " WHERE " wc extra) pms model)
+            (.doQuery proc conn (str s extra) [] model))) )
 
-    (findSome [this model filters] (findSome this model filters ""))
-    (findSome [_ model filters ordering]
-      (let [ zm (get metaCache model)
-             tbl (table-name zm)
-             s (str "SELECT * FROM " (ese tbl))
-             [wc pms] (sql-filter-clause filters)
-             extra (if (SU/hgl? ordering) (str " ORDER BY " ordering) "") ]
-        (if (SU/hgl? wc)
-          (.doQuery proc conn (str s " WHERE " wc extra) pms model)
-          (.doQuery proc conn (str s extra) [] model))) )
+      (select [_ sql params] (.doQuery proc conn sql params) )
 
-    (select [_ sql params] (.doQuery proc conn sql params) )
+      (update [_ obj] (.doUpdate proc conn obj) )
+      (delete [_ obj] (.doDelete proc conn obj) )
+      (insert [_ obj] (.doInsert proc conn obj) )
 
-    (update [_ obj] (.doUpdate proc conn obj) )
-    (delete [_ obj] (.doDelete proc conn obj) )
-    (insert [_ obj] (.doInsert proc conn obj) )
+      (executeWithOutput [_ sql pms]
+        (.doExecuteWithOutput proc conn sql pms { :pkey "DBIO_ROWID" } ) )
 
-    (executeWithOutput [_ sql pms]
-      (.doExecuteWithOutput proc conn sql pms { :pkey "DBIO_ROWID" } ) )
+      (execute [_ sql pms] (.doExecute proc conn sql pms) )
 
-    (execute [_ sql pms] (.doExecute proc conn sql pms) )
-
-    (count* [_ model] (.doCount proc conn model) )
-    (purge [_ model] (.doPurge proc conn model) )  ) )
-
+      (countAll [_ model] (.doCount proc conn model) )
+      (purge [_ model] (.doPurge proc conn model) )  )) )
 
 (defn compositeSQLr
 
-  ^comzotohcljc.dbio.sql.Transactable
-  [ ^comzotohcljc.dbio.core.MetaCache metaCache
-    ^comzotohcljc.dbio.core.DBAPI db ]
+  ^Transactable
+  [ ^MetaCache metaCache
+    ^DBAPI db ]
 
   (let [ proc (make-proc metaCache db) ]
     (reify Transactable
 
       (execWith [this func]
         (with-local-vars [ rc nil ]
-          (with-open [ conn (begin this) ]
+          (with-open [ conn (.begin this) ]
             (try
               (var-set rc (func (mk-tx metaCache db proc conn)))
-              (commit this conn)
+              (.commit this conn)
               @rc
               (catch Throwable e#
-                (do (rollback this conn) (warn e# "") (throw e#))) ))))
+                (do (.rollback this conn) (warn e# "") (throw e#))) ))))
 
       (rollback [_ conn] (CU/Try! (.rollback ^Connection conn)))
       (commit [_ conn] (.commit ^Connection conn))

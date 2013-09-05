@@ -67,6 +67,8 @@
 (require '[ comzotohcljc.util.seqnum :as SN ] )
 (require '[ comzotohcljc.util.str :as SU ] )
 (require '[ comzotohcljc.util.meta :as MU ] )
+(require '[ comzotohcljc.crypto.codec :as CE] )
+(require '[ comzotohcljc.dbio.core :as DB ] )
 
 (require '[ comzotohcljc.hhh.mvc.rts :as RO])
 
@@ -353,8 +355,13 @@
   (.configure obj json)
   (.initialize obj)) )
 
-(defn- reifyOneDB [cfg]
-  )
+(defn- reifyOneDB [^Container co cfg]
+  (let [ pkey (.getAppKey co)
+         jdbc (DB/make-jdbc (:d cfg)
+                            (:url cfg)
+                            (:user cfg)
+                            (CE/pwdify (:passwd cfg) pkey)) ]
+    ))
 
 (defn- reifyDatabases [cfg]
   (doseq [ [k v] (seq cfg) ]

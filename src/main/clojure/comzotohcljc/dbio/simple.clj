@@ -20,6 +20,7 @@
   comzotohcljc.dbio.simple )
 
 (use '[clojure.tools.logging :only (info warn error debug)])
+(import '(com.zotoh.frwk.dbio DBAPI MetaCache SQLr))
 (import '(java.sql Connection))
 
 (require '[comzotohcljc.util.core :as CU])
@@ -34,27 +35,28 @@
 
 (defn simpleSQLr ""
 
-  ^comzotohcljc.dbio.sql.SQLr
+  ^SQLr
 
-  [ ^comzotohcljc.dbio.core.MetaCache metaCache
-    ^comzotohcljc.dbio.core.DBAPI db ]
+  [ ^MetaCache metaCache
+    ^DBAPI db ]
 
-  (let [ ^comzotohcljc.dbio.sql.SQLProcAPI proc (make-proc metaCache db) ]
+  (let [ ^comzotohcljc.dbio.sql.SQLProcAPI proc (make-proc metaCache db)
+         metas (.getMetas metaCache) ]
     (reify SQLr
 
-      (findAll [this model ordering] (findSome this model {} ordering))
-      (findAll [this model] (findAll this model ""))
+      (findAll [this model ordering] (.findSome this model {} ordering))
+      (findAll [this model] (.findAll this model ""))
 
       (findOne [this model filters]
-        (let [ rset (findSome this model filters "") ]
+        (let [ rset (.findSome this model filters "") ]
           (if (empty? rset) nil (first rset))))
 
-      (findSome [this  model filters] (findSome this model filters ""))
+      (findSome [this  model filters] (.findSome this model filters ""))
 
       (findSome [this model filters ordering]
         (let [ ^Connection dbc (.open db) ]
         (with-open [ conn dbc ]
-          (let [ zm (get metaCache model)
+          (let [ zm (get metas model)
                  tbl (table-name zm)
                  s (str "SELECT * FROM " (ese tbl))
                  [wc pms] (sql-filter-clause filters)
@@ -100,7 +102,7 @@
             (.setAutoCommit conn true)
             (doExecute proc conn sql pms) )) )
 
-      (count* [this model]
+      (countAll [this model]
         (let [ ^Connection dbc (.open db) ]
         (with-open [ conn dbc ]
             (.doCount proc conn model) )) )
