@@ -267,7 +267,7 @@
             (info "container stopping all services...")
             (doseq [ [k v] (seq* srg) ]
               (.stop ^Startable v))
-            (info "container stopping main app...")
+            (info "container stopping...")
             (cond
               (satisfies? CljAppMain main)
               (.stop ^comzotohcljc.hhh.impl.ext.CljAppMain main)
@@ -285,9 +285,9 @@
             (info "container dispose() - main app getting disposed.")
             (cond
               (satisfies? CljAppMain main)
-              (.stop ^comzotohcljc.hhh.impl.ext.CljAppMain main)
+              (.dispose ^comzotohcljc.hhh.impl.ext.CljAppMain main)
               (instance? AppMain main)
-              (.stop ^AppMain main)
+              (.dispose ^AppMain main)
               :else nil)
             (releaseSysResources this) ))
 
