@@ -26,7 +26,7 @@
 (import '(com.zotoh.hohenheim.loaders AppClassLoader))
 (import '(com.zotoh.frwk.server Component ComponentRegistry))
 (import '(com.zotoh.frwk.core
-  Identifiable Hierarchial Versioned Startable))
+  Disposable Identifiable Hierarchial Versioned Startable))
 (import '(java.net URL))
 (import '(java.io File))
 (import '(java.security SecureRandom))
@@ -193,6 +193,8 @@
           (let [ cs (.mm-g impl K_CONTAINERS) ]
             (doseq [ [k v] (seq cs) ]
               (.stop ^Startable v))
+            (doseq [ [k v] (seq cs) ]
+              (.dispose ^Disposable v))
             (.mm-s impl K_CONTAINERS {}))) )
 
       { :typeid (keyword "czc.hhh.impl/Kernel") } )))

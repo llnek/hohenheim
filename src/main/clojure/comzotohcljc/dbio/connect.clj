@@ -38,7 +38,7 @@
 (use '[comzotohcljc.dbio.h2])
 
 (import '(com.zotoh.frwk.dbio
-  DBAPI JDBCPool
+  DBAPI JDBCPool JDBCInfo
   DBIOLocal DBIOError OptLockError))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -55,12 +55,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn hashJdbc ^long [jdbc]
+(defn- hashJdbc ^long [jdbc]
   (.hashCode
     (str (:driver jdbc) (:url jdbc)
          (:user jdbc) (SU/nsb (:pwdObj jdbc)))))
 
-(defn registerJdbcTL "" [jdbc options]
+(defn- registerJdbcTL "" [jdbc options]
   (let [ tloc (DBIOLocal/getCache)
          ^Map c (.get tloc)
          hc (hashJdbc jdbc) ]
@@ -86,23 +86,27 @@
   (let [ tloc (DBIOLocal/getCache) ;; get the thread local
          ^Map c (.get tloc)
          rc (.get c hc) ]
-    (if (nil? rc)
-      (registerJdbcTL jdbc options)
-      rc)))
+    rc))
 
 (defn dbio-connect "Connect to a datasource."
 
   ^DBAPI
-  [jdbc metaCache options]
+  [^JDBCInfo jdbc metaCache options]
 
-  (let [ dbv (DU/resolve-vendor jdbc)
-         hc (hashJdbc jdbc) ]
+  (let [ hc (.getId jdbc) ]
     (reify DBAPI
 
       (supportsOptimisticLock [_]
         (if (false? (:opt-lock options)) false true))
-      (vendor [_] dbv)
-      (finz [_] (maybe-finz-pool hc))
+
+      (vendor [_]
+        (let [ ^JDBCPool
+               p (maybe-get-pool hc jdbc options) ]
+          (if (nil? p)
+            nil
+            (.vendor p))))
+
+      (finz [_] nil)
 
       (open [_]
         (let [ ^JDBCPool
@@ -116,8 +120,6 @@
 
       (newSimpleSQLr [this]
         (simpleSQLr metaCache this)) )))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

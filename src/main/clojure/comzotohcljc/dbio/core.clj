@@ -49,13 +49,13 @@
 
 (defn make-jdbc "Make a JDBCInfo record."
   ^JDBCInfo
-  [^String driver ^String url ^String user
-   ^comzotohcljc.crypto.codec.Password pwdObj]
+  [^String id cfg ^comzotohcljc.crypto.codec.Password pwdObj]
   (reify JDBCInfo
-    (getDriver [_] driver)
-    (getUrl [_] url)
-    (getUser [_] user)
-    (getPwd [_] (SU/nsb pwdObj))))
+    (getId [_] id)
+    (getDriver [_] (:d cfg))
+    (getUrl [_] (:url cfg))
+    (getUser [_] (:user cfg))
+    (getPwd [_] (SU/nsb pwdObj)) ))
 
 (def DBTYPES {
     :sqlserver { :test-string "select count(*) from sysusers" }
@@ -480,14 +480,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- makePool ^JDBCPool [jdbc ^BoneCP impl]
-  (reify JDBCPool
+  (let [ dbv (resolve-vendor jdbc) ]
+    (reify
 
-    (shutdown [_] (.shutdown impl))
-    (nextFree  [_]
-      (try
-          (.getConnection impl)
-        (catch Throwable e#
-          (dbio-error (str "No free connection."))))) ))
+      Object
+      (finalize [this]
+        (.shutdown this))
+
+      JDBCPool
+
+      (shutdown [_] (.shutdown impl))
+      (vendor [_] dbv)
+      (nextFree  [_]
+        (try
+            (.getConnection impl)
+          (catch Throwable e#
+            (dbio-error (str "No free connection."))))) )))
 
 (defn make-db-pool ""
 

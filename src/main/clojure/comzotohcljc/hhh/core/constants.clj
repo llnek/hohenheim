@@ -94,6 +94,7 @@
 (def K_CONTAINERS :containers)
 (def K_BLOCKS :blocks )
 (def K_JMXSVR :jmxsvr )
+(def K_MCACHE :meta-cache)
 (def K_APPS :apps )
 (def K_PODS :pods )
 (def K_SVCS :services )

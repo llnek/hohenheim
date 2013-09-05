@@ -25,10 +25,14 @@ import com.zotoh.hohenheim.io.IOEvent
 import com.zotoh.frwk.core.Disposable
 import java.io.File
 import com.zotoh.frwk.server.ServerLike
+import com.zotoh.frwk.dbio.DBAPI
 
 trait Container extends ServerLike with Disposable {
+
   def notifyObservers(evt:IOEvent ) : Unit
   def getAppKey() : String
   def getAppDir() : File
+
+  def acquireJdbc(groupid:String) : DBAPI
 }
 

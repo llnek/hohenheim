@@ -25,6 +25,8 @@ trait JDBCInfo {
   def getUrl() :String
   def getUser() : String
   def getPwd() : String
+  //
+  def getId() : String
 }
 
 
@@ -32,7 +34,7 @@ trait JDBCPool {
 
   def nextFree() : Connection
   def shutdown() : Unit
-
+  def vendor() : Any
 }
 
 trait MetaCache {

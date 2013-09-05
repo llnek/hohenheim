@@ -20,10 +20,12 @@
   comzotohcljc.hhh.impl.ext )
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
-(import '(java.util Properties))
+(import '(java.util Map Properties))
 (import '(java.net URL))
 (import '(java.io File))
 (import '(com.zotoh.hohenheim.runtime AppMain))
+(import '(com.zotoh.frwk.dbio MetaCache Schema DBIOLocal DBAPI))
+
 (import '(com.zotoh.frwk.core
   Versioned Hierarchial Startable Disposable
   Identifiable ))
@@ -33,7 +35,7 @@
   Container ConfigError ))
 
 (import '(com.zotoh.hohenheim.io IOEvent))
-(import '(com.zotoh.frwk.util CoreUtils))
+(import '(com.zotoh.frwk.util Schedulable CoreUtils))
 (import '(com.zotoh.wflow.core Job))
 (import '(com.zotoh.wflow Pipeline))
 
@@ -68,6 +70,7 @@
 (require '[ comzotohcljc.util.str :as SU ] )
 (require '[ comzotohcljc.util.meta :as MU ] )
 (require '[ comzotohcljc.crypto.codec :as CE] )
+(require '[ comzotohcljc.dbio.connect :as DC ] )
 (require '[ comzotohcljc.dbio.core :as DB ] )
 
 (require '[ comzotohcljc.hhh.mvc.rts :as RO])
@@ -172,6 +175,33 @@
     (info "emitter synthesized - OK. handler => " hid)
     obj))
 
+(defn- getDBAPI? ^DBAPI [^String gid cfg ^String pkey mcache]
+  (let [ ^Map c (.get (DBIOLocal/getCache))
+         mkey (str "jdbc." (name gid))
+         jdbc (DB/make-jdbc mkey cfg
+                            (CE/pwdify (:passwd cfg) pkey)) ]
+    (when-not (.containsKey c mkey)
+      (let [ p (DB/make-db-pool jdbc {} ) ]
+        (.put c mkey p)))
+    (DC/dbio-connect jdbc mcache {})))
+
+(defn- maybeGetDBAPI [^comzotohcljc.hhh.core.sys.Element co ^String gid]
+  (let [ pkey (.getAppKey ^Container co)
+         mcache (.getAttr co K_MCACHE)
+         env (.getAttr co K_ENVCONF)
+         cfg (:jdbc (:databases env))
+         jj (cfg (keyword gid)) ]
+    (if (nil? jj)
+      nil
+      (getDBAPI? gid jj pkey mcache))))
+
+(defn- releaseSysResources [^comzotohcljc.hhh.core.sys.Element co]
+  (let [ ^Schedulable sc (.getAttr co K_SCHEDULER)
+         jc (.getAttr co K_JCTOR) ]
+    (info "container releasing all system resources.")
+    (when-not (nil? sc)
+      (.dispose sc))))
+
 (defn- make-app-container [pod]
   (let [ impl (CU/make-mmap) ]
     (info "about to create an app-container...")
@@ -194,6 +224,7 @@
             (.update jc evt {})))
         (getAppKey [_] (.appKey ^comzotohcljc.hhh.impl.defaults.PODMeta pod))
         (getAppDir [this] (.getAttr this K_APPDIR))
+        (acquireJdbc [this gid] (maybeGetDBAPI this gid))
         (core [this]
           (.getAttr this K_SCHEDULER))
         (hasService [_ serviceId]
@@ -230,7 +261,7 @@
               (.start ^AppMain main)
               :else nil)))
 
-        (stop [_]
+        (stop [this]
           (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
                  main (.mm-g impl :main-app) ]
             (info "container stopping all services...")
@@ -242,11 +273,11 @@
               (.stop ^comzotohcljc.hhh.impl.ext.CljAppMain main)
               (instance? AppMain main)
               (.stop ^AppMain main)
-              :else nil)))
+              :else nil) ))
 
         Disposable
 
-        (dispose [_]
+        (dispose [this]
           (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
                  main (.mm-g impl :main-app) ]
             (doseq [ [k v] (seq* srg) ]
@@ -257,7 +288,8 @@
               (.stop ^comzotohcljc.hhh.impl.ext.CljAppMain main)
               (instance? AppMain main)
               (.stop ^AppMain main)
-              :else nil)))
+              :else nil)
+            (releaseSysResources this) ))
 
         ContainerAPI
 
@@ -355,23 +387,12 @@
   (.configure obj json)
   (.initialize obj)) )
 
-(defn- reifyOneDB [^Container co cfg]
-  (let [ pkey (.getAppKey co)
-         jdbc (DB/make-jdbc (:d cfg)
-                            (:url cfg)
-                            (:user cfg)
-                            (CE/pwdify (:passwd cfg) pkey)) ]
-    ))
-
-(defn- reifyDatabases [cfg]
-  (doseq [ [k v] (seq cfg) ]
-    (reifyOneDB v)))
-
 (defmethod comp-initialize :czc.hhh.ext/Container
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^File appDir (.getAttr co K_APPDIR)
          env (.getAttr co K_ENVCONF)
          app (.getAttr co K_APPCONF)
+         ^String dmCZ (SU/nsb (:data-model app))
          ^Properties mf (.getAttr co K_MFPROPS)
          mCZ (SU/strim (.get mf "Main-Class"))
          reg (.getAttr co K_SVCS)
@@ -383,10 +404,17 @@
     (.setAttr! co K_SCHEDULER sc)
     (.setAttr! co K_JCTOR jc)
 
+    ;; build the user data-models or create a default one.
+    (.setAttr! co K_MCACHE (DB/make-MetaCache
+                             (if (SU/hgl? dmCZ)
+                               (let [ sc (MU/make-obj dmCZ) ]
+                                 (when-not (instance? Schema sc)
+                                   (throw (ConfigError. (str "Invalid Schema Class " dmCZ))))
+                                 sc)
+                               (DB/make-Schema [])) ))
+
     (when (SU/nichts? mCZ) (warn "no main-class defined."))
     ;;(CU/test-nestr "Main-Class" mCZ)
-
-    (reifyDatabases (:databases env))
 
     (when (SU/hgl? mCZ)
       (let [ obj (MU/make-obj mCZ) ]
