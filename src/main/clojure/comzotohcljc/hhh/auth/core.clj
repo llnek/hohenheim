@@ -20,6 +20,8 @@
 
   comzotohcljc.hhh.auth.core )
 
+(require '[comzotohcljc.crypto.codec :CE])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn create-role [^SQLr db role desc]
@@ -31,13 +33,25 @@
 (defn list-roles [^SQLr db]
   (.findAll db :AuthRole))
 
-(defn create-account [^SQLr db user passwd roles]
-  (let [ v1 { :acctid (SU/nsb user) :passwd (SU/nsb passwd) }
+(defn create-account  ""
+  [^SQLr db user ^comzotohcljc.crypto.codec.Password pwdObj roles]
+  (let [ v1 { :acctid (SU/nsb user) :passwd (.hashed pwdObj) }
          v2  (.insert db v1) ]
-  ))
+    v2))
 
-(defn get-account [^SQLr db user passwd]
-  (.findOne db  { :acctid user } ))
+(defn get-account  ""
+  [^SQLr db user ^comzotohcljc.crypto.codec.Password pwdObj]
+  (let [ acct (.findOne db  { :acctid user } ) ]
+    (cond
+      (nil? acct)
+      (throw (UnknownUser. user))
+
+      (= (.hashed pwdObj) (:passwd acct))
+      acct
+
+      :else
+      (throw (AuthError. "Incorrect password"))) ))
+
 
 (defn update-account [^SQLr db user details]
   )
