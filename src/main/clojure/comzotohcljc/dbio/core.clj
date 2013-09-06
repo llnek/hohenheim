@@ -90,8 +90,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; data modelling
 ;;
+(def JOINED-MODEL-MONIKER :dbio-joined-model)
 (def BASEMODEL-MONIKER :dbio-basemodel)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn dbio-model [^String nm]
@@ -111,6 +111,11 @@
                ~@body) ]
      (def ~model-name  p#)))
 
+(defmacro defjoined [model-name]
+  `(let [ p#  (-> (dbio-model ~(name model-name))
+                (with-db-parent-model :dbio-joined-model)) ]
+     (def ~model-name  p#)))
+
 (defn with-db-parent-model "" [pojo par]
   (assoc pojo :parent par))
 
@@ -128,7 +133,7 @@
 (defn with-db-field "" [pojo fid fdef]
   (let [ dft { :column (.toUpperCase (name fid))
                :size 255
-               :domain :string
+               :domain :String
                :assoc-key false
                :pkey false
                :null true
@@ -176,20 +181,26 @@
   (with-db-abstract)
   (with-db-system)
   (with-db-fields {
-    :rowid {:column "DBIO_ROWID" :pkey true :domain :long
+    :rowid {:column "DBIO_ROWID" :pkey true :domain :Long
             :auto true :system true :updatable false}
-    :verid {:column "DBIO_VERSION" :domain :long :system true
+    :verid {:column "DBIO_VERSION" :domain :Long :system true
             :dft [ 0 ] }
-    :last-modify {:column "DBIO_LASTCHANGED" :domain :timestamp
+    :last-modify {:column "DBIO_LASTCHANGED" :domain :Timestamp
                :system true :dft [""] }
-    :created-on {:column "DBIO_CREATED_ON" :domain :timestamp
+    :created-on {:column "DBIO_CREATED_ON" :domain :Timestamp
                   :system true :dft [""] :updatable false}
-    :created-by {:column "DBIO_CREATED_BY" :system true :domain :string } }))
+    :created-by {:column "DBIO_CREATED_BY" :system true :domain :String } }))
+
+(defmodel dbio-joined-model
+  (with-db-abstract)
+  (with-db-system)
+  (with-db-fields {
+    :lhs {:column "LHS_ROWID" :domain :Long }
+    :rhs {:column "RHS_ROWID" :domain :Long } }) )
 
 (defn make-Schema "" ^Schema [theModels]
   (reify Schema
     (getModels [_] theModels)) )
-
 
 (defn- resolve-local-assoc "" [ms zm]
   (let [ socs (:assocs zm)
@@ -201,13 +212,13 @@
           (let [ kind (:kind soc)
                  rhs (:rhs soc)
                  ^String col (case kind
-                        :o2m
+                        :O2M
                         (str (name rhs) "|" "fk_"
                              (name zid) "_" (name id))
-                        :o2o
+                        :O2O
                         (str (name zid) "|" "fk_"
                              (name rhs) "_" (name id))
-                        :m2m
+                        :M2M
                         (if (nil? (get ms (:joined soc)))
                           (dbio-error
                             (str "Missing joined model for m2m assoc " id))
@@ -240,7 +251,7 @@
         (var-set rc
                  (assoc @rc id
                         (with-db-field pojo fid
-                                       { :domain :long :assoc-key true } )))))
+                                       { :domain :Long :assoc-key true } )))))
     @rc))
 
 (defn- resolve-parent "" [ms m]
@@ -329,7 +340,8 @@
   ^MetaCache [^Schema schema]
 
   (let [ ms (if (nil? schema) {} (mapize-models (.getModels schema)))
-         m1 (if (empty? ms) {} (resolve-parents ms))
+         m0 (assoc ms JOINED-MODEL-MONIKER dbio-joined-model)
+         m1 (if (empty? m0) {} (resolve-parents m0))
          m2 (assoc m1 BASEMODEL-MONIKER dbio-basemodel)
          m3 (inject-fkeys-models m2 (resolve-assocs m2))
          m4 (meta-models m3) ]
