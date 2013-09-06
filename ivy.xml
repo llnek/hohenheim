@@ -110,7 +110,6 @@
     <dependency org="org.scala-lang" name="scala-library" rev="2.10.2"  conf="libjar->default"/>
     <dependency org="org.scala-lang" name="scala-compiler" rev="2.10.2"  conf="libjar->default"/>
     <dependency org="com.sun.tools" name="tools" rev="1.7.0"  conf="libjar->default"/>
-    <dependency org="org.scalatest" name="scalatest_2.10" rev="1.9.1"  conf="libjar->default"/>
 
     <!-- templates -->
     <dependency org="com.github.spullara.mustache.java" name="compiler" rev="0.8.9"  conf="libjar->default"/>
@@ -118,9 +117,6 @@
     <dependency org="org.freemarker" name="freemarker" rev="2.3.20"  conf="libjar->default"/>
 
     <dependency org="com.yahoo.platform.yui" name="yuicompressor" rev="2.4.7"  conf="libjar->default"/>
-<!--
-    <dependency org="junit" name="junit" rev="4.11"  conf="libjar->default"/>
--->
     <dependency org="javax" name="geronimo-jms_1.1_spec" rev="1.1.1" conf="libjar->default"/>
     <dependency org="com.h2database" name="h2" rev="1.3.172" conf="libjar->default"/>
     <dependency org="org.postgresql" name="postgresql" rev="9.2-1002.jdbc4" conf="libjar->default"/>
@@ -130,10 +126,10 @@
 
     <!--
          needs this just to use ehcache! Sigh!
-         -->
     <dependency org="javax" name="javax-transaction" rev="6.0.0"  conf="libjar->default"/>
     <dependency org="javax" name="javax-jms" rev="6.0.0"  conf="libjar->default"/>
     <dependency org="javax" name="javax-management" rev="6.0.0"  conf="libjar->default"/>
+         -->
 
     <!-- clojure  -->
     <dependency org="org.clojure" name="math.numeric-tower" rev="0.0.2" conf="libjar->default"/>
@@ -145,7 +141,15 @@
     <dependency org="org.clojure" name="data.json" rev="0.2.2" conf="libjar->default"/>
     <dependency org="org.clojure" name="data.xml" rev="0.0.7" conf="libjar->default"/>
     <dependency org="org.clojure" name="clojure" rev="1.5.1" conf="libjar->default"/>
+
+    <dependency org="org.apache.shiro" name="shiro-core" rev="1.2.2" conf="libjar->default"/>
+
+
+    <!-- testing -->
+    <dependency org="org.scalatest" name="scalatest_2.10" rev="1.9.1"  conf="libjar->default"/>
     <dependency org="net.mikera" name="cljunit" rev="0.3.0" conf="libjar->default"/>
+    <dependency org="junit" name="junit" rev="4.11"  conf="libjar->default"/>
+
   </dependencies>
 
 </ivy-module>
