@@ -20,9 +20,17 @@
 
   comzotohcljc.hhh.auth.dms )
 
-(import '(com.zotoh.frwk.dbio Schema))
+(import '(com.zotoh.frwk.dbio DBIOError JDBCInfo Schema))
+(import '(java.io File))
+(import '(org.apache.commons.io FileUtils))
+
 (use '[comzotohcljc.dbio.drivers])
 (use '[comzotohcljc.dbio.core])
+(use '[comzotohcljc.dbio.postgresql])
+(use '[comzotohcljc.dbio.h2])
+(use '[comzotohcljc.dbio.mysql])
+(use '[comzotohcljc.dbio.sqlserver])
+(use '[comzotohcljc.dbio.oracle])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -43,7 +51,7 @@
 (defmodel AuthRole
   (with-db-fields
     { :name { :column "role_name" :null false }
-      :desc { :null false }
+      :desc { :column "description" :null false }
      })
   (with-db-uniques
     { :u1 #{ :name }
@@ -64,14 +72,27 @@
 
 (defjoined AccountRole)
 
-
 (deftype ModuleSchema []
   Schema
   (getModels [_] [ StdAddress AuthRole LoginAccount AccountRole] ))
 
-(println
-(getDDL (make-MetaCache (ModuleSchema.)) nil)
-  )
+(defn generate-ddl ^String [dbtype]
+  (getDDL (make-MetaCache (ModuleSchema.))
+    (case dbtype
+      (:postgres :postgresql) Postgresql
+      :mysql MySQL
+      :h2 H2
+      (:sqlserver :mssql) SQLServer
+      :oracle Oracle
+      (throw (DBIOError. (str "Unsupported database type: " dbtype)))) ))
+
+(defn apply-ddl [^JDBCInfo jdbc]
+  (let [ dbtype (match-jdbc-url (.getUrl jdbc)) ]
+    (upload-ddl jdbc (generate-ddl dbtype))) )
+
+(defn export-ddl [dbtype ^File file]
+  (FileUtils/writeStringToFile file (generate-ddl dbtype) "utf-8"))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

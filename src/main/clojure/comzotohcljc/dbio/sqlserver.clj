@@ -31,10 +31,6 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(deftype SQLServer [] DBDriver
-  (getId [_] :sqlserver)
-  (getTestString [_] "select count(*) from sysusers" ))
-
 ;; SQLServer
 (defmethod getBlobKeyword SQLServer [db] "IMAGE")
 (defmethod getTSKeyword SQLServer [db] "DATETIME")

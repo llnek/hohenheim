@@ -32,10 +32,6 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(deftype MySQL [] DBDriver
-  (getId [_] :mysql)
-  (getTestString [_] "select version()" ))
-
 ;; MySQL
 (defmethod getBlobKeyword MySQL [db] "LONGBLOB")
 (defmethod getTSKeyword MySQL [db] "TIMESTAMP")

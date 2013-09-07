@@ -62,7 +62,7 @@ trait SQLr {
   def update(obj:Any) : Int
   def delete(obj:Any) : Int
   def insert(obj:Any) : Int
-  def select(sql:String, params:JList[Any] ) : JList[Any]
+  def select(sql:String, params:JList[Any]) : JList[Any]
   def executeWithOutput(sql:String,params:JList[Any]) : Any
   def execute(sql:String, params:JList[Any]) : Int
   def countAll(model:Any): Int

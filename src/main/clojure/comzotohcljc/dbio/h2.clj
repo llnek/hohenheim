@@ -35,10 +35,6 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(deftype H2 [] DBDriver
-  (getId [_] :h2)
-  (getTestString [_] "select 1" ))
-
 ;; H2
 (defmethod getDateKeyword H2 [db] "TIMESTAMP")
 (defmethod getDoubleKeyword H2 [db] "DOUBLE")

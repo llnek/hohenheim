@@ -33,11 +33,6 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(defprotocol DBDriver
-  ""
-  (getTestString [_] )
-  (getId [_] ))
-
 (defn- getcolname ^String [flds fid]
   (let [ ^String c (:column (get flds fid)) ]
     (if (SU/hgl? c) (.toUpperCase c) c)))
@@ -59,37 +54,37 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmulti genBegin (fn [a & more] (class a)))
-(defmulti genExec (fn [a & more] (class a)))
-(defmulti genDrop (fn [a & more] (class a)))
+(defmulti genBegin (fn [a & more] a))
+(defmulti genExec (fn [a & more] a))
+(defmulti genDrop (fn [a & more] a))
 
-(defmulti genEndSQL (fn [a & more] (class a)))
-(defmulti genGrant (fn [a & more] (class a)))
-(defmulti genEnd (fn [a & more] (class a)))
+(defmulti genEndSQL (fn [a & more] a))
+(defmulti genGrant (fn [a & more] a))
+(defmulti genEnd (fn [a & more] a))
 
-(defmulti genAutoInteger (fn [a & more] (class a)))
-(defmulti genDouble (fn [a & more] (class a)))
-(defmulti genLong (fn [a & more] (class a)))
-(defmulti genFloat (fn [a & more] (class a)))
-(defmulti genAutoLong (fn [a & more] (class a)))
-(defmulti getTSDefault (fn [a & more] (class a)))
-(defmulti genTimestamp (fn [a & more] (class a)))
-(defmulti genDate (fn [a & more] (class a)))
-(defmulti genCal (fn [a & more] (class a)))
-(defmulti genBool (fn [a & more] (class a)))
-(defmulti genInteger (fn [a & more] (class a)))
+(defmulti genAutoInteger (fn [a & more] a))
+(defmulti genDouble (fn [a & more] a))
+(defmulti genLong (fn [a & more] a))
+(defmulti genFloat (fn [a & more] a))
+(defmulti genAutoLong (fn [a & more] a))
+(defmulti getTSDefault (fn [a & more] a))
+(defmulti genTimestamp (fn [a & more] a))
+(defmulti genDate (fn [a & more] a))
+(defmulti genCal (fn [a & more] a))
+(defmulti genBool (fn [a & more] a))
+(defmulti genInteger (fn [a & more] a))
 
-(defmulti getFloatKeyword (fn [a & more] (class a)))
-(defmulti getIntKeyword (fn [a & more] (class a)))
-(defmulti getTSKeyword (fn [a & more] (class a)))
-(defmulti getDateKeyword (fn [a & more] (class a)))
-(defmulti getBoolKeyword (fn [a & more] (class a)))
-(defmulti getLongKeyword (fn [a & more] (class a)))
-(defmulti getDoubleKeyword (fn [a & more] (class a)))
-(defmulti getStringKeyword (fn [a & more] (class a)))
-(defmulti getBlobKeyword (fn [a & more] (class a)))
-(defmulti genBytes (fn [a & more] (class a)))
-(defmulti genString (fn [a & more] (class a)))
+(defmulti getFloatKeyword (fn [a & more] a))
+(defmulti getIntKeyword (fn [a & more] a))
+(defmulti getTSKeyword (fn [a & more] a))
+(defmulti getDateKeyword (fn [a & more] a))
+(defmulti getBoolKeyword (fn [a & more] a))
+(defmulti getLongKeyword (fn [a & more] a))
+(defmulti getDoubleKeyword (fn [a & more] a))
+(defmulti getStringKeyword (fn [a & more] a))
+(defmulti getBlobKeyword (fn [a & more] a))
+(defmulti genBytes (fn [a & more] a))
+(defmulti genString (fn [a & more] a))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -252,8 +247,7 @@
 (defn getDDL  ""
 
   ^String
-  [ ^MetaCache metaCache
-   ^DBAPI db ]
+  [ ^MetaCache metaCache db ]
 
   (binding [ *DDL_BVS* (HashMap.) ]
     (let [ ms (.getMetas metaCache)

@@ -31,25 +31,21 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(deftype Postgresql [] DBDriver
-  (getId [_] :postgresql)
-  (getTestString [_] "select 1" ))
-
 ;; Postgresql
-(defmethod getTSKeyword Postgresql [db] "TIMESTAMP WITH TIME ZONE")
-(defmethod getBlobKeyword Postgresql [db] "BYTEA")
-(defmethod getDoubleKeyword Postgresql [db] "DOUBLE PRECISION")
-(defmethod getFloatKeyword Postgresql [db] "REAL")
+(defmethod getTSKeyword :postgresql [db] "TIMESTAMP WITH TIME ZONE")
+(defmethod getBlobKeyword :postgresql [db] "BYTEA")
+(defmethod getDoubleKeyword :postgresql [db] "DOUBLE PRECISION")
+(defmethod getFloatKeyword :postgresql [db] "REAL")
 
-(defmethod genCal Postgresql [db fld] (genTimestamp db fld))
+(defmethod genCal :postgresql [db fld] (genTimestamp db fld))
 
-(defmethod genAutoInteger Postgresql [db table fld]
+(defmethod genAutoInteger :postgresql [db table fld]
   (genColDef db (genCol fld) "SERIAL" false nil))
 
-(defmethod genAutoLong Postgresql [db table fld]
+(defmethod genAutoLong :postgresql [db table fld]
   (genColDef db (genCol fld) "BIGSERIAL" false nil))
 
-(defmethod genDrop Postgresql [db table]
+(defmethod genDrop :postgresql [db table]
   (str "DROP TABLE IF EXISTS " table " CASCADE" (genExec db) "\n\n"))
 
 ;;(def XXX (.getMetas (make-MetaCache testschema)))

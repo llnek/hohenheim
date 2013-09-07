@@ -18,9 +18,23 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hhh.auth.core )
+  comzotohcljc.hhh.auth.core
+  (:gen-class))
 
-(require '[comzotohcljc.crypto.codec :CE])
+(import '(com.zotoh.hohenheim.runtime AuthError UnknownUser))
+(import '(com.zotoh.frwk.dbio SQLr))
+(import '(java.util Properties))
+(import '(java.io File))
+(import '(org.apache.commons.io FileUtils))
+
+(require '[clojure.data.json :as json])
+
+(require '[comzotohcljc.crypto.codec :as CE])
+(require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.str :as SU])
+
+(require '[comzotohcljc.hhh.auth.dms :as DM])
+(require '[comzotohcljc.dbio.core :as DB])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -40,8 +54,8 @@
     v2))
 
 (defn get-account  ""
-  [^SQLr db user ^comzotohcljc.crypto.codec.Password pwdObj]
-  (let [ acct (.findOne db  { :acctid user } ) ]
+  [^SQLr db ^String user ^comzotohcljc.crypto.codec.Password pwdObj]
+  (let [ acct (.findOne db :LoginAccount { :acctid user } ) ]
     (cond
       (nil? acct)
       (throw (UnknownUser. user))
@@ -61,6 +75,46 @@
 
 (defn list-accounts [^SQLr db]
   (.findAll db :LoginAccount))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- doMain [& args]
+  (let [ appDir (File. ^String (nth args 0))
+         ^Properties mf (CU/load-javaprops (File. appDir "META-INF/MANIFEST.MF"))
+         pkey (.getProperty mf "Implementation-Vendor-Id")
+         ^String cmd (nth args 1)
+         ^String db (nth args 2)
+         env (json/read-str
+               (FileUtils/readFileToString (File. appDir "conf/env.conf") "utf-8")
+               :key-fn keyword)
+         cfg (get (:jdbc (:databases env)) (keyword db)) ]
+    (when-not (nil? cfg)
+      (let [ j (DB/make-jdbc db cfg (CE/pwdify (:passwd cfg) pkey))
+             t (DB/match-jdbc-url (SU/nsb (:url cfg))) ]
+        (cond
+          (= "init-db" cmd)
+          (let []
+            (DM/apply-ddl j))
+
+          (= "gen-sql" cmd)
+          (if (> (count args) 3)
+            (DM/export-ddl t (File. ^String (nth args 3))))
+
+          :else
+          nil)) )))
+
+
+
+;; home gen-sql alias outfile
+;; home init-db alias
+(defn -main "Main Entry" [& args]
+  ;; for security, don't just eval stuff
+  ;;(alter-var-root #'*read-eval* (constantly false))
+  (if (< (count args) 3)
+    nil
+    (apply doMain args)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

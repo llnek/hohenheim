@@ -49,10 +49,6 @@
        " START WITH 1 INCREMENT BY 1"
           (genExec db) "\n\n"))
 
-(deftype Oracle [] DBDriver
-  (getId [_] :oracle)
-  (getTestString [_] "select 1 from DUAL" ))
-
 ;; Oracle
 (defmethod getStringKeyword Oracle [db] "VARCHAR2")
 (defmethod getTSDefault Oracle [db] "DEFAULT SYSTIMESTAMP")

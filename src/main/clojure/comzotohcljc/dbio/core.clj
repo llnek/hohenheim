@@ -23,6 +23,7 @@
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[clojure.set])
 
+(import '(org.apache.commons.lang3 StringUtils))
 (import '(com.zotoh.frwk.dbio
   MetaCache Schema JDBCPool JDBCInfo))
 (import '(java.sql
@@ -58,6 +59,12 @@
     (getUser [_] (:user cfg))
     (getPwd [_] (SU/nsb pwdObj)) ))
 
+(def SQLServer :sqlserver)
+(def Oracle :oracle)
+(def MySQL :mysql)
+(def H2 :h2)
+(def Postgresql :postgresql)
+
 (def DBTYPES {
     :sqlserver { :test-string "select count(*) from sysusers" }
     :postgresql { :test-string "select 1" }
@@ -79,11 +86,12 @@
       :else (dbio-error (str "Unknown db product " product)))))
 
 (defn match-dbtype "" [^String dbtype]
-  (DBTYPES (keyword (.toLowerCase dbtype))))
+  (let [ kw (keyword (.toLowerCase dbtype)) ]
+    (if (nil? (get DBTYPES kw)) nil kw)))
 
 (defn match-jdbc-url "" [^String url]
-  (let [ ss (seq (.split url ":")) ]
-    (if (> 1 (count ss))
+  (let [ ss (seq (StringUtils/split url \:)) ]
+    (if (> (count ss) 1)
       (match-dbtype (nth ss 1))
       nil)))
 
@@ -549,7 +557,7 @@
       (if (< pos 0)
         (do (var-set rc (persistent! sum)) (var-set s2 (SU/strim ddl)))
         (let [ nl (SU/strim (.substring ddl 0 pos))
-               d2 (.substring ddl (+ pos w))
+               d2 (.substring ddl (+ pos @w))
                p2 (.indexOf d2 ^String DDL_SEP) ]
           (recur (conj! sum nl) d2 p2))))
     (if (SU/hgl? @s2)
