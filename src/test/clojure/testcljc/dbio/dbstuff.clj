@@ -52,7 +52,7 @@
     :sex {:null false}
                    })
   (with-db-assocs {
-    :spouse { :kind :O2O :rhs :Person }
+    :spouse { :kind :O2O :rhs (dbio-scopeType "Person") }
                    })
   (with-db-indexes { :i1 #{ :first_name :last_name }
     :i2 #{ :bday }
@@ -61,7 +61,7 @@
 (defjoined EmpDepts)
 
 (defmodel Employee
-  (with-db-parent-model  :Person)
+  (with-db-parent-model  (dbio-scopeType "Person"))
   (with-db-fields {
     :salary { :domain :Float :null false }
     :pic { :domain :Bytes }
@@ -70,7 +70,7 @@
     :login {:null false}
                    })
   (with-db-assocs {
-    :depts { :kind :M2M :rhs :Department :joined :EmpDepts }
+    :depts { :kind :M2M :rhs (dbio-scopeType "Department") :joined (dbio-scopeType "EmpDepts") }
                    })
   (with-db-indexes { :i1 #{ :login }
     } ))
@@ -80,7 +80,7 @@
     :dname { :null false }
                    })
   (with-db-assocs {
-    :emps { :kind :M2M :rhs :Employee :joined :EmpDepts }
+    :emps { :kind :M2M :rhs (dbio-scopeType "Employee") :joined (dbio-scopeType "EmpDepts") }
                    })
   (with-db-uniques {
     :u1 #{ :dname }
@@ -93,9 +93,9 @@
     :logo { :domain :Bytes }
                    })
   (with-db-assocs {
-    :depts { :kind :O2M :rhs :Department }
-    :emps { :kind :O2M :rhs :Employee }
-    :hq { :kind :O2M :rhs :Address :singly true }
+    :depts { :kind :O2M :rhs (dbio-scopeType "Department") }
+    :emps { :kind :O2M :rhs (dbio-scopeType "Employee") }
+    :hq { :kind :O2M :rhs (dbio-scopeType "Address") :singly true }
                    })
   (with-db-uniques {
     :u1 #{ :cname }
@@ -118,9 +118,9 @@
   (f)
     ))
 
-(defn- mk-employee []
-  (let [ emp (dbio-new-xxx :Employee)
-  (dbio-set-field obj :f "")
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 
 
 
@@ -136,5 +136,5 @@
 
 (def ^:private dbstuff-eof nil)
 
-;;(clojure.test/run-tests 'testcljc.dbio.dbstuff)
+(clojure.test/run-tests 'testcljc.dbio.dbstuff)
 

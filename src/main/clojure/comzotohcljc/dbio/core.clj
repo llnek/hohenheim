@@ -74,6 +74,8 @@
   })
 
 (defn dbio-error [^String msg] (throw (DBIOError. msg)))
+(defn dbio-scopeType [t]
+  (keyword (str *ns* "/" t)))
 
 (defn- maybeGetVendor [^String product]
   (let [ lp (.toLowerCase product) ]
@@ -98,31 +100,52 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; data modelling
 ;;
-(def JOINED-MODEL-MONIKER :dbio-joined-model)
-(def BASEMODEL-MONIKER :dbio-basemodel)
+(def JOINED-MODEL-MONIKER :czc.dbio.core/dbio-joined-model)
+(def BASEMODEL-MONIKER :czc.dbio.core/dbio-basemodel)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn dbio-model [^String nm]
-  {
-    :table (.toUpperCase nm)
-    :id (keyword nm)
-    :parent nil
-    :abstract false
-    :system false
-    :indexes {}
-    :uniques {}
-    :fields {}
-    :assocs {} })
+(defn dbio-create-obj [model]
+  (with-meta
+    {}
+    { :typeid model } ))
+
+(defn dbio-set-fld "" [pojo fld value]
+  (assoc pojo (keyword fld) value))
+
+(defn dbio-clr-fld "" [pojo fld value]
+  (dissoc pojo (keyword fld)))
+
+(defn dbio-get-fld "" [pojo fld]
+  (get pojo (keyword fld)))
+
+(defn dbio-model
+  ([^String nm] (dbio-model *ns* nm))
+  ([^String nsp ^String nm]
+    {
+      :id (keyword (str nsp "/" nm))
+      :table (.toUpperCase nm)
+      :parent nil
+      :abstract false
+      :system false
+      :indexes {}
+      :uniques {}
+      :fields {}
+      :assocs {} }) )
+
+(defmacro defmodel! [ model-name & body]
+  `(def ~model-name
+    (-> (dbio-model "czc.dbio.core" ~(name model-name))
+                 ~@body)))
 
 (defmacro defmodel "Define a data model." [model-name & body]
-  `(let [ p#  (-> (dbio-model ~(name model-name))
-               ~@body) ]
-     (def ~model-name  p#)))
+  `(def ~model-name
+    (-> (dbio-model ~(name model-name))
+                 ~@body)))
 
 (defmacro defjoined [model-name]
-  `(let [ p#  (-> (dbio-model ~(name model-name))
-                (with-db-parent-model :dbio-joined-model)) ]
-     (def ~model-name  p#)))
+  `(def ~model-name
+      (-> (dbio-model ~(name model-name))
+                (with-db-parent-model JOINED-MODEL-MONIKER ))))
 
 (defn with-db-parent-model "" [pojo par]
   (assoc pojo :parent par))
@@ -185,7 +208,7 @@
     :else des))
 
 ;; Defining the base model here.
-(defmodel dbio-basemodel
+(defmodel! dbio-basemodel
   (with-db-abstract)
   (with-db-system)
   (with-db-fields {
@@ -199,7 +222,7 @@
                   :system true :dft [""] :updatable false}
     :created-by {:column "DBIO_CREATED_BY" :system true :domain :String } }))
 
-(defmodel dbio-joined-model
+(defmodel! dbio-joined-model
   (with-db-abstract)
   (with-db-system)
   (with-db-fields {
@@ -295,7 +318,9 @@
 (defmulti collect-db-fields collect-db-xxx-filter)
 
 (defmethod collect-db-fields :keyword [cache modelid]
-  (collect-db-fields cache (get cache modelid)))
+  (let [ mm (get cache modelid) ]
+    (when (nil? mm) (warn "unknown model id " modelid))
+    (collect-db-fields cache mm)))
 
 (defmethod collect-db-fields :map [cache zm]
   (let [ par (:parent zm) ]
@@ -306,7 +331,9 @@
 (defmulti collect-db-indexes collect-db-xxx-filter)
 
 (defmethod collect-db-indexes :keyword [cache modelid]
-  (collect-db-indexes cache (get cache modelid)))
+  (let [ mm (get cache modelid) ]
+    (when (nil? mm) (warn "unknown model id " modelid))
+    (collect-db-indexes cache mm)))
 
 (defmethod collect-db-indexes :map [cache zm]
   (let [ par (:parent zm) ]
@@ -317,7 +344,9 @@
 (defmulti collect-db-uniques collect-db-xxx-filter)
 
 (defmethod collect-db-uniques :keyword [cache modelid]
-  (collect-db-uniques cache (get cache modelid)))
+  (let [ mm (get cache modelid) ]
+    (when (nil? mm) (warn "unknown model id " modelid))
+    (collect-db-uniques cache mm)))
 
 (defmethod collect-db-uniques :map [cache zm]
   (let [ par (:parent zm) ]
