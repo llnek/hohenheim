@@ -58,7 +58,7 @@
                msg (RU/new-mimeMsg "" "" inp)
                cs (.getCertificateChain pke)
                pk (.getPrivateKey pke)
-               rc (RU/smime-digsig  pk cs RU/*SHA512* msg) ]
+               rc (RU/smime-digsig  pk cs RU/SHA512 msg) ]
         (RU/is-signed? rc))))
 
 (is (with-open [ inp (CU/rc-stream "com/zotoh/frwk/mime/mime.eml") ]
@@ -67,7 +67,7 @@
                mp (.getContent msg)
                cs (.getCertificateChain pke)
                pk (.getPrivateKey pke)
-               rc (RU/smime-digsig  pk cs RU/*SHA512* mp) ]
+               rc (RU/smime-digsig  pk cs RU/SHA512 mp) ]
         (RU/is-signed? rc))))
 
 (is (with-open [ inp (CU/rc-stream "com/zotoh/frwk/mime/mime.eml") ]
@@ -77,7 +77,7 @@
                bp (.getBodyPart mp 1)
                cs (.getCertificateChain pke)
                pk (.getPrivateKey pke)
-               rc (RU/smime-digsig  pk cs RU/*SHA512* bp) ]
+               rc (RU/smime-digsig  pk cs RU/SHA512 bp) ]
         (RU/is-signed? rc))))
 
 (is (with-open [ inp (CU/rc-stream "com/zotoh/frwk/mime/mime.eml") ]
@@ -85,7 +85,7 @@
                msg (RU/new-mimeMsg "" "" inp)
                cs (.getCertificateChain pke)
                pk (.getPrivateKey pke)
-               mp (RU/smime-digsig  pk cs RU/*SHA512* msg)
+               mp (RU/smime-digsig  pk cs RU/SHA512 msg)
                baos (IO/make-baos)
                msg2 (doto (RU/new-mimeMsg "" "")
                       (.setContent (cast Multipart mp))
@@ -101,7 +101,7 @@
                msg (RU/new-mimeMsg "" "" inp)
                cs (.getCertificateChain pke)
                pk (.getPrivateKey pke)
-               mp (RU/smime-digsig  pk cs RU/*SHA512* msg)
+               mp (RU/smime-digsig  pk cs RU/SHA512 msg)
                baos (IO/make-baos)
                msg2 (doto (RU/new-mimeMsg "" "")
                       (.setContent (cast Multipart mp))
@@ -121,7 +121,7 @@
                 pk (.getPrivateKey pke)
                 bp (doto (MimeBodyPart.)
                     (.setDataHandler (DataHandler. s)))
-                ^BodyPart bp2 (RU/smime-encrypt (nth cs 0) RU/*DES_EDE3_CBC* bp)
+                ^BodyPart bp2 (RU/smime-encrypt (nth cs 0) RU/DES_EDE3_CBC bp)
                 baos (IO/make-baos)
                 msg (doto (RU/new-mimeMsg)
                         (.setContent (.getContent bp2) (.getContentType bp2))
@@ -147,7 +147,7 @@
                      (.addBodyPart bp1)
                      (.addBodyPart bp2))
                 msg (doto (RU/new-mimeMsg) (.setContent  mp))
-                ^BodyPart bp3 (RU/smime-encrypt (nth cs 0) RU/*DES_EDE3_CBC* msg)
+                ^BodyPart bp3 (RU/smime-encrypt (nth cs 0) RU/DES_EDE3_CBC msg)
                 baos (IO/make-baos)
                 msg2 (doto (RU/new-mimeMsg)
                         (.setContent (.getContent bp3) (.getContentType bp3))
@@ -166,7 +166,7 @@
              cs (.getCertificateChain pke)
              pk (.getPrivateKey pke)
              data (XData. "heeloo world")
-             sig (RU/pkcs-digsig pk cs RU/*SHA512* data)
+             sig (RU/pkcs-digsig pk cs RU/SHA512 data)
              dg (RU/test-pkcsDigSig (nth cs 0) data sig) ]
         (if (and (not (nil? dg)) (instance? (MU/bytes-class) dg))
           true

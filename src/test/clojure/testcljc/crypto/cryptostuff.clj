@@ -73,8 +73,8 @@
 (is (.startsWith ^String (.encoded ^comzotohcljc.crypto.codec.Password (RT/pwdify "secret-text")) "CRYPT:"))
 
 
-(is (= "SHA-512" (.getAlgorithm (RU/make-MsgDigest RU/*SHA_512*))))
-(is (= "MD5" (.getAlgorithm (RU/make-MsgDigest RU/*MD_5*))))
+(is (= "SHA-512" (.getAlgorithm (RU/make-MsgDigest RU/SHA_512))))
+(is (= "MD5" (.getAlgorithm (RU/make-MsgDigest RU/MD_5))))
 
 (is (> (RU/next-serial) 0))
 

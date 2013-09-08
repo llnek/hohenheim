@@ -40,9 +40,9 @@
 
 (deftest testutil-coreutils
 
-(is (CU/is-nichts? CU/*NICHTS*))
+(is (CU/is-nichts? CU/NICHTS))
 (is (not (CU/is-nichts? "")))
-(is (= (CU/nil-nichts nil) CU/*NICHTS*))
+(is (= (CU/nil-nichts nil) CU/NICHTS))
 (is (= (CU/nil-nichts "") ""))
 
 (is (not (CU/match-char? \space #{ \a \b \x })))
