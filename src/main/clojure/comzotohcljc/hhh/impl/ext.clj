@@ -20,10 +20,13 @@
   comzotohcljc.hhh.impl.ext )
 
 (import '(org.apache.commons.io FilenameUtils FileUtils))
+(import '(org.apache.commons.lang3 StringUtils))
+
 (import '(java.util Map Properties))
 (import '(java.net URL))
 (import '(java.io File))
 (import '(com.zotoh.hohenheim.runtime AppMain))
+(import '(com.zotoh.hohenheim.etc PluginFactory Plugin))
 (import '(com.zotoh.frwk.dbio MetaCache Schema DBIOLocal DBAPI))
 
 (import '(com.zotoh.frwk.core
@@ -263,10 +266,14 @@
 
         (stop [this]
           (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
+                 pls (.getAttr this K_PLUGINS)
                  main (.mm-g impl :main-app) ]
             (info "container stopping all services...")
             (doseq [ [k v] (seq* srg) ]
               (.stop ^Startable v))
+            (info "container stopping all plugins...")
+            (doseq [ p (seq pls) ]
+              (.stop ^Startable p))
             (info "container stopping...")
             (cond
               (satisfies? CljAppMain main)
@@ -279,9 +286,12 @@
 
         (dispose [this]
           (let [ ^comzotohcljc.hhh.core.sys.Registry srg (.mm-g impl K_SVCS)
+                 pls (.getAttr this K_PLUGINS)
                  main (.mm-g impl :main-app) ]
             (doseq [ [k v] (seq* srg) ]
               (.dispose ^Disposable v))
+            (doseq [ p (seq pls) ]
+              (.dispose ^Disposable p))
             (info "container dispose() - main app getting disposed.")
             (cond
               (satisfies? CljAppMain main)
@@ -387,6 +397,37 @@
   (.configure obj json)
   (.initialize obj)) )
 
+(defn- fmtPluginFname ^File [^String v ^File appDir]
+  (let [ fnn (StringUtils/replace v "." "")
+         m (File. appDir (str "modules/" fnn)) ]
+    m))
+
+(defn- plugin-inited? [^String v ^File appDir]
+  (let [ pfile (fmtPluginFname v appDir) ]
+    (.exists pfile)))
+
+(defn- post-init-plugin [^String v ^File appDir]
+  (let [ pfile (fmtPluginFname v appDir) ]
+    (FileUtils/writeStringToFile pfile "ok" "utf-8")
+    (info "initialized plugin: " v)))
+
+(defn- doOnePlugin ^Plugin [co ^String v ^File appDir env app]
+  (let [ ^PluginFactory pf (MU/make-obj v)
+         ^Plugin p (if (instance? PluginFactory pf)
+             (.createPlugin pf)
+             nil) ]
+    (when (instance? Plugin p)
+      (info "calling plugin-factory: " v)
+      (.contextualize p co)
+      (.configure p { :env env :app app })
+      (if (plugin-inited? v appDir)
+        (info "plugin " v " already initialized.")
+        (do
+          (.initialize p)
+          (post-init-plugin v appDir)))
+      (.start p))
+    p))
+
 (defmethod comp-initialize :czc.hhh.ext/Container
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^File appDir (.getAttr co K_APPDIR)
@@ -400,6 +441,12 @@
          ^comzotohcljc.util.scheduler.SchedulerAPI
          sc (SC/make-scheduler co)
          cfg (:container env) ]
+
+    ;; handle the plugins
+    (.setAttr! co K_PLUGINS
+      (persistent!  (reduce (fn [sum en]
+                              (conj! sum (doOnePlugin co (last en) appDir env app)) ) 
+                            (transient []) (seq (:plugins app))) ))
 
     (.setAttr! co K_SCHEDULER sc)
     (.setAttr! co K_JCTOR jc)

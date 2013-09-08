@@ -272,11 +272,12 @@
       <touch file="${app.dir}/META-INF/README.md" />
 
       <mkdir dir="${app.dir}/modules"/>
+      <!--
       <copy todir="${app.dir}/modules" file="${hohenheim.home}/etc/modules/module_auth"/>
       <replace file="${app.dir}/modules/module_auth" token="@@HHH_HOME@@" value="${hohenheim_home}"/>
       <replace file="${app.dir}/modules/module_auth" token="@@APP_DIR@@" value="${app.dir}"/>
       <chmod file="${app.dir}/modules/module_auth" perm="755" />
-
+      -->
       <mkdir dir="${app.dir}/conf"/>
       <copy todir="${app.dir}/conf" file="${hohenheim.home}/etc/app/app.conf"/>
       <copy todir="${app.dir}/conf" file="${hohenheim.home}/etc/app/env.conf"/>

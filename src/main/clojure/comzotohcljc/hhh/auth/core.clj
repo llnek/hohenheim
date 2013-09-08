@@ -21,7 +21,12 @@
   comzotohcljc.hhh.auth.core
   (:gen-class))
 
+(use '[clojure.tools.logging :only (info warn error debug)])
+
 (import '(com.zotoh.hohenheim.runtime AuthError UnknownUser))
+(import '(com.zotoh.hohenheim.etc PluginFactory Plugin))
+(import '(com.zotoh.hohenheim.core Container))
+
 (import '(com.zotoh.frwk.dbio SQLr))
 (import '(java.util Properties))
 (import '(java.io File))
@@ -35,6 +40,7 @@
 
 (require '[comzotohcljc.hhh.auth.dms :as DM])
 (require '[comzotohcljc.dbio.core :as DB])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -76,6 +82,34 @@
 (defn list-accounts [^SQLr db]
   (.findAll db :LoginAccount))
 
+
+(defn make-plugin ^Plugin []
+  (let [ impl (CU/make-mmap) ]
+    (reify
+      Plugin
+      (contextualize [_ ctr]
+        (.mm-s impl :appDir (.getAppDir ^Container ctr))
+        (.mm-s impl :appKey (.getAppKey ^Container ctr)))
+      (configure [_ props]
+        (let [ dbs (:databases (:env props)) ]
+          (.mm-s impl :cfg (:jdbc dbs)) ))
+      (initialize [_]
+        (let [ pkey (.mm-g impl :appKey)
+               cfg (get (.mm-g impl :cfg) (keyword "*"))
+               j (DB/make-jdbc "x" cfg (CE/pwdify (:passwd cfg) pkey)) ]
+            (DM/apply-ddl j)))
+      (start [_]
+        (info "AuthPlugin started."))
+      (stop [_]
+        (info "AuthPlugin stopped."))
+      (dispose [_]
+        (info "AuthPlugin disposed."))) ))
+
+(deftype AuthPluginFactory []
+  PluginFactory
+  (createPlugin [_]
+    (require 'comzotohcljc.hhh.auth.core)
+    (make-plugin)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

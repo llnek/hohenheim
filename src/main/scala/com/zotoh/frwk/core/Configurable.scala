@@ -23,7 +23,7 @@ package com.zotoh.frwk.core
  */
 trait Configurable {
 
-  def configure(c:Configuration): Unit
+  def configure(c:Any): Unit
 
 }
 
