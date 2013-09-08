@@ -44,15 +44,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(def POSTGRESQL-DRIVER "org.postgresql.Driver")
-(def MYSQL-DRIVER "com.mysql.jdbc.Driver")
-(def H2-DRIVER "org.h2.Driver" )
-(def POSTGRESQL-URL "jdbc:postgresql://{{host}}:{{port}}/{{db}}" )
-(def H2-SERVER-URL "jdbc:h2:tcp://host/path/db" )
-(def H2-MEM-URL "jdbc:h2:mem:" )
-(def H2-FILE-URL "jdbc:h2:{{path}};MVCC=TRUE" )
-(def H2_MVCC ";MVCC=TRUE" )
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- hashJdbc ^long [jdbc]

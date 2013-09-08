@@ -308,6 +308,7 @@
       <arg value="testcljc.i18n.i18nstuff" />
       <arg value="testcljc.crypto.cryptostuff" />
       <arg value="testcljc.crypto.mimestuff" />
+      <arg value="testcljc.dbio.dbstuff" />
     </java>
     <copy todir="${build.test.dir}">
       <fileset dir="${test.dir}/clojure">

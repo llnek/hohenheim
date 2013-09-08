@@ -27,6 +27,7 @@
 (use '[comzotohcljc.dbio.drivers])
 (use '[comzotohcljc.dbio.core])
 
+(def MYSQL-DRIVER "com.mysql.jdbc.Driver")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)

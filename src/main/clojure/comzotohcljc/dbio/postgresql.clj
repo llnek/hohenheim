@@ -27,6 +27,10 @@
 (use '[comzotohcljc.dbio.drivers])
 (use '[comzotohcljc.dbio.core])
 
+(def POSTGRESQL-URL "jdbc:postgresql://{{host}}:{{port}}/{{db}}" )
+(def POSTGRESQL-DRIVER "org.postgresql.Driver")
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 

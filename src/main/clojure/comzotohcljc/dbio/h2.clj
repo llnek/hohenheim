@@ -23,12 +23,24 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
+(import '(org.apache.commons.lang3 StringUtils))
+(import '(com.zotoh.frwk.dbio DBIOError))
+(import '(java.io File))
+(import '(java.sql DriverManager Connection Statement))
+
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 (use '[comzotohcljc.dbio.drivers])
 (use '[comzotohcljc.dbio.core])
 
-(import '(com.zotoh.frwk.dbio DBIOError))
+
+(def H2-SERVER-URL "jdbc:h2:tcp://host/path/db" )
+(def H2-DRIVER "org.h2.Driver" )
+
+(def H2-MEM-URL "jdbc:h2:mem:{{dbid}};DB_CLOSE_DELAY=-1" )
+(def H2-FILE-URL "jdbc:h2:{{path}};MVCC=TRUE" )
+
+(def H2_MVCC ";MVCC=TRUE" )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -55,6 +67,40 @@
 (defmethod genDrop H2 [db table]
   (str "DROP TABLE " table " IF EXISTS CASCADE" (genExec db) "\n\n"))
 
+
+(defn make-h2-db [^File dbFileDir ^String dbid ^String user pwdObj]
+  (CU/test-nonil "file-dir" dbFileDir)
+  (CU/test-nestr "db-id" dbid)
+  (CU/test-nestr "user" user)
+  (let [ url (File. dbFileDir dbid)
+         u (.getCanonicalPath url)
+         pwd (SU/nsb pwdObj)
+         dbUrl (StringUtils/replace H2-FILE-URL "{{path}}" u) ]
+    (debug "Creating H2: " dbUrl)
+    (.mkdir dbFileDir)
+    (with-open [ c1 (DriverManager/getConnection dbUrl user pwd) ]
+      (.setAutoCommit c1 true)
+      (with-open [ s (.createStatement c1) ]
+        ;;(.execute s (str "CREATE USER " user " PASSWORD \"" pwd "\" ADMIN"))
+        (.execute s "SET DEFAULT_TABLE_TYPE CACHED"))
+      (with-open [ s (.createStatement c1) ]
+        (.execute s "SHUTDOWN"))
+      )
+    dbUrl))
+
+(defn close-h2-db [^File dbFileDir ^String dbid ^String user pwdObj]
+  (CU/test-nonil "file-dir" dbFileDir)
+  (CU/test-nestr "db-id" dbid)
+  (CU/test-nestr "user" user)
+  (let [ url (File. dbFileDir dbid)
+         u (.getCanonicalPath url)
+         pwd (SU/nsb pwdObj)
+         dbUrl (StringUtils/replace H2-FILE-URL "{{path}}" u) ]
+    (debug "Closing H2: " dbUrl)
+    (with-open [ c1 (DriverManager/getConnection dbUrl user pwd) ]
+      (.setAutoCommit c1 true)
+      (with-open [ s (.createStatement c1) ]
+        (.execute s "SHUTDOWN")) )))
 
 ;;(println (getDDL (make-MetaCache testschema) (H2.) ))
 
