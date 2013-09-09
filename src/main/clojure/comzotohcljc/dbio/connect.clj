@@ -87,6 +87,7 @@
   [^JDBCInfo jdbc metaCache options]
 
   (let [ hc (.getId jdbc) ]
+    ;;(debug (.getMetas metaCache))
     (reify DBAPI
 
       (supportsOptimisticLock [_]

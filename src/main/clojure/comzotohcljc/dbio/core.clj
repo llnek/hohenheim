@@ -233,6 +233,12 @@
   (reify Schema
     (getModels [_] theModels)) )
 
+(defn- maybe-stripNS [path]
+  (let [ s (str path) ]
+    (if (.startsWith s ":")
+      (.substring s 1)
+      s)))
+
 (defn- resolve-local-assoc "" [ms zm]
   (let [ socs (:assocs zm)
          zid (:id zm) ]
@@ -244,10 +250,10 @@
                  rhs (:rhs soc)
                  ^String col (case kind
                         :O2M
-                        (str (name rhs) "|" "fk_"
+                        (str (maybe-stripNS rhs) "|" "fk_"
                              (name zid) "_" (name id))
                         :O2O
-                        (str (name zid) "|" "fk_"
+                        (str (maybe-stripNS zid) "|" "fk_"
                              (name rhs) "_" (name id))
                         :M2M
                         (if (nil? (get ms (:joined soc)))
@@ -612,6 +618,7 @@
 
 (defmethod upload-ddl Connection
   [^Connection conn ^String ddl]
+    (debug "\n" ddl)
     (let [ dbn (.toLowerCase (-> (.getMetaData conn)(.getDatabaseProductName)))
            lines (splitLines ddl) ]
       (.setAutoCommit conn true)
