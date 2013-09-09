@@ -152,7 +152,7 @@
 
     (instance? (MU/chars-class) p) (.setString ps pos (String. ^chars p))
     (instance? (MU/bytes-class) p) (.setBytes ps pos ^bytes p)
-    (instance? XData p) (.setBinaryStream ps pos (.stream p))
+    (instance? XData p) (.setBinaryStream ps pos (.stream ^XData p))
 
     (instance? Boolean p) (.setInt ps pos (if p 1 0))
     (instance? Double p) (.setDouble ps pos p)
@@ -326,8 +326,8 @@
             (-> (make-sql metaCache db conn) (.sql-select sql pms pf f2)))))
 
       (doQuery [_ conn sql pms]
-        (let [ pf (partial row2obj std-injtor) ]
-          (-> (make-sql  metaCache db conn) (.sql-select sql pms pf ))) )
+        (let []
+          (-> (make-sql metaCache db conn) (.sql-select sql pms ))) )
 
       (doCount [this conn model]
         (let [ rc (doQuery this conn
@@ -335,7 +335,7 @@
                          (ese (table-name model metas))) [] ) ]
           (if (empty? rc)
             0
-            (val (first rc)))))
+            (last (first (seq (first rc)))))))
 
       (doPurge [_ conn model]
         (let [ sql (str "DELETE FROM " (ese (table-name model metas))) ]

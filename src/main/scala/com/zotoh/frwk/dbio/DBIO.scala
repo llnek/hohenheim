@@ -67,11 +67,13 @@ trait SQLr {
   def execute(sql:String, params:JList[Any]) : Any
   def countAll(model:Any): Int
   def purge(model:Any): Unit
+  def getMetaCache() : MetaCache
 }
 
 trait DBAPI {
 
   def supportsOptimisticLock() : Boolean
+  def getMetaCache() : MetaCache
   def vendor() : Any
   def finz() : Unit
   def open() : Connection

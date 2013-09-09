@@ -118,9 +118,9 @@
                (CE/pwdify "")) ]
     (reset! JDBC jdbc)
     (upload-ddl jdbc (getDDL @METAC :h2))
-    (reset! DB (dbio-connect jdbc @METAC {}))
+    (reset! DB (dbio-connect jdbc @METAC {})))
   (f)
-    ))
+    )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -146,7 +146,6 @@
          sql (.newCompositeSQLr @DB)
          o2 (.execWith sql
              (fn [tx]
-               (assert (false? (nil? tx)))
                (.insert tx obj))) ]
     o2))
 
@@ -170,7 +169,47 @@
                          (dbio-set-fld :iq 0)) ]
           (.update tx o2))))))
 
+(defn- delete-emp [login]
+  (let [ sql (.newCompositeSQLr @DB) ]
+    (.execWith
+      sql
+      (fn [tx]
+        (let [ o1 (.findOne tx (mkt "Employee") {:login login} ) ]
+          (.delete tx o1))))
+    (.execWith
+      sql
+      (fn [tx]
+        (.countAll tx (mkt "Employee"))))))
+
+(defn- create-person [fname lname]
+  (let [ p (-> (dbio-create-obj (mkt "Person"))
+                (dbio-set-fld :first_name fname)
+                (dbio-set-fld :last_name  lname)
+                (dbio-set-fld :iq 100)
+                (dbio-set-fld :bday (GregorianCalendar.))
+                (dbio-set-fld :sex "female"))
+         sql (.newCompositeSQLr @DB)
+         o2 (.execWith sql
+             (fn [tx]
+               (.insert tx p))) ]
+    o2))
+
+(defn- wedlock [h w]
+  (let [ sql (.newCompositeSQLr @DB) ]
+    (binding [ *META-CACHE* (.getMetaCache sql) ]
+      (let [ [h1 w1] (dbio-bind-assoc [:as :spouse] h w)
+             [h2 w2] (dbio-bind-assoc [:as :spouse] w1 h1) ]
+        (.execWith
+            sql
+            (fn [tx]
+              (.update tx h2)
+              (.update tx w2)))
+          ))))
+
 (deftest testdbio-dbstuff
+
+         ;; basic CRUD
+         ;;
   (is (let [ m (meta (create-emp "joe" "blog" "joeb"))
              r (:rowid m)
              v (:verid m) ]
@@ -180,10 +219,15 @@
   (is (let [ a (fetch-emp "joeb" ) ]
         (not (nil? a))))
   (is (let [ a (change-emp "joeb" ) ]
-        (println a)
-        (println (meta a))
         (not (nil? a))))
+  (is (let [ rc (delete-emp "joeb") ]
+        (== rc 0)))
+  (is (let [ a (fetch-all-emps) ]
+        (== (count a) 0)))
 
+         ;; one to one assoc
+         ;;
+  ()
 )
 
 (use-fixtures :each init-test)

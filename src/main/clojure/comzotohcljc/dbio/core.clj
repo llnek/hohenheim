@@ -25,7 +25,7 @@
 
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(com.zotoh.frwk.dbio
-  MetaCache Schema JDBCPool JDBCInfo))
+  MetaCache Schema SQLr JDBCPool JDBCInfo))
 (import '(java.sql
   SQLException DatabaseMetaData
   Connection Driver DriverManager))
@@ -46,6 +46,7 @@
 
 (def ^:dynamic *USE_DDL_SEP* true)
 (def ^:dynamic *DDL_BVS* nil)
+(def ^:dynamic *META-CACHE* nil)
 (def DDL_SEP "-- :")
 
 (defn make-jdbc "Make a JDBCInfo record."
@@ -226,8 +227,8 @@
   (with-db-abstract)
   (with-db-system)
   (with-db-fields {
-    :lhs {:column "LHS_ROWID" :domain :Long }
-    :rhs {:column "RHS_ROWID" :domain :Long } }) )
+    :lhs-oid {:column "LHS_ROWID" :domain :Long }
+    :rhs-oid {:column "RHS_ROWID" :domain :Long } }) )
 
 (defn make-Schema "" ^Schema [theModels]
   (reify Schema
@@ -632,7 +633,97 @@
                 (maybeOK dbn e#))))
           ))))
 
+(defn- maybeGetAssoc [mc zm id]
+  (if (nil? zm)
+    nil
+    (let [ m (:assocs zm)
+           rc (get m id) ]
+      (if (nil? rc)
+        (maybeGetAssoc mc (get mc (:parent zm)) id)
+        rc))))
 
+(defn dbio-drop-assoc [ctx lhs rhs]
+  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+         model (:typeid (meta lhs))
+         zm (get mc model)
+         a (nth ctx 1)
+         rc (maybeGetAssoc mc zm a) ]
+    (when (nil? rc)
+      (throw (DBIOError. (str "Unknown assoc " a))))
+    (case (:kind rc)
+      :O20
+      [
+        (dbio-set-fld lhs
+          (keyword (str "fk_" (name (:rhs rc)) "_" (name a)))
+          nil)
+        rhs
+        ]
+      :02M
+      [
+        lhs
+        (dbio-set-fld rhs
+          (keyword (str "fk_" (name (:id zm)) "_" (name a)))
+          nil)
+        ]
+      :M2M
+      [ lhs rhs]
+      (throw (DBIOError. (str "Bad assoc " a ", invalid type.")))) ))
+
+(defn dbio-bind-assoc [ctx lhs rhs]
+  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+         model (:typeid (meta lhs))
+         zm (get mc model)
+         a (nth ctx 1)
+         rc (maybeGetAssoc mc zm a) ]
+    (when (nil? rc)
+      (throw (DBIOError. (str "Unknown assoc " a))))
+    (case (:kind rc)
+      :O20
+      [
+        (dbio-set-fld lhs
+          (keyword (str "fk_" (name (:rhs rc)) "_" (name a)))
+          (:rowid (meta rhs)))
+        rhs
+        ]
+      :02M
+      [
+        lhs
+        (dbio-set-fld rhs
+          (keyword (str "fk_" (name (:id zm)) "_" (name a)))
+          (:rowid (meta lhs)))
+        ]
+      :M2M
+      [ lhs rhs
+        (-> (dbio-create-obj (:joined rc))
+          (dbio-set-fld :lhs-oid (:rowid lhs))
+          (dbio-set-fld :rhs-oid (:rowid rhs)))
+      ]
+      (throw (DBIOError. (str "Bad assoc " a ", invalid type.")))) ))
+
+(defn dbio-get-assoc [ctx lhs]
+  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+         model (:typeid (meta lhs))
+         zm (get mc model)
+         ^SQLr sql (nth ctx 3)
+         a (nth ctx 1)
+         rc (maybeGetAssoc mc zm a) ]
+    (when (nil? rc)
+      (throw (DBIOError. (str "Unknown assoc " a))))
+    (case (:kind rc)
+      :O20
+      (let [ rc (.findOne sql (:rhs rc) { (:column (:rowid (:fields (meta zm))))
+        (get lhs (keyword (str "fk_" (name (:rhs rc)) "_" (name a))))
+                               }) ]
+        rc)
+      :02M
+      (let [ rc (.findSome sql (:rhs rc) {
+        (str "fk_" (name (:id zm)) "_" (name a))
+                (:rowid (meta lhs))
+                               }) ]
+        rc)
+      :M2M
+      []
+      (throw (DBIOError. (str "Bad assoc " a ", invalid type.")))) ))
 
 
 (def ^:private core-eof nil)

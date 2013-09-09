@@ -45,6 +45,8 @@
   (let [ metas (.getMetas metaCache) ]
     (reify SQLr
 
+      (getMetaCache [_] metaCache)
+
       (findAll [this model ordering] (.findSome this model {} ordering))
       (findAll [this model] (.findAll this model ""))
 

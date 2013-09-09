@@ -51,7 +51,7 @@
     (str (:driver jdbc) (:url jdbc)
          (:user jdbc) (SU/nsb (:pwdObj jdbc)))))
 
-(defn registerJdbcTL "" [jdbc options]
+(defn registerJdbcTL "" [^JDBCInfo jdbc options]
   (let [ tloc (DBIOLocal/getCache)
          ^Map c (.get tloc)
          hc (.getId jdbc) ]
@@ -89,6 +89,8 @@
   (let [ hc (.getId jdbc) ]
     ;;(debug (.getMetas metaCache))
     (reify DBAPI
+
+      (getMetaCache [_] metaCache)
 
       (supportsOptimisticLock [_]
         (if (false? (:opt-lock options)) false true))
