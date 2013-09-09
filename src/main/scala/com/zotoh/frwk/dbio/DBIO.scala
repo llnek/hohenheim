@@ -59,12 +59,12 @@ trait SQLr {
   def findAll(model:Any, ordering:String) : JList[Any]
   def findAll(model:Any) : JList[Any]
   def findOne(model:Any,filters:JMap[String,Any]) : Any
-  def update(obj:Any) : Int
-  def delete(obj:Any) : Int
-  def insert(obj:Any) : Int
+  def update(obj:Any) : Any
+  def delete(obj:Any) : Any
+  def insert(obj:Any) : Any
   def select(sql:String, params:JList[Any]) : JList[Any]
   def executeWithOutput(sql:String,params:JList[Any]) : Any
-  def execute(sql:String, params:JList[Any]) : Int
+  def execute(sql:String, params:JList[Any]) : Any
   def countAll(model:Any): Int
   def purge(model:Any): Unit
 }

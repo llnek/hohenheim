@@ -112,7 +112,7 @@
 (defn dbio-set-fld "" [pojo fld value]
   (assoc pojo (keyword fld) value))
 
-(defn dbio-clr-fld "" [pojo fld value]
+(defn dbio-clr-fld "" [pojo fld]
   (dissoc pojo (keyword fld)))
 
 (defn dbio-get-fld "" [pojo fld]

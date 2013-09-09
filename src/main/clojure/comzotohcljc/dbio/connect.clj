@@ -51,13 +51,13 @@
     (str (:driver jdbc) (:url jdbc)
          (:user jdbc) (SU/nsb (:pwdObj jdbc)))))
 
-(defn- registerJdbcTL "" [jdbc options]
+(defn registerJdbcTL "" [jdbc options]
   (let [ tloc (DBIOLocal/getCache)
          ^Map c (.get tloc)
-         hc (hashJdbc jdbc) ]
+         hc (.getId jdbc) ]
     (when-not (.containsKey c hc)
       (debug "no db pool found in thread-local, creating one...")
-      (let [ p (DU/make-db-pool hc jdbc options) ]
+      (let [ p (DU/make-db-pool jdbc options) ]
         (.put c hc p)))
     (.get c hc)))
 
@@ -77,8 +77,9 @@
   (let [ tloc (DBIOLocal/getCache) ;; get the thread local
          ^Map c (.get tloc)
          rc (.get c hc) ]
-    ;;(debug "trying to get a db-pool from thread-local: id = " hc ", pool = " rc)
-    rc))
+    (if (nil? rc)
+      (registerJdbcTL jdbc options)
+      rc)))
 
 (defn dbio-connect "Connect to a datasource."
 

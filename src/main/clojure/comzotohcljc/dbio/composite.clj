@@ -84,15 +84,21 @@
     ^DBAPI db ]
 
   (let [ proc (make-proc metaCache db) ]
+    (CU/test-nonil "sql-proc!" proc)
+    (CU/test-nonil "meta-cache" metaCache)
+    (CU/test-nonil "dbapi" db)
     (reify Transactable
 
       (execWith [this func]
         (with-local-vars [ rc nil ]
           (with-open [ conn (.begin this) ]
+            (CU/test-nonil "sql-connection" conn)
             (try
-              (var-set rc (func (mk-tx metaCache db proc conn)))
-              (.commit this conn)
-              @rc
+              (let [ tx (mk-tx metaCache db proc conn)
+                     r (func tx) ]
+                (var-set rc r)
+                (.commit this conn)
+                @rc)
               (catch Throwable e#
                 (do (.rollback this conn) (warn e# "") (throw e#))) ))))
 

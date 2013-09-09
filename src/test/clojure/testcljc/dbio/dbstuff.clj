@@ -19,6 +19,7 @@
 
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.io File))
+(import '(java.util GregorianCalendar Calendar))
 
 (require '[comzotohcljc.crypto.codec :as CE])
 (use '[comzotohcljc.dbio.drivers])
@@ -102,6 +103,8 @@
     } ))
 
 (def METAC (atom nil))
+(def JDBC (atom nil))
+(def DB (atom nil))
 
 (defn init-test [f]
   (reset! METAC
@@ -109,25 +112,78 @@
                       [Address Person EmpDepts Employee Department Company])))
   (let [ dir (File. (System/getProperty "java.io.tmpdir"))
          db (str "" (System/currentTimeMillis))
-         url (make-h2-db dir db "sa" (CE/pwdify "")) ]
-    (upload-ddl
-      (make-jdbc "x"
+         url (make-h2-db dir db "sa" (CE/pwdify ""))
+        jdbc (make-jdbc "x"
                { :d H2-DRIVER :url url :user "sa" :passwd "" }
-               (CE/pwdify ""))
-      (getDDL @METAC :h2))
+               (CE/pwdify "")) ]
+    (reset! JDBC jdbc)
+    (upload-ddl jdbc (getDDL @METAC :h2))
+    (reset! DB (dbio-connect jdbc @METAC {}))
   (f)
     ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn- mkt [t] (keyword (str "testcljc.dbio.dbstuff/" t)))
 
 
+(defn- mkEmp [fname lname login]
+  (let [ emp (dbio-create-obj (mkt "Employee")) ]
+    (-> emp
+      (dbio-set-fld :first_name fname)
+      (dbio-set-fld :last_name  lname)
+      (dbio-set-fld :iq 100)
+      (dbio-set-fld :bday (GregorianCalendar.))
+      (dbio-set-fld :sex "male")
+      (dbio-set-fld :salary 1000000.00)
+      (dbio-set-fld :pic (.getBytes "poo"))
+      (dbio-set-fld :passcode "secret")
+      (dbio-set-fld :desc "idiot")
+      (dbio-set-fld :login login ))))
 
+(defn- create-emp[fname lname login]
+  (let [ obj (mkEmp fname lname login)
+         sql (.newCompositeSQLr @DB)
+         o2 (.execWith sql
+             (fn [tx]
+               (assert (false? (nil? tx)))
+               (.insert tx obj))) ]
+    o2))
 
+(defn- fetch-all-emps []
+  (let [ sql (.newSimpleSQLr @DB)
+         o1 (.findAll sql (mkt "Employee")) ]
+    o1))
 
+(defn- fetch-emp [login]
+  (let [ sql (.newSimpleSQLr @DB)
+         o1 (.findOne sql (mkt "Employee") {:login login} ) ]
+    o1))
+
+(defn- change-emp [login]
+  (let [ sql (.newCompositeSQLr @DB) ]
+    (.execWith
+      sql
+      (fn [tx]
+        (let [ o1 (.findOne tx (mkt "Employee") {:login login} )
+               o2 (-> o1 (dbio-set-fld :salary 99.9234)
+                         (dbio-set-fld :iq 0)) ]
+          (.update tx o2))))))
 
 (deftest testdbio-dbstuff
-  (is (= 1 1))
+  (is (let [ m (meta (create-emp "joe" "blog" "joeb"))
+             r (:rowid m)
+             v (:verid m) ]
+        (and (> r 0) (== v 0))))
+  (is (let [ a (fetch-all-emps) ]
+        (== (count a) 1)))
+  (is (let [ a (fetch-emp "joeb" ) ]
+        (not (nil? a))))
+  (is (let [ a (change-emp "joeb" ) ]
+        (println a)
+        (println (meta a))
+        (not (nil? a))))
+
 )
 
 (use-fixtures :each init-test)

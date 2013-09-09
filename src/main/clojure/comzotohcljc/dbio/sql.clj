@@ -35,6 +35,7 @@
 (import '(java.math BigDecimal BigInteger))
 (import '(java.io Reader InputStream))
 (import '(com.zotoh.frwk.dbio DBAPI))
+(import '(com.zotoh.frwk.io XData))
 
 (import '(java.sql
   ResultSet Types SQLException
@@ -60,7 +61,7 @@
 
 (defn col-name
   (^String [fdef] (:column fdef))
-  (^String [fid zm] (col-name (get zm fid))))
+  (^String [fid zm] (col-name (get (:fields (meta zm)) fid))))
 
 (defn- merge-meta [m1 m2] (merge m1 m2))
 
@@ -129,7 +130,7 @@
                ct (.getColumnType rsmeta (int pos))
                cv (readOneCol ct pos rs) ]
           (var-set row (finj @row cn ct cv))))
-      (persistent! @row) )) )
+      (persistent! @row) )))
 
 (defn- insert? [^String sql]
   (.startsWith (.toLowerCase (SU/strim sql)) "insert"))
@@ -151,6 +152,7 @@
 
     (instance? (MU/chars-class) p) (.setString ps pos (String. ^chars p))
     (instance? (MU/bytes-class) p) (.setBytes ps pos ^bytes p)
+    (instance? XData p) (.setBinaryStream ps pos (.stream p))
 
     (instance? Boolean p) (.setInt ps pos (if p 1 0))
     (instance? Double p) (.setDouble ps pos p)
@@ -208,7 +210,7 @@
     { :1 rc }))
 
 (defprotocol ^:private SQueryAPI
-  (sql-select [_ sql pms row-provider-func] [_ sql pms] )
+  (sql-select [_ sql pms row-provider-func post-func] [_ sql pms] )
   (sql-executeWithOutput [_  sql pms options] )
   (sql-execute [_  sql pms] ) )
 
@@ -232,16 +234,17 @@
                 ))))))
 
     (sql-select [this sql pms ]
-      (sql-select this sql pms (partial row2obj std-injtor)))
+      (sql-select this sql pms
+                  (partial row2obj std-injtor) (fn [a] a)))
 
-    (sql-select [this sql pms func]
+    (sql-select [this sql pms func postFunc]
       (with-open [ stmt (build-stmt db conn sql pms) ]
         (with-open [ rs (.executeQuery stmt) ]
           (let [ rsmeta (.getMetaData rs) ]
             (loop [ sum (transient []) ok (.next rs) ]
               (if (not ok)
                 (persistent! sum)
-                (recur (conj! sum (func rs rsmeta)) (.next rs))))))))
+                (recur (conj! sum (postFunc (func rs rsmeta))) (.next rs))))))))
 
     (sql-execute [this sql pms]
       (with-open [ stmt (build-stmt db conn sql pms) ]
@@ -292,6 +295,17 @@
             (var-set ps (conj! @ps v))))))
     (persistent! @ps)) )
 
+(defn- postFmtModelRow [model obj]
+  (let [ mm { :typeid model
+               :verid (:verid obj)
+               :rowid (:rowid obj)
+               :last-modify (:last-modify obj)
+              } ]
+         (with-meta (-> obj (DU/dbio-clr-fld :rowid)
+           (DU/dbio-clr-fld :verid)
+           (DU/dbio-clr-fld :last-modify))
+                    mm)))
+
 (defn make-proc ""
 
   ^comzotohcljc.dbio.sql.SQLProcAPI
@@ -307,8 +321,9 @@
           (when (nil? zm)
             (DU/dbio-error (str "Unknown model " model)))
           (let [ px (partial model-injtor metaCache zm)
-                 pf (partial row2obj px) ]
-            (-> (make-sql  metaCache db conn) (.sql-select sql pms pf )))))
+                 pf (partial row2obj px)
+                 f2 (fn [obj] (postFmtModelRow model obj)) ]
+            (-> (make-sql metaCache db conn) (.sql-select sql pms pf f2)))))
 
       (doQuery [_ conn sql pms]
         (let [ pf (partial row2obj std-injtor) ]
@@ -353,14 +368,15 @@
                  s2 (StringBuilder.)
                  s1 (StringBuilder.)
                  pms (insert-fields flds obj s1 s2) ]
-            (if (= (.length s1) 0)
+            (if (== (.length s1) 0)
               nil
               (let [ out (doExecuteWithOutput this conn
                             (str "INSERT INTO " (ese table) "(" s1 ") VALUES (" s2 ")" )
                             pms { :pkey (col-name :rowid zm) } ) ]
-                (when (empty? out)
-                  (DU/dbio-error (str "Insert requires row-id to be returned.")))
-                (let [ wm { :rowid (:pkey out) :verid 0 } ]
+                (if (empty? out)
+                  (DU/dbio-error (str "Insert requires row-id to be returned."))
+                  (debug "exec-with-out " out))
+                (let [ wm { :rowid (:1 out) :verid 0 } ]
                   (when-not (number? (:rowid wm))
                     (DU/dbio-error (str "RowID data-type must be Long.")))
                   (vary-meta obj merge-meta wm))))
