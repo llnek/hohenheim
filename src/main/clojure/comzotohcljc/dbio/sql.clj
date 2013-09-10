@@ -28,7 +28,7 @@
 (require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.io :as IO])
 (require '[comzotohcljc.util.dates :as DT])
-(require '[comzotohcljc.dbio.core :as DU])
+(use '[comzotohcljc.dbio.core])
 
 (import '(java.util Calendar GregorianCalendar TimeZone))
 (import '(com.zotoh.frwk.dbio MetaCache DBIOError OptLockError))
@@ -47,14 +47,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defn- uc-ent ^String [ent] (.toUpperCase (name ent)))
-(defn- lc-ent ^String [ent] (.toLowerCase (name ent)))
-
-(defn ese "Escape string entity for sql."
-  (^String [ent] (uc-ent ent))
-  (^String [ch ent] (str ch (uc-ent ent) ch))
-  (^String [c1 ent c2] (str c1 (uc-ent ent) c2)))
-
 (defn table-name
   (^String [mdef] (:table mdef))
   (^String [mid cache] (table-name (get cache mid))))
@@ -62,8 +54,6 @@
 (defn col-name
   (^String [fdef] (:column fdef))
   (^String [fid zm] (col-name (get (:fields (meta zm)) fid))))
-
-(defn- merge-meta [m1 m2] (merge m1 m2))
 
 (defn- fmtUpdateWhere ^String [lock zm]
   (str (ese (col-name :rowid zm)) "=?"
@@ -164,7 +154,7 @@
                                           (Timestamp. (.getTimeInMillis ^Calendar p))
                                           (DT/gmt-cal))
 
-    :else (DU/dbio-error (str "Unsupported param type: " (type p)))) )
+    :else (dbio-error (str "Unsupported param type: " (type p)))) )
 
 (defn- mssql-tweak-sqlstr [^String sqlstr ^String token ^String cmd]
   (loop [ stop false sql sqlstr ]
@@ -301,9 +291,9 @@
                :rowid (:rowid obj)
                :last-modify (:last-modify obj)
               } ]
-         (with-meta (-> obj (DU/dbio-clr-fld :rowid)
-           (DU/dbio-clr-fld :verid)
-           (DU/dbio-clr-fld :last-modify))
+         (with-meta (-> obj (dbio-clr-fld :rowid)
+           (dbio-clr-fld :verid)
+           (dbio-clr-fld :last-modify))
                     mm)))
 
 (defn make-proc ""
@@ -319,7 +309,7 @@
       (doQuery [_ conn sql pms model]
         (let [ zm (get metas model) ]
           (when (nil? zm)
-            (DU/dbio-error (str "Unknown model " model)))
+            (dbio-error (str "Unknown model " model)))
           (let [ px (partial model-injtor metaCache zm)
                  pf (partial row2obj px)
                  f2 (fn [obj] (postFmtModelRow model obj)) ]
@@ -344,7 +334,7 @@
       (doDelete [this conn obj]
         (let [ info (meta obj) model (:typeid info)
                zm (get metas model) ]
-          (when (nil? zm) (DU/dbio-error (str "Unknown model " model)))
+          (when (nil? zm) (dbio-error (str "Unknown model " model)))
           (let [ lock (.supportsOptimisticLock db)
                  table (table-name zm)
                  rowid (:rowid info)
@@ -360,7 +350,7 @@
       (doInsert [this conn obj]
         (let [ info (meta obj) model (:typeid info)
                zm (get metas model) ]
-          (when (nil? zm) (DU/dbio-error (str "Unknown model " model)))
+          (when (nil? zm) (dbio-error (str "Unknown model " model)))
           (let [ lock (.supportsOptimisticLock db)
                  flds (:fields (meta zm))
                  table (table-name zm)
@@ -374,18 +364,18 @@
                             (str "INSERT INTO " (ese table) "(" s1 ") VALUES (" s2 ")" )
                             pms { :pkey (col-name :rowid zm) } ) ]
                 (if (empty? out)
-                  (DU/dbio-error (str "Insert requires row-id to be returned."))
+                  (dbio-error (str "Insert requires row-id to be returned."))
                   (debug "exec-with-out " out))
                 (let [ wm { :rowid (:1 out) :verid 0 } ]
                   (when-not (number? (:rowid wm))
-                    (DU/dbio-error (str "RowID data-type must be Long.")))
+                    (dbio-error (str "RowID data-type must be Long.")))
                   (vary-meta obj merge-meta wm))))
           )))
 
       (doUpdate [this conn obj]
         (let [ info (meta obj) model (:typeid info)
                zm (get metas model) ]
-          (when (nil? zm) (DU/dbio-error (str "Unknown model " model)))
+          (when (nil? zm) (dbio-error (str "Unknown model " model)))
           (let [ lock (.supportsOptimisticLock db)
                  cver (CU/nnz (:verid info))
                  flds (:fields (meta zm))

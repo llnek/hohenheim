@@ -109,6 +109,8 @@
       (begin [_]
         (let [ ^Connection conn (.open db) ]
           (.setAutoCommit conn false)
+          ;;(.setTransactionIsolation conn Connection/TRANSACTION_READ_COMMITTED)
+          (.setTransactionIsolation conn Connection/TRANSACTION_SERIALIZABLE)
           conn))   )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

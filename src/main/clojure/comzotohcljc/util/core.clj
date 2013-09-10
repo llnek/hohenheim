@@ -474,6 +474,12 @@
           (debug s)
           (info s)))) ) )
 
+(defn stripNSPath [path]
+  (let [ s (str path) ]
+    (if (.startsWith s ":")
+      (.substring s 1)
+      s)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

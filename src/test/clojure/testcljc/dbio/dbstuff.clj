@@ -59,7 +59,9 @@
     :i2 #{ :bday }
     } ))
 
-(defjoined EmpDepts)
+(defjoined EmpDepts
+           (dbio-scopeType "Employee")
+           (dbio-scopeType "Department"))
 
 (defmodel Employee
   (with-db-parent-model  (dbio-scopeType "Person"))
@@ -71,7 +73,7 @@
     :login {:null false}
                    })
   (with-db-assocs {
-    :depts { :kind :M2M :rhs (dbio-scopeType "Department") :joined (dbio-scopeType "EmpDepts") }
+    :depts { :kind :M2M :joined (dbio-scopeType "EmpDepts") }
                    })
   (with-db-indexes { :i1 #{ :login }
     } ))
@@ -81,7 +83,7 @@
     :dname { :null false }
                    })
   (with-db-assocs {
-    :emps { :kind :M2M :rhs (dbio-scopeType "Employee") :joined (dbio-scopeType "EmpDepts") }
+    :emps { :kind :M2M :joined (dbio-scopeType "EmpDepts") }
                    })
   (with-db-uniques {
     :u1 #{ :dname }
@@ -96,7 +98,7 @@
   (with-db-assocs {
     :depts { :kind :O2M :rhs (dbio-scopeType "Department") }
     :emps { :kind :O2M :rhs (dbio-scopeType "Employee") }
-    :hq { :kind :O2M :rhs (dbio-scopeType "Address") :singly true }
+    :hq { :kind :O2O :rhs (dbio-scopeType "Address") :singly true }
                    })
   (with-db-uniques {
     :u1 #{ :cname }
