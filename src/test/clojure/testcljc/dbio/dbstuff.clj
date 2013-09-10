@@ -196,6 +196,7 @@
                (.insert tx p))) ]
     o2))
 
+(comment
 (defn- wedlock [h w]
   (let [ sql (.newCompositeSQLr @DB) ]
     (binding [ *META-CACHE* (.getMetaCache sql) ]
@@ -207,6 +208,7 @@
               (.update tx h2)
               (.update tx w2)))
           ))))
+)
 
 (deftest testdbio-dbstuff
 

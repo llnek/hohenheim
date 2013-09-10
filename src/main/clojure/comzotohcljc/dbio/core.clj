@@ -157,11 +157,11 @@
   (assoc pojo :parent par))
 
 (defn with-db-joined-model "" [pojo lhs rhs]
-  (let [ a1 { :kind :MxM :rhs rhs :fkey "" }
-         a2 { :kind :MxM :rhs lhs :fkey "" }
+  (let [ a1 { :kind :MXM :rhs rhs :fkey "" }
+         a2 { :kind :MXM :rhs lhs :fkey "" }
          am (:assocs pojo)
-         m1 (assoc am "lhs" a1)
-         m2 (assoc m1 "rhs" a2) ]
+         m1 (assoc am ":lhs" a1)
+         m2 (assoc m1 ":rhs" a2) ]
     (-> pojo
       (assoc :assocs m2)
       (assoc :mxm true)) ))
@@ -177,8 +177,8 @@
   (let [ m (:uniques pojo) ]
     (assoc pojo :uniques (merge m uniqs))))
 
-(defn with-db-field "" [pojo fid fdef]
-  (let [ dft { :column (.toUpperCase (name fid))
+(defn- get-fld-template "" [fid]
+  { :column (.toUpperCase (name fid))
                :size 255
                :domain :String
                :assoc-key false
@@ -188,7 +188,10 @@
                :dft nil
                :updatable true
                :system false
-               :index "" }
+               :index "" } )
+
+(defn with-db-field "" [pojo fid fdef]
+  (let [ dft (get-fld-template fid)
          fd (assoc (merge dft fdef) :id (keyword fid))
          fm (:fields pojo)
          mm (assoc fm fid fd) ]
@@ -202,9 +205,25 @@
 
 (defn with-db-assoc "" [pojo aid adef]
   (let [ dft { :kind nil :rhs nil :fkey "" }
+         pid (:id pojo)
          ad (merge dft adef)
+         a2 (case (:kind ad)
+              :O2O
+              (assoc ad
+                     :fkey
+                     (keyword (if (true? (:singly ad))
+                                  (str "fk_" (name pid) "_" (name aid))
+                                  (str "fk_" (name (:rhs ad)) "_" (name aid))) ))
+              :O2M
+              (assoc ad
+                     :fkey
+                     (keyword (str "fk_" (name pid) "_" (name aid))))
+              (:M2M :MXM)
+              ad
+
+              (throw (DBIOError. (str "Invalid assoc def " adef))))
          am (:assocs pojo)
-         mm (assoc am aid ad) ]
+         mm (assoc am aid a2) ]
     (assoc pojo :assocs mm)))
 
 (defn with-db-assocs "" [pojo assocs]
@@ -251,58 +270,40 @@
   (reify Schema
     (getModels [_] theModels)) )
 
-(defn- resolve-local-assoc "" [ms zm]
-  (let [ socs (:assocs zm)
-         zid (:id zm) ]
-    (if (or (nil? socs) (empty? socs))
-      #{}
-      (with-local-vars [rc (transient #{}) ]
-        (doseq [ [id soc] (seq socs) ]
-          (let [ kind (:kind soc)
-                 rhs (:rhs soc)
-                 ^String col (case kind
-                        :O2M
-                        (str (CU/stripNSPath rhs) "|" "fk_"
-                             (name zid) "_" (name id))
-                        :O2O
-                        (str (CU/stripNSPath zid) "|" "fk_"
-                             (name rhs) "_" (name id))
-                        :M2M
-                        (if (nil? (get ms (:joined soc)))
-                          (dbio-error
-                            (str "Missing joined model for m2m assoc " id))
-                          "")
-                        :MxM
-                        ""
-                        (dbio-error (str "Invalid assoc type " kind))) ]
-            (when (SU/hgl? col)
-              (var-set rc (conj! @rc col)))))
-        (persistent! @rc) ))))
-
-(defn- resolve-assoc "" [ms m]
-  (let [ par (:parent m) ]
-    (if (nil? par)
-      (union #{} (resolve-local-assoc ms m))
-      (union #{} (resolve-local-assoc ms m) (resolve-assoc ms (get ms par))))))
-
 (defn- resolve-assocs "" [ms]
-  (with-local-vars [ rc #{} ]
-    (doseq [ en (seq ms) ]
-      (var-set rc (union @rc (resolve-assoc ms (last en)) )))
-    @rc))
-
-(defn- inject-fkeys-models "" [ms fks]
-  (with-local-vars [ rc (merge {} ms) ]
-    (doseq [ ^String k (seq fks) ]
-      (let [ ss (.split k "\\|")
-             id (keyword (nth ss 0))
-             fid (keyword (nth ss 1))
-             pojo (get ms id) ]
-        (var-set rc
-                 (assoc @rc id
-                        (with-db-field pojo fid
-                                       { :domain :Long :assoc-key true } )))))
-    @rc))
+  (println ms)
+  (let [ fdef { :domain :Long :assoc-key true } ]
+    (with-local-vars [ rc (transient {}) xs (transient {}) ]
+      ;; create placeholder maps for each model, to hold new fields from assocs.
+      (doseq [ [k m] (seq ms) ]
+        (var-set rc (assoc! @rc k {} )))
+      ;; as we find new assoc fields, add them to the placeholder maps.
+      (doseq [ [k m] (seq ms) ]
+        (let [ socs (:assocs m) ]
+          (doseq [ [x s] (seq socs) ]
+            (case (:kind s)
+              (:O2O :O2M)
+              (let [ rhs (get @rc (:rhs s))
+                     zm (get @rc k)
+                     fid (:fkey s)
+                     ft (merge (get-fld-template fid) fdef) ]
+                (case (:kind s)
+                  :O2O
+                  (if (true? (:singly s))
+                    (var-set rc (assoc! @rc (:rhs s) (assoc rhs fid ft)))
+                    (var-set rc (assoc! @rc k (assoc zm fid ft))))
+                  :O2M
+                  (var-set rc (assoc! @rc (:rhs s) (assoc rhs fid ft)))
+                  nil))
+              nil))))
+      ;; now walk through all the placeholder maps and merge those new
+      ;; fields to the actual models.
+      (let [ tm (persistent! @rc) ]
+        (doseq [ [k v] (seq tm) ]
+          (let [ zm (get ms k)
+                 fs (:fields zm) ]
+            (var-set xs (assoc! @xs k (assoc zm :fields (merge fs v))))))
+        (persistent! @xs)))))
 
 (defn- resolve-parent "" [ms m]
   (let [ par (:parent m) ]
@@ -315,6 +316,8 @@
 
       :else (dbio-error (str "Invalid parent " par)))))
 
+;; idea is walk through all models and ultimately
+;; link it's root to base-model.
 (defn- resolve-parents "" [ms]
   (persistent! (reduce (fn [sum en]
                           (let [ rc (resolve-parent ms (last en)) ]
@@ -396,13 +399,15 @@
   ^MetaCache [^Schema schema]
 
   (let [ ms (if (nil? schema) {} (mapize-models (.getModels schema)))
-         m0 (assoc ms JOINED-MODEL-MONIKER dbio-joined-model)
-         m1 (if (empty? m0) {} (resolve-parents m0))
-         m2 (assoc m1 BASEMODEL-MONIKER dbio-basemodel)
-         m3 (inject-fkeys-models m2 (resolve-assocs m2))
-         m4 (meta-models m3) ]
+         m2 (if (empty? ms)
+              {}
+              (-> (assoc ms JOINED-MODEL-MONIKER dbio-joined-model)
+                  (resolve-parents)
+                  (resolve-assocs)
+                  (assoc BASEMODEL-MONIKER dbio-basemodel)
+                  (meta-models))) ]
     (reify MetaCache
-      (getMetas [_] m4))))
+      (getMetas [_] m2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -673,7 +678,7 @@
 (defn- fmtfkey [p1 p2]
   (keyword (str "fk_" (name p1) "_" (name p2))) )
 
-(defn- clrM2M [mc sql jt obj]
+(defn- clrM2M [mc ^SQLr sql jt obj]
   (let [ pt (CU/stripNSPath (:typeid (meta obj)))
          pkey (:rowid (meta obj))
          zm (get mc jt) ]
@@ -691,7 +696,7 @@
                    (ese "rhs_typeid") " =?") [pkey pt] )
     ))
 
-(defn- setM2M [mc sql jt lhs rhs]
+(defn- setM2M [mc ^SQLr sql jt lhs rhs]
   (let [ zm (get mc jt)
          lm (meta lhs)
          rm (meta rhs) ]
@@ -704,7 +709,7 @@
           (dbio-set-fld :rhs-typeid (CU/stripNSPath (:typeid rm)))
           (dbio-set-fld :rhs-oid (:rowid rm)) )) ))
 
-(defn- getM2M [mc sql jt obj]
+(defn- getM2M [mc ^SQLr sql jt obj]
   (let [ pt (CU/stripNSPath (:typeid (meta obj)))
          pkey (:rowid (meta obj))
          zm (get mc jt) ]
@@ -719,8 +724,8 @@
     ))
 
 
-(defn- clrO2M [mc sql rt col]
-  (let [ zm (get mc rt) ]
+(defn- clrO2M [mc ^SQLr sql rt col lhs]
+  (let [ zm (get mc rt) pkey (:rowid (meta lhs)) ]
     (when (nil? zm)
       (throw (DBIOError. (str "Unknown model type " rt))))
     (let [ tbl (ese (:table zm))
@@ -741,7 +746,7 @@
                     [nid oid vid] )))
       )))
 
-(defn- clrO2O [mc sql lhs col]
+(defn- clrO2O [mc ^SQLr sql lhs col]
   (let [ ma (meta lhs)
          oid (:rowid ma)
          vid (:verid ma)

@@ -25,15 +25,14 @@
 
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.dbio.core :as DU])
-
+(use '[comzotohcljc.dbio.core])
 (use '[comzotohcljc.dbio.sql])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defn- openDB ^Connection [db]
+(defn- openDB ^Connection [^DBAPI db]
   (doto (.open db)
     (.setAutoCommit true)
     ;;(.setTransactionIsolation Connection/TRANSACTION_READ_COMMITTED)

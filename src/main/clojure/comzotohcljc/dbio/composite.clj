@@ -26,7 +26,7 @@
 
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.dbio.core :as DU])
+(use '[comzotohcljc.dbio.core])
 
 (use '[comzotohcljc.dbio.sql])
 
