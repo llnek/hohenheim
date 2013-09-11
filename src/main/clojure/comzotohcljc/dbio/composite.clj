@@ -59,7 +59,7 @@
         (let [ zm (get metas model)
                tbl (table-name zm)
                s (str "SELECT * FROM " (ese tbl))
-               [wc pms] (sql-filter-clause filters)
+               [wc pms] (sql-filter-clause zm filters)
                extra (if (SU/hgl? ordering) (str " ORDER BY " ordering) "") ]
           (if (SU/hgl? wc)
             (.doQuery proc conn (str s " WHERE " wc extra) pms model)

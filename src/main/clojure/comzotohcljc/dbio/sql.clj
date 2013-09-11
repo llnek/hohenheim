@@ -68,11 +68,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn sql-filter-clause "" [filters]
-  (let [ wc (reduce (fn [^StringBuilder sum en]
+(defn sql-filter-clause "" [zm filters]
+  (let [ flds (:fields (meta zm))
+         wc (reduce (fn [^StringBuilder sum en]
+                      (let [ k (first en) fld (get flds k)
+                             c (if (nil? fld) k (ese (:column fld))) ]
                       (SU/add-delim! sum " AND "
-                        (str (ese (first en))
-                             (if (nil? (last en)) " IS NULL " " = ? "))))
+                        (str c
+                             (if (nil? (last en)) " IS NULL " " = ? ")))))
                     (StringBuilder.)
                     (seq filters)) ]
     [ (SU/nsb wc) (CU/flatten-nil (vals filters)) ] ))
@@ -112,15 +115,13 @@
   (assoc! row (keyword (.toUpperCase cn)) cv))
 
 (defn- row2obj [finj ^ResultSet rs ^ResultSetMetaData rsmeta]
-  (let [ cc (.getColumnCount rsmeta)
-         rr (range 1 (inc cc)) ]
-    (with-local-vars [ row (transient {}) ]
-      (doseq [ ^long pos (seq rr) ]
-        (let [ cn (.getColumnName rsmeta (int pos))
-               ct (.getColumnType rsmeta (int pos))
-               cv (readOneCol ct pos rs) ]
-          (var-set row (finj @row cn ct cv))))
-      (persistent! @row) )))
+  (with-local-vars [ row (transient {}) ]
+    (doseq [ pos (range 1 (+ (.getColumnCount rsmeta) 1)) ]
+      (let [ cn (.getColumnName rsmeta (int pos))
+             ct (.getColumnType rsmeta (int pos))
+             cv (readOneCol ct (int pos) rs) ]
+        (var-set row (finj @row cn ct cv))))
+    (persistent! @row) ))
 
 (defn- insert? [^String sql]
   (.startsWith (.toLowerCase (SU/strim sql)) "insert"))
@@ -290,11 +291,12 @@
                :verid (:verid obj)
                :rowid (:rowid obj)
                :last-modify (:last-modify obj)
-              } ]
-         (with-meta (-> obj (dbio-clr-fld :rowid)
-           (dbio-clr-fld :verid)
-           (dbio-clr-fld :last-modify))
-                    mm)))
+              }
+         rc (with-meta (-> obj
+                         (dbio-clr-fld :rowid)
+                         (dbio-clr-fld :verid)
+                         (dbio-clr-fld :last-modify)) mm) ]
+    rc))
 
 (defn make-proc ""
 

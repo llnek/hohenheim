@@ -63,14 +63,20 @@
       :passwd { :null false :domain :Password }
      })
   (with-db-assocs
-    { :roles { :kind :M2M  :joined :AccountRole  :rhs :AuthRole }
-      :addr { :kind :O2M :singly true :rhs :StdAddress }
+    { :roles { :kind :M2M
+               :joined :comzotohcljc.hhh.auth.dms/AccountRole
+               :rhs :comzotohcljc.hhh.auth.dms/AuthRole }
+      :addr { :kind :O2M
+              :singly true
+              :rhs :comzotohcljc.hhh.auth.dms/StdAddress }
      })
   (with-db-uniques
     { :u2 #{ :acctid }
      }) )
 
-(defjoined AccountRole)
+(defjoined AccountRole
+           :comzotohcljc.hhh.auth.dms/LoginAccount
+           :comzotohcljc.hhh.auth.dms/AuthRole)
 
 (deftype ModuleSchema []
   Schema

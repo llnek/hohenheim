@@ -196,19 +196,27 @@
                (.insert tx p))) ]
     o2))
 
-(comment
-(defn- wedlock [h w]
-  (let [ sql (.newCompositeSQLr @DB) ]
-    (binding [ *META-CACHE* (.getMetaCache sql) ]
-      (let [ [h1 w1] (dbio-bind-assoc [:as :spouse] h w)
-             [h2 w2] (dbio-bind-assoc [:as :spouse] w1 h1) ]
+(defn- wedlock []
+  (binding [ *META-CACHE* (.getMetaCache @DB) ]
+    (let [ sql (.newCompositeSQLr @DB) ]
+      (let [ h (create-emp "joe" "blog" "joeb")
+             w (create-person "mary" "lou")
+
+            [h1 w1]
         (.execWith
-            sql
-            (fn [tx]
-              (.update tx h2)
-              (.update tx w2)))
-          ))))
-)
+          sql
+          (fn [tx]
+            (dbio-set-o2o {:as :spouse :with tx } h w)))
+
+            w2
+        (.execWith
+          sql
+          (fn [tx]
+            (dbio-get-o2o {:as :spouse
+                           :cast :testcljc.dbio.dbstuff/Person
+                           :with tx } h1)))
+            ]
+        true))))
 
 (deftest testdbio-dbstuff
 
@@ -231,7 +239,7 @@
 
          ;; one to one assoc
          ;;
-  ()
+  (is (wedlock))
 )
 
 (use-fixtures :each init-test)

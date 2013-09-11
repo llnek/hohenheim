@@ -137,9 +137,9 @@
       :fields {}
       :assocs {} }) )
 
-(defmacro defmodel! [ model-name & body]
+(defmacro ^:private defmodel! [ nsp model-name & body]
   `(def ~model-name
-    (-> (dbio-model "czc.dbio.core" ~(name model-name))
+    (-> (dbio-model ~nsp ~(name model-name))
                  ~@body)))
 
 (defmacro defmodel "Define a data model." [model-name & body]
@@ -180,6 +180,7 @@
 (defn- get-fld-template "" [fid]
   { :column (.toUpperCase (name fid))
                :size 255
+               :id fid
                :domain :String
                :assoc-key false
                :pkey false
@@ -243,7 +244,7 @@
     :else des))
 
 ;; Defining the base model here.
-(defmodel! dbio-basemodel
+(defmodel! "czc.dbio.core" dbio-basemodel
   (with-db-abstract)
   (with-db-system)
   (with-db-fields {
@@ -257,7 +258,7 @@
                   :system true :dft [""] :updatable false}
     :created-by {:column "DBIO_CREATED_BY" :system true :domain :String } }))
 
-(defmodel! dbio-joined-model
+(defmodel! "czc.dbio.core" dbio-joined-model
   (with-db-abstract)
   (with-db-system)
   (with-db-fields {
@@ -271,7 +272,6 @@
     (getModels [_] theModels)) )
 
 (defn- resolve-assocs "" [ms]
-  (println ms)
   (let [ fdef { :domain :Long :assoc-key true } ]
     (with-local-vars [ rc (transient {}) xs (transient {}) ]
       ;; create placeholder maps for each model, to hold new fields from assocs.
@@ -666,13 +666,13 @@
 (defn dbio-get-fld "" [pojo fld]
   (get pojo (keyword fld)))
 
-(defn- maybeGetAssoc [mc zm id]
+(defn dbio-get-assoc [mc zm id]
   (if (nil? zm)
     nil
     (let [ m (:assocs zm)
            rc (get m id) ]
       (if (nil? rc)
-        (maybeGetAssoc mc (get mc (:parent zm)) id)
+        (dbio-get-assoc mc (get mc (:parent zm)) id)
         rc))))
 
 (defn- fmtfkey [p1 p2]
@@ -772,7 +772,7 @@
          ^SQLr sql (:with ctx)
          c (:cast ctx)
          a (:as ctx)
-         rc (maybeGetAssoc mc zm a) ]
+         rc (dbio-get-assoc mc zm a) ]
     (when (nil? rc)
       (throw (DBIOError. (str "Unknown assoc " a))))
     (case (:kind rc)
@@ -789,7 +789,7 @@
          ^SQLr sql (:with ctx)
          c (:cast ctx)
          a (:as ctx)
-         rc (maybeGetAssoc mc zm a) ]
+         rc (dbio-get-assoc mc zm a) ]
     (when (nil? rc)
       (throw (DBIOError. (str "Unknown assoc " a))))
     (case (:kind rc)
@@ -809,14 +809,14 @@
         (dbio-set-fld :rhs-oid (:rowid rhs)))
       (throw (DBIOError. (str "Bad assoc " a ", invalid type.")))) ))
 
-(defn dbio-get-assoc [ctx lhs]
+(defn dbio-load-assoc [ctx lhs]
   (let [ mc (.getMetas ^MetaCache *META-CACHE*)
          model (:typeid (meta lhs))
          zm (get mc model)
          ^SQLr sql (:with ctx)
          c (:cast ctx)
          a (:as ctx)
-         rc (maybeGetAssoc mc zm a) ]
+         rc (dbio-get-assoc mc zm a) ]
     (when (nil? rc)
       (throw (DBIOError. (str "Unknown assoc " a))))
     (case (:kind rc)
@@ -834,6 +834,44 @@
       (throw (DBIOError. (str "Bad assoc " a ", invalid type.")))) ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; handling assocs
+
+(defn dbio-get-o2o [ctx lhs]
+  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+         zm (get mc (:typeid (meta lhs)))
+         ac (dbio-get-assoc mc zm (:as ctx))
+         ^SQLr sql (:with ctx)
+         rhs (get mc (:rhs ac))
+         fid (:fkey ac)
+         [fc fv] (if (true? (:singly ac))
+                   [fid (:rowid (:meta lhs))]
+                   [:rowid (get lhs fid)] ) ]
+    (.findOne sql (:cast ctx)
+              { fc fv } )))
+
+;; :as :spouse
+(defn dbio-set-o2o [ctx lhs rhs]
+  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+         zm (get mc (:typeid (meta lhs)))
+         ac (dbio-get-assoc mc zm (:as ctx))
+         [obj fv] (if (true? (:singly ac))
+                    [ rhs (:rowid (meta lhs)) ]
+                    [ lhs (:rowid (meta rhs)) ])
+         pid (:typeid (meta obj))
+         fid (:fkey ac)
+         ^SQLr sql (:with ctx)
+         x  (->
+              (dbio-create-obj pid)
+              (dbio-set-fld fid fv)
+              (vary-meta merge-meta
+                { :rowid (:rowid (meta obj))
+                  :verid (:verid (meta obj)) } ))
+         y (.update sql x)
+         rc (merge y (dissoc obj fid)) ]
+    (if (:singly ac)
+      [lhs rc]
+      [rc rhs]) ))
+
 
 (def ^:private core-eof nil)
 
