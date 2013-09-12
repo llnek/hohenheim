@@ -157,8 +157,8 @@
   (assoc pojo :parent par))
 
 (defn with-db-joined-model "" [pojo lhs rhs]
-  (let [ a1 { :kind :MXM :rhs rhs :fkey "" }
-         a2 { :kind :MXM :rhs lhs :fkey "" }
+  (let [ a1 { :kind :MXM :rhs lhs :fkey "lhs_rowid" }
+         a2 { :kind :MXM :rhs rhs :fkey "rhs_rowid" }
          am (:assocs pojo)
          m1 (assoc am ":lhs" a1)
          m2 (assoc m1 ":rhs" a2) ]
@@ -205,23 +205,20 @@
     @rcmap))
 
 (defn with-db-assoc "" [pojo aid adef]
-  (let [ dft { :kind nil :rhs nil :fkey "" }
+  (let [ dft { :kind nil :rhs nil :fkey "" :cascade false }
          pid (:id pojo)
          ad (merge dft adef)
          a2 (case (:kind ad)
               :O2O
               (assoc ad
                      :fkey
-                     (keyword (if (true? (:singly ad))
-                                  (str "fk_" (name pid) "_" (name aid))
-                                  (str "fk_" (name (:rhs ad)) "_" (name aid))) ))
+                     (keyword (str "fk_" (name pid) "_" (name aid)) ))
               :O2M
               (assoc ad
                      :fkey
                      (keyword (str "fk_" (name pid) "_" (name aid))))
               (:M2M :MXM)
               ad
-
               (throw (DBIOError. (str "Invalid assoc def " adef))))
          am (:assocs pojo)
          mm (assoc am aid a2) ]
@@ -262,9 +259,9 @@
   (with-db-abstract)
   (with-db-system)
   (with-db-fields {
-    :lhs-typeid {:column "LHS_TYPEID" :null false}
+    :lhs-typeid {:column "LHS_TYPEID" }
     :lhs-oid {:column "LHS_ROWID" :domain :Long :null false}
-    :rhs-typeid {:column "RHS_TYPEID" :null false}
+    :rhs-typeid {:column "RHS_TYPEID" }
     :rhs-oid {:column "RHS_ROWID" :domain :Long :null false} }) )
 
 (defn make-Schema "" ^Schema [theModels]
@@ -287,14 +284,7 @@
                      zm (get @rc k)
                      fid (:fkey s)
                      ft (merge (get-fld-template fid) fdef) ]
-                (case (:kind s)
-                  :O2O
-                  (if (true? (:singly s))
-                    (var-set rc (assoc! @rc (:rhs s) (assoc rhs fid ft)))
-                    (var-set rc (assoc! @rc k (assoc zm fid ft))))
-                  :O2M
-                  (var-set rc (assoc! @rc (:rhs s) (assoc rhs fid ft)))
-                  nil))
+                (var-set rc (assoc! @rc (:rhs s) (assoc rhs fid ft))))
               nil))))
       ;; now walk through all the placeholder maps and merge those new
       ;; fields to the actual models.
@@ -600,6 +590,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn- fmtfkey [p1 p2]
+  (keyword (str "fk_" (name p1) "_" (name p2))) )
+
 (defn- splitLines [^String lines]
   (with-local-vars [ w (.length ^String DDL_SEP)
                      rc []
@@ -675,203 +668,183 @@
         (dbio-get-assoc mc (get mc (:parent zm)) id)
         rc))))
 
-(defn- fmtfkey [p1 p2]
-  (keyword (str "fk_" (name p1) "_" (name p2))) )
-
-(defn- clrM2M [mc ^SQLr sql jt obj]
-  (let [ pt (CU/stripNSPath (:typeid (meta obj)))
-         pkey (:rowid (meta obj))
-         zm (get mc jt) ]
-    (when (nil? zm)
-      (throw (DBIOError. (str "Unknown model type " jt))))
-    (.execute sql
-              (str "delete from " (ese (:table zm))
-                   " where "
-                   (ese "lhs_rowid") " =? and "
-                   (ese "lhs_typeid") " =?") [pkey pt] )
-    (.execute sql
-              (str "delete from " (ese (:table zm))
-                   " where "
-                   (ese "rhs_rowid") " =? and "
-                   (ese "rhs_typeid") " =?") [pkey pt] )
-    ))
-
-(defn- setM2M [mc ^SQLr sql jt lhs rhs]
-  (let [ zm (get mc jt)
-         lm (meta lhs)
-         rm (meta rhs) ]
-    (when (nil? zm)
-      (throw (DBIOError. (str "Unknown model type " jt))))
-    (.insert sql
-      (-> (dbio-create-obj jt)
-          (dbio-set-fld :lhs-typeid (CU/stripNSPath (:typeid lm)))
-          (dbio-set-fld :lhs-oid (:rowid lm))
-          (dbio-set-fld :rhs-typeid (CU/stripNSPath (:typeid rm)))
-          (dbio-set-fld :rhs-oid (:rowid rm)) )) ))
-
-(defn- getM2M [mc ^SQLr sql jt obj]
-  (let [ pt (CU/stripNSPath (:typeid (meta obj)))
-         pkey (:rowid (meta obj))
-         zm (get mc jt) ]
-    (when (nil? zm)
-      (throw (DBIOError. (str "Unknown model type " jt))))
-    (.select sql
-             (str "select * from "
-                  (ese (:table zm)) " where "
-                  (ese "lhs_rowid") " =? and "
-                  (ese "lhs_typeid") " =?" ) [pkey pt])
-
-    ))
-
-
-(defn- clrO2M [mc ^SQLr sql rt col lhs]
-  (let [ zm (get mc rt) pkey (:rowid (meta lhs)) ]
-    (when (nil? zm)
-      (throw (DBIOError. (str "Unknown model type " rt))))
-    (let [ tbl (ese (:table zm))
-           rset (.select sql (str "select "
-                                  (eseOID) "," (eseVID)
-                                  " from " tbl
-                                  " where " (ese col) " =?") [pkey]) ]
-      (doseq [ r (seq rset) ]
-        (let [ oid (:DBIO_ROWID r)
-               vid (:DBIO_VERID r)
-               nid (inc vid) ]
-          (.execute sql
-                    (str "update " tbl " set "
-                         (ese col) " = NULL,"
-                         (eseVID) " =?"
-                         " where "
-                         (eseOID) " =? and " (eseVID) " =?")
-                    [nid oid vid] )))
-      )))
-
-(defn- clrO2O [mc ^SQLr sql lhs col]
-  (let [ ma (meta lhs)
-         oid (:rowid ma)
-         vid (:verid ma)
-         nid (inc vid)
-         mt (:typeid ma)
-         zm (get mc mt) ]
-    (when (nil? zm)
-      (throw (DBIOError. (str "Unknown model type " mt))))
-    (.execute sql
-              (str "update " (ese (:table zm))
-                   " set " (ese col) " = NULL, "
-                   (eseVID) " =?"
-                   " where "
-                   (eseOID) " =? and " (eseVID) " =?")
-              [nid oid vid] )
-    (vary-meta lhs merge-meta { :verid nid })))
-
-;; { :as :associd :with sqlr :cast :x.y/z }
-(defn dbio-clr-assoc [ctx lhs]
-  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
-         model (:typeid (meta lhs))
-         zm (get mc model)
-         ^SQLr sql (:with ctx)
-         c (:cast ctx)
-         a (:as ctx)
-         rc (dbio-get-assoc mc zm a) ]
-    (when (nil? rc)
-      (throw (DBIOError. (str "Unknown assoc " a))))
-    (case (:kind rc)
-      :O2M (do (clrO2M mc sql c (fmtfkey (:id zm) a)) lhs)
-      :M2M (do (clrM2M mc sql (:joined rc) lhs) lhs)
-      :O20 (clrO2O mc sql lhs (fmtfkey (:rhs rc) a))
-      (throw (DBIOError. (str "Bad assoc " a ", invalid type.")))) ))
-
-
-(defn dbio-set-assoc [ctx lhs rhs]
-  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
-         model (:typeid (meta lhs))
-         zm (get mc model)
-         ^SQLr sql (:with ctx)
-         c (:cast ctx)
-         a (:as ctx)
-         rc (dbio-get-assoc mc zm a) ]
-    (when (nil? rc)
-      (throw (DBIOError. (str "Unknown assoc " a))))
-    (case (:kind rc)
-      :O20
-      [ (.update sql
-                 (dbio-set-fld lhs
-                               (fmtfkey (:rhs rc) a)
-                               (:rowid (meta rhs)))) rhs]
-      :02M
-      [ lhs (.update sql
-                     (dbio-set-fld rhs
-                                   (fmtfkey (:id zm) a)
-                                   (:rowid (meta lhs)))) ]
-      :M2M
-      (-> (dbio-create-obj (:joined rc))
-        (dbio-set-fld :lhs-oid (:rowid lhs))
-        (dbio-set-fld :rhs-oid (:rowid rhs)))
-      (throw (DBIOError. (str "Bad assoc " a ", invalid type.")))) ))
-
-(defn dbio-load-assoc [ctx lhs]
-  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
-         model (:typeid (meta lhs))
-         zm (get mc model)
-         ^SQLr sql (:with ctx)
-         c (:cast ctx)
-         a (:as ctx)
-         rc (dbio-get-assoc mc zm a) ]
-    (when (nil? rc)
-      (throw (DBIOError. (str "Unknown assoc " a))))
-    (case (:kind rc)
-      :O20
-      (.findOne sql
-                (if (nil? c) (:rhs rc) c)
-                { (:column (:rowid (:fields (meta zm))))
-                  (get lhs (fmtfkey (:rhs rc) a)) } )
-      :02M
-      (.findSome sql
-                 (if (nil? c) (:rhs rc) c)
-                 { (fmtfkey (:id zm) a) (:rowid (meta lhs)) })
-      :M2M
-      []
-      (throw (DBIOError. (str "Bad assoc " a ", invalid type.")))) ))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; handling assocs
 
-(defn dbio-get-o2o [ctx lhs]
+(defn- dbio-get-o2x [ctx lhs]
   (let [ mc (.getMetas ^MetaCache *META-CACHE*)
          zm (get mc (:typeid (meta lhs)))
          ac (dbio-get-assoc mc zm (:as ctx))
          ^SQLr sql (:with ctx)
-         rhs (get mc (:rhs ac))
+         rt (:cast ctx)
          fid (:fkey ac)
-         [fc fv] (if (true? (:singly ac))
-                   [fid (:rowid (:meta lhs))]
-                   [:rowid (get lhs fid)] ) ]
-    (.findOne sql (:cast ctx)
-              { fc fv } )))
+         fv (:rowid (meta lhs)) ]
+    [sql rt { fid fv} ]))
 
-;; :as :spouse
-(defn dbio-set-o2o [ctx lhs rhs]
+(defn- dbio-set-o2x [ctx lhs rhs]
   (let [ mc (.getMetas ^MetaCache *META-CACHE*)
          zm (get mc (:typeid (meta lhs)))
          ac (dbio-get-assoc mc zm (:as ctx))
-         [obj fv] (if (true? (:singly ac))
-                    [ rhs (:rowid (meta lhs)) ]
-                    [ lhs (:rowid (meta rhs)) ])
-         pid (:typeid (meta obj))
+         pid (:typeid (meta rhs))
+         fv (:rowid (meta lhs))
          fid (:fkey ac)
          ^SQLr sql (:with ctx)
-         x  (->
+         x (->
               (dbio-create-obj pid)
               (dbio-set-fld fid fv)
               (vary-meta merge-meta
-                { :rowid (:rowid (meta obj))
-                  :verid (:verid (meta obj)) } ))
-         y (.update sql x)
-         rc (merge y (dissoc obj fid)) ]
-    (if (:singly ac)
-      [lhs rc]
-      [rc rhs]) ))
+                { :rowid (:rowid (meta rhs))
+                  :verid (:verid (meta rhs)) } ))
+         y (.update sql x) ]
+    [lhs
+         (merge y (dissoc rhs fid)) ] ))
 
+;; one to many assocs
+;;
+(defn dbio-get-o2m [ctx lhs]
+  (let [ [^SQLr sql rt pms] (dbio-get-o2x ctx lhs) ]
+    (.findSome sql rt pms)))
+
+(defn dbio-set-o2m [ctx lhs rhs]
+  (dbio-set-o2x ctx lhs rhs))
+
+(defn dbio-add-o2m [ctx lhs rhsObjs ]
+  (with-local-vars [ rc (transient []) ]
+    (doseq [ r (seq rhsObjs) ]
+      (var-set rc
+               (conj! @rc
+                      (last (dbio-set-o2x ctx lhs r)))))
+    [ lhs (persistent! @rc) ] ))
+
+(defn dbio-clr-o2m [ctx lhs]
+  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+         zm (get mc (:typeid (meta lhs)))
+         ac (dbio-get-assoc mc zm (:as ctx))
+         fv (:rowid (meta lhs))
+         rt (:cast ctx)
+         rp (if (nil? rt) (:rhs ac) rt)
+         fid (:fkey ac)
+         ^SQLr sql (:with ctx) ]
+    (.execute
+      sql
+      (str "delete from "
+           (ese (:table (get mc rp)))
+           " where "
+           (ese fid) " = ?")
+      { fid fv })
+    lhs))
+
+;; one to one assocs
+;;
+(defn dbio-get-o2o [ctx lhs]
+  (let [ [^SQLr sql rt pms] (dbio-get-o2x ctx lhs) ]
+    (.findOne sql rt pms)))
+
+(defn dbio-set-o2o [ctx lhs rhs]
+  (dbio-set-o2x ctx lhs rhs))
+
+(defn dbio-clr-o2o [ctx lhs]
+  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+         zm (get mc (:typeid (meta lhs)))
+         ac (dbio-get-assoc mc zm (:as ctx))
+         fv (:rowid (meta lhs))
+         rt (:cast ctx)
+         fid (:fkey ac)
+         ^SQLr sql (:with ctx)
+         y (.findOne sql (if (nil? rt) (:rhs ac) rt) { fid fv } ) ]
+    (when-not (nil? y)
+      (let [ x (vary-meta (-> (dbio-create-obj (:typeid (meta y)))
+                   (dbio-set-fld fid nil))
+                          merge-meta (meta y)) ]
+        (.update sql x)))
+    lhs))
+
+
+;; many to many assocs
+;;
+
+(defn dbio-set-m2m [ctx lhs rhs]
+  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+         lid (:typeid (meta lhs))
+         rid (:typeid (meta rhs))
+         lv (:rowid (meta lhs))
+         rv (:rowid (meta rhs))
+         zm (get mc lid)
+         ac (dbio-get-assoc mc zm (:as ctx))
+         mm (get mc (:joined ac))
+         ml (:rhs (:lhs (:assocs mm)))
+         rl (:rhs (:rhs (:assocs mm)))
+         ^SQLr sql (:with ctx)
+         x (dbio-create-obj (:typeid (meta mm)))
+         y  (if (= ml lid)
+              (-> x
+                (dbio-set-fld :lhs-typeid (CU/stripNSPath lid))
+                (dbio-set-fld :lhs-oid lv)
+                (dbio-set-fld :rhs-typeid (CU/stripNSPath rid))
+                (dbio-set-fld :rhs-oid rv))
+              (-> x
+                (dbio-set-fld :lhs-typeid (CU/stripNSPath rid))
+                (dbio-set-fld :lhs-oid rv)
+                (dbio-set-fld :rhs-typeid (CU/stripNSPath lid))
+                (dbio-set-fld :rhs-oid lv))) ]
+    (.insert sql y)))
+
+(defn dbio-clr-m2m [ctx lhs]
+  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+         lid (:typeid (meta lhs))
+         lv (:rowid (meta lhs))
+         zm (get mc lid)
+         ac (dbio-get-assoc mc zm (:as ctx))
+         mm (get mc (:joined ac))
+         ml (:rhs (:lhs (:assocs mm)))
+         rl (:rhs (:rhs (:assocs mm)))
+         ^SQLr sql (:with ctx)
+         [x y]  (if (= ml lid)
+                  [ :lhs-oid :lhs-typeid ]
+                  [ :rhs-oid :rhs-typeid ]) ]
+    (.execute
+      sql
+      (str "delete from "
+           (ese (:table mm))
+           " where "
+           (ese x) " =? and "
+           (ese y) " =?")
+      { lv lid } ) ))
+
+(defn dbio-get-m2m [ctx lhs]
+  (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+         lid (:typeid (meta lhs))
+         lv (:rowid (meta lhs))
+         zm (get mc lid)
+         ac (dbio-get-assoc mc zm (:as ctx))
+         mm (get mc (:joined ac))
+         flds (:fields (meta mm))
+         ml (:rhs (:lhs (:assocs mm)))
+         rl (:rhs (:rhs (:assocs mm)))
+         ^SQLr sql (:with ctx)
+         [x y z k a t]  (if (= ml lid)
+                        [:lhs-typeid :rhs-typeid
+                         :lhs-oid :rhs-oid ml rl]
+                        [:rhs-typeid :lhs-typeid
+                         :rhs-oid :lhs-oid rl ml] ) ]
+    (.select
+      sql
+      (str "select distinct RES.* from "
+           (ese (:table (get mc t)))
+           " RES join " (ese (:table mm)) " MM on "
+           (ese (str "MM." (:column (x flds))))
+           "=? and "
+           (ese (str "MM." (:column (y flds))))
+           "=? and "
+           (ese (str "MM." (:column (z flds))))
+           "=? and "
+           (ese (str "MM." (:column (k flds))))
+           " = " (ese (str "RES." (:column (:rowid flds)))))
+      [ (CU/stripNSPath a) (CU/stripNSPath t) lv ]
+      t) ))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private core-eof nil)
 

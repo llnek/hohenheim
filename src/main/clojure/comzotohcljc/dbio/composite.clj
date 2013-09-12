@@ -65,6 +65,7 @@
             (.doQuery proc conn (str s " WHERE " wc extra) pms model)
             (.doQuery proc conn (str s extra) [] model))) )
 
+      (select [_ model sql params] (.doQuery proc conn sql params model) )
       (select [_ sql params] (.doQuery proc conn sql params) )
 
       (update [_ obj] (.doUpdate proc conn obj) )

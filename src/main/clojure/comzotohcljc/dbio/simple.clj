@@ -83,6 +83,10 @@
         (with-open [ conn (openDB db) ]
             (.doInsert proc conn obj) ))
 
+      (select [this model sql params]
+        (with-open [ conn (openDB db) ]
+            (.doQuery proc conn sql params model) ))
+
       (select [this sql params]
         (with-open [ conn (openDB db) ]
             (.doQuery proc conn sql params) ))

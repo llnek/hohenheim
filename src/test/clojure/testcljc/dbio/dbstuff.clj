@@ -98,7 +98,7 @@
   (with-db-assocs {
     :depts { :kind :O2M :rhs (dbio-scopeType "Department") }
     :emps { :kind :O2M :rhs (dbio-scopeType "Employee") }
-    :hq { :kind :O2O :rhs (dbio-scopeType "Address") :singly true }
+    :hq { :kind :O2O :rhs (dbio-scopeType "Address") }
                    })
   (with-db-uniques {
     :u1 #{ :cname }
@@ -198,25 +198,53 @@
 
 (defn- wedlock []
   (binding [ *META-CACHE* (.getMetaCache @DB) ]
-    (let [ sql (.newCompositeSQLr @DB) ]
-      (let [ h (create-emp "joe" "blog" "joeb")
-             w (create-person "mary" "lou")
+    (let [ sql (.newCompositeSQLr @DB)
+           h (create-emp "joe" "blog" "joeb")
+           w (create-person "mary" "lou")
 
-            [h1 w1]
-        (.execWith
-          sql
-          (fn [tx]
-            (dbio-set-o2o {:as :spouse :with tx } h w)))
+           [h1 w1] (.execWith
+                     sql
+                     (fn [tx] (dbio-set-o2o {:as :spouse :with tx } h w)))
+           w2 (.execWith
+                sql
+                (fn [tx] (dbio-get-o2o
+                           {:as :spouse
+                            :cast :testcljc.dbio.dbstuff/Person
+                            :with tx } h1))) ]
+      (and (not (nil? h))
+           (not (nil? w))
+           (not (nil? w2))))))
 
-            w2
-        (.execWith
-          sql
-          (fn [tx]
-            (dbio-get-o2o {:as :spouse
-                           :cast :testcljc.dbio.dbstuff/Person
-                           :with tx } h1)))
-            ]
-        true))))
+
+(defn- undo-wedlock []
+  (binding [ *META-CACHE* (.getMetaCache @DB) ]
+    (let [ sql (.newCompositeSQLr @DB)
+           h (fetch-emp "joeb")
+           w (.execWith
+               sql
+               (fn [tx] (dbio-get-o2o
+                          { :as :spouse
+                            :with tx
+                            :cast :testcljc.dbio.dbstuff/Person } h)))
+           h1 (.execWith
+                sql
+                (fn [tx] (dbio-clr-o2o
+                           {:as :spouse
+                             :with tx
+                             :cast :testcljc.dbio.dbstuff/Person } h)))
+           w1 (.execWith
+                sql
+                (fn [tx] (dbio-get-o2o
+                           { :as :spouse
+                             :with tx
+                             :cast :testcljc.dbio.dbstuff/Person } h1))) ]
+      (and
+        (not (nil? h))
+        (not (nil? w))
+        (not (nil? h1))
+        (nil? w1)))) )
+
+
 
 (deftest testdbio-dbstuff
 
@@ -240,6 +268,7 @@
          ;; one to one assoc
          ;;
   (is (wedlock))
+  (is (undo-wedlock))
 )
 
 (use-fixtures :each init-test)

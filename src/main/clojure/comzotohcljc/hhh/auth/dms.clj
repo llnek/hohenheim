@@ -66,8 +66,8 @@
     { :roles { :kind :M2M
                :joined :comzotohcljc.hhh.auth.dms/AccountRole
                :rhs :comzotohcljc.hhh.auth.dms/AuthRole }
-      :addr { :kind :O2M
-              :singly true
+      :addr { :kind :O2O
+              :cascade true
               :rhs :comzotohcljc.hhh.auth.dms/StdAddress }
      })
   (with-db-uniques
