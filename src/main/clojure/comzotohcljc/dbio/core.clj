@@ -105,6 +105,9 @@
       (SU/has-nocase? lp "h2") :h2
       :else (dbio-error (str "Unknown db product " product)))))
 
+(defn- fmtfkey [p1 p2]
+  (keyword (str "fk_" (name p1) "_" (name p2))) )
+
 (defn match-dbtype "" [^String dbtype]
   (let [ kw (keyword (.toLowerCase dbtype)) ]
     (if (nil? (get DBTYPES kw)) nil kw)))
@@ -157,11 +160,11 @@
   (assoc pojo :parent par))
 
 (defn with-db-joined-model "" [pojo lhs rhs]
-  (let [ a1 { :kind :MXM :rhs lhs :fkey "lhs_rowid" }
-         a2 { :kind :MXM :rhs rhs :fkey "rhs_rowid" }
+  (let [ a1 { :kind :MXM :rhs lhs :fkey :lhs_rowid }
+         a2 { :kind :MXM :rhs rhs :fkey :rhs_rowid }
          am (:assocs pojo)
-         m1 (assoc am ":lhs" a1)
-         m2 (assoc m1 ":rhs" a2) ]
+         m1 (assoc am :lhs a1)
+         m2 (assoc m1 :rhs a2) ]
     (-> pojo
       (assoc :assocs m2)
       (assoc :mxm true)) ))
@@ -209,16 +212,8 @@
          pid (:id pojo)
          ad (merge dft adef)
          a2 (case (:kind ad)
-              :O2O
-              (assoc ad
-                     :fkey
-                     (keyword (str "fk_" (name pid) "_" (name aid)) ))
-              :O2M
-              (assoc ad
-                     :fkey
-                     (keyword (str "fk_" (name pid) "_" (name aid))))
-              (:M2M :MXM)
-              ad
+              (:O2O :O2M) (assoc ad :fkey (fmtfkey pid aid))
+              (:M2M :MXM) ad
               (throw (DBIOError. (str "Invalid assoc def " adef))))
          am (:assocs pojo)
          mm (assoc am aid a2) ]
@@ -590,9 +585,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- fmtfkey [p1 p2]
-  (keyword (str "fk_" (name p1) "_" (name p2))) )
-
 (defn- splitLines [^String lines]
   (with-local-vars [ w (.length ^String DDL_SEP)
                      rc []
@@ -679,7 +671,7 @@
          rt (:cast ctx)
          fid (:fkey ac)
          fv (:rowid (meta lhs)) ]
-    [sql rt { fid fv} ]))
+    [sql (if (nil? rt) (:rhs ac) rt) { fid fv} ]))
 
 (defn- dbio-set-o2x [ctx lhs rhs]
   (let [ mc (.getMetas ^MetaCache *META-CACHE*)
@@ -731,7 +723,7 @@
            (ese (:table (get mc rp)))
            " where "
            (ese fid) " = ?")
-      { fid fv })
+      [ fv ])
     lhs))
 
 ;; one to one assocs
@@ -775,7 +767,7 @@
          ml (:rhs (:lhs (:assocs mm)))
          rl (:rhs (:rhs (:assocs mm)))
          ^SQLr sql (:with ctx)
-         x (dbio-create-obj (:typeid (meta mm)))
+         x (dbio-create-obj (:id mm))
          y  (if (= ml lid)
               (-> x
                 (dbio-set-fld :lhs-typeid (CU/stripNSPath lid))
@@ -796,12 +788,13 @@
          zm (get mc lid)
          ac (dbio-get-assoc mc zm (:as ctx))
          mm (get mc (:joined ac))
+         flds (:fields (meta mm))
          ml (:rhs (:lhs (:assocs mm)))
          rl (:rhs (:rhs (:assocs mm)))
          ^SQLr sql (:with ctx)
          [x y]  (if (= ml lid)
-                  [ :lhs-oid :lhs-typeid ]
-                  [ :rhs-oid :rhs-typeid ]) ]
+                  [ (:column (:lhs-oid flds)) (:column (:lhs-typeid flds)) ]
+                  [ (:column (:rhs-oid flds)) (:column (:rhs-typeid flds)) ]) ]
     (.execute
       sql
       (str "delete from "
@@ -809,7 +802,7 @@
            " where "
            (ese x) " =? and "
            (ese y) " =?")
-      { lv lid } ) ))
+      [ lv (CU/stripNSPath lid) ] ) ))
 
 (defn dbio-get-m2m [ctx lhs]
   (let [ mc (.getMetas ^MetaCache *META-CACHE*)
@@ -829,19 +822,20 @@
                          :rhs-oid :lhs-oid rl ml] ) ]
     (.select
       sql
-      (str "select distinct RES.* from "
+      t
+      (str "select distinct " (ese "RES") ".* from "
            (ese (:table (get mc t)))
-           " RES join " (ese (:table mm)) " MM on "
-           (ese (str "MM." (:column (x flds))))
+           " " (ese "RES") " join " (ese (:table mm)) " " (ese "MM") " on "
+           (str (ese "MM") "." (ese (:column (x flds))))
            "=? and "
-           (ese (str "MM." (:column (y flds))))
+           (str (ese "MM") "." (ese (:column (y flds))))
            "=? and "
-           (ese (str "MM." (:column (z flds))))
+           (str (ese "MM") "." (ese (:column (z flds))))
            "=? and "
-           (ese (str "MM." (:column (k flds))))
-           " = " (ese (str "RES." (:column (:rowid flds)))))
+           (str (ese "MM") "." (ese (:column (k flds))))
+           " = " (str (ese "RES") "." (ese (:column (:rowid flds)))))
       [ (CU/stripNSPath a) (CU/stripNSPath t) lv ]
-      t) ))
+      )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

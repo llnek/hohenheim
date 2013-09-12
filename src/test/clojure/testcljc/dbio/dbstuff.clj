@@ -143,6 +143,16 @@
       (dbio-set-fld :desc "idiot")
       (dbio-set-fld :login login ))))
 
+(defn- create-company [cname]
+  (-> (dbio-create-obj :testcljc.dbio.dbstuff/Company)
+    (dbio-set-fld :cname cname)
+    (dbio-set-fld :revenue 100.00)
+    (dbio-set-fld :logo (.getBytes "hi"))))
+
+(defn- create-dept [dname]
+  (-> (dbio-create-obj :testcljc.dbio.dbstuff/Department)
+    (dbio-set-fld :dname dname)))
+
 (defn- create-emp[fname lname login]
   (let [ obj (mkEmp fname lname login)
          sql (.newCompositeSQLr @DB)
@@ -244,6 +254,152 @@
         (not (nil? h1))
         (nil? w1)))) )
 
+(defn- test-company []
+  (binding [ *META-CACHE* (.getMetaCache @DB) ]
+    (let [ sql (.newCompositeSQLr @DB)
+           c (.execWith
+               sql
+               (fn [tx]
+                 (.insert tx (create-company "acme")))) ]
+      (.execWith
+         sql
+         (fn [tx]
+           (dbio-set-o2m {:as :depts :with tx}
+                             c (.insert tx (create-dept "d1")))))
+      (.execWith
+         sql
+         (fn [tx]
+           (dbio-add-o2m {:as :depts :with tx}
+                         c
+                         [ (.insert tx (create-dept "d2"))
+                           (.insert tx (create-dept "d3")) ] )))
+      (.execWith
+        sql
+        (fn [tx]
+          (dbio-add-o2m
+            {:as :emps :with tx }
+            c
+            [ (.insert tx (mkEmp "emp1" "ln1" "e1"))
+              (.insert tx (mkEmp "emp2" "ln2" "e2"))
+              (.insert tx (mkEmp "emp3" "ln3" "e3")) ])))
+
+      (let [ ds (.execWith
+                  sql
+                  (fn [tx] (dbio-get-o2m  {:as :depts :with tx} c)))
+             es (.execWith
+                  sql
+                  (fn [tx] (dbio-get-o2m  {:as :emps :with tx} c))) ]
+        (and (= (count ds) 3)
+             (= (count es) 3))) )))
+
+
+(defn- test-m2m []
+  (binding [ *META-CACHE* (.getMetaCache @DB) ]
+    (let [ sql (.newCompositeSQLr @DB)
+           c (.execWith
+               sql
+               (fn [tx]
+                 (.findOne tx :testcljc.dbio.dbstuff/Company {:cname "acme"} )))
+           ds (.execWith
+                sql
+                (fn [tx] (dbio-get-o2m {:as :depts :with tx} c)))
+           es (.execWith
+                sql
+                (fn [tx] (dbio-get-o2m {:as :emps :with tx} c))) ]
+      (.execWith
+        sql
+        (fn [tx]
+          (doseq [ d (seq ds) ]
+            (if (= (:dname d) "d2")
+              (doseq [ e (seq es) ]
+                (dbio-set-m2m {:as :emps :with tx} d e))))
+          (doseq [ e (seq es) ]
+            (if (= (:login e) "e2")
+              (doseq [ d (seq ds) ]
+                (dbio-set-m2m {:as :depts :with tx} e d)))) ))
+
+      (let [ s1 (.execWith
+                  sql
+                  (fn [tx]
+                    (dbio-get-m2m
+                    {:as :emps :with tx}
+                    (some (fn [d]
+                              (if (= (:dname d) "d2") d nil)) ds) )))
+             s2 (.execWith
+                  sql
+                  (fn [tx]
+                    (dbio-get-m2m
+                    {:as :depts :with tx}
+                    (some (fn [e]
+                              (if (= (:login e) "e2") e nil)) es) ))) ]
+        (and (== (count s1) 3)
+             (== (count s2) 3)) ))))
+
+(defn- undo-m2m []
+  (binding [ *META-CACHE* (.getMetaCache @DB) ]
+    (let [ sql (.newCompositeSQLr @DB)
+           d2 (.execWith
+               sql
+               (fn [tx]
+                 (.findOne tx :testcljc.dbio.dbstuff/Department {:dname "d2"} )))
+           e2 (.execWith
+               sql
+               (fn [tx]
+                 (.findOne tx :testcljc.dbio.dbstuff/Employee {:login "e2"} ))) ]
+
+      (.execWith
+        sql
+        (fn [tx]
+          (dbio-clr-m2m { :as :emps :with tx } d2)))
+
+      (.execWith
+        sql
+        (fn [tx]
+          (dbio-clr-m2m { :as :depts :with tx } e2)))
+
+      (let [ s1 (.execWith
+                  sql
+                  (fn [tx]
+                    (dbio-get-m2m {:as :emps :with tx} d2)))
+
+             s2 (.execWith
+                  sql
+                  (fn [tx]
+                    (dbio-get-m2m {:as :depts :with tx} e2))) ]
+
+        (and (== (count s1) 0)
+             (== (count s2) 0)) ))))
+
+
+(defn- undo-company []
+  (binding [ *META-CACHE* (.getMetaCache @DB) ]
+    (let [ sql (.newCompositeSQLr @DB)
+           c (.execWith
+               sql
+               (fn [tx]
+                 (.findOne tx :testcljc.dbio.dbstuff/Company {:cname "acme"} ))) ]
+      (.execWith
+        sql
+        (fn [tx]
+          (dbio-clr-o2m {:as :depts :with tx} c)))
+
+      (.execWith
+        sql
+        (fn [tx]
+          (dbio-clr-o2m {:as :emps :with tx} c)))
+
+      (let [ s1 (.execWith
+                  sql
+                  (fn [tx]
+                    (dbio-get-o2m {:as :depts :with tx} c)))
+             s2 (.execWith
+                  sql
+                  (fn [tx]
+                    (dbio-get-o2m {:as :emps :with tx} c))) ]
+
+        (and (== (count s1) 0)
+             (== (count s2) 0))))))
+
 
 
 (deftest testdbio-dbstuff
@@ -269,6 +425,16 @@
          ;;
   (is (wedlock))
   (is (undo-wedlock))
+
+         ;; one to many assocs
+  (is (test-company))
+
+         ;; m to m assocs
+  (is (test-m2m))
+  (is (undo-m2m))
+
+  (is (undo-company))
+
 )
 
 (use-fixtures :each init-test)
