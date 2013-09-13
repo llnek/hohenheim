@@ -17,9 +17,7 @@
  ??*/
 
 
-package com.zotoh.frwk.util;
-
-
+package testzotoh.java.frwk.util;
 
 import mikera.cljunit.ClojureTest;
 
@@ -46,8 +44,12 @@ public class ClojureJUnit extends ClojureTest {
                 "testcljc.net.netstuff",
                 "testcljc.i18n.i18nstuff",
                 "testcljc.crypto.cryptostuff",
-                "testcljc.crypto.mimestuff"
+                "testcljc.crypto.mimestuff",
+                "testcljc.dbio.dbstuff",
+                "testcljc.hhh.auth"
 
         });
     }
 }
+
+

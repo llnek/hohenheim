@@ -309,6 +309,7 @@
       <arg value="testcljc.crypto.cryptostuff" />
       <arg value="testcljc.crypto.mimestuff" />
       <arg value="testcljc.dbio.dbstuff" />
+      <arg value="testcljc.hhh.auth" />
     </java>
     <copy todir="${build.test.dir}">
       <fileset dir="${test.dir}/clojure">
@@ -361,7 +362,7 @@
     <junit logfailedtests="true" showoutput="false" printsummary="yes" fork="yes" haltonfailure="yes" >
       <classpath refid="test.path.id"/>
       <formatter type="plain" usefile="false"/>
-      <test name="com.zotoh.frwk.util.ClojureJUnit" todir="${report.test.dir}">
+      <test name="testzotoh.java.frwk.util.ClojureJUnit" todir="${report.test.dir}">
         <formatter type="xml"/>
       </test>
     </junit>

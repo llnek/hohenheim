@@ -18,8 +18,11 @@
 
 (import '(com.zotoh.hohenheim.runtime AuthError UnknownUser))
 (import '(java.io File))
+(import '(com.zotoh.frwk.dbio
+  Transactable SQLr MetaCache DBAPI))
 
 (require '[comzotohcljc.crypto.codec :as CE])
+(require '[comzotohcljc.util.core :as CU])
 (use '[comzotohcljc.hhh.auth.core])
 (use '[comzotohcljc.hhh.auth.dms])
 (use '[comzotohcljc.dbio.drivers])
@@ -39,95 +42,98 @@
   (let [ dir (File. (System/getProperty "java.io.tmpdir"))
          db (str "" (System/currentTimeMillis))
          url (make-h2-db dir db "sa" (CE/pwdify ""))
-        jdbc (make-jdbc "x"
+        jdbc (make-jdbc (CU/uid)
                { :d H2-DRIVER :url url :user "sa" :passwd "" }
                (CE/pwdify "")) ]
     (reset! JDBC jdbc)
     (apply-authPlugin-ddl jdbc)
     (reset! DB (dbio-connect jdbc @METAC {})))
-  (f)
+  (if (nil? f) nil (f))
     )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- create-roles []
-  (binding [ *META-CACHE* (.getMetaCache @DB) ]
-    (let [ sql (.newCompositeSQLr @DB) ]
+  (binding [ *META-CACHE* (.getMetaCache ^DBAPI @DB) ]
+    (let [ ^Transactable sql (.newCompositeSQLr ^DBAPI @DB) ]
       (.execWith
         sql
-        (fn [tx]
+        (fn [^SQLr tx]
           (create-authRole tx "Admin" "???")
           (create-authRole tx "User" "???")
           (create-authRole tx "Developer" "???")
           (create-authRole tx "Tester" "???")))
       (let [ rs (.execWith
                   sql
-                  (fn [tx]
+                  (fn [^SQLr tx]
                     (.findAll tx
                               :czc.hhh.auth/AuthRole
                               "order by role_name desc"))) ]
         (== (count rs) 4)))))
 
 (defn- fetch-roles []
-  (binding [ *META-CACHE* (.getMetaCache @DB) ]
-    (let [ sql (.newCompositeSQLr @DB)
+  (binding [ *META-CACHE* (.getMetaCache ^DBAPI @DB) ]
+    (let [ ^Transactable sql (.newCompositeSQLr ^DBAPI @DB)
            rs (.execWith
                 sql
-                (fn [tx] (.findAll tx :czc.hhh.auth/AuthRole ))) ]
+                (fn [^SQLr tx] (.findAll tx :czc.hhh.auth/AuthRole ))) ]
       (reduce (fn [sum r]
                 (assoc sum (:name r) r))
               {}
               (seq rs)))))
 
 (defn- create-acct []
-  (binding [ *META-CACHE* (.getMetaCache @DB) ]
-    (let [ sql (.newCompositeSQLr @DB)
+  (binding [ *META-CACHE* (.getMetaCache ^DBAPI @DB) ]
+    (let [ ^Transactable sql (.newCompositeSQLr ^DBAPI @DB)
            ros (fetch-roles)
            u (.execWith
                sql
-               (fn [tx]
+               (fn [^SQLr tx]
                  (create-loginAccount tx "joeb" (CE/pwdify "hi")
                                       [ (get ros "User") ] )))
            rc (.execWith
                 sql
-                (fn [tx]
+                (fn [^SQLr tx]
                   (dbio-get-m2m {:as :roles :with tx} u))) ]
       (== (count rc) 1))))
 
 (defn- load-acct-nouser []
-  (binding [ *META-CACHE* (.getMetaCache @DB) ]
-    (let [ sql (.newCompositeSQLr @DB) ]
+  (binding [ *META-CACHE* (.getMetaCache ^DBAPI @DB) ]
+    (let [ ^Transactable sql (.newCompositeSQLr ^DBAPI @DB) ]
       (try
         (.execWith
           sql
-          (fn [tx]
+          (fn [^SQLr tx]
             (get-loginAccount tx "xxxxx" (CE/pwdify "7soiwqhfasfhals"))))
         false
         (catch UnknownUser e#
           true)))))
 
 (defn- load-acct-badpwd [user]
-  (binding [ *META-CACHE* (.getMetaCache @DB) ]
-    (let [ sql (.newCompositeSQLr @DB) ]
+  (binding [ *META-CACHE* (.getMetaCache ^DBAPI @DB) ]
+    (let [ ^Transactable sql (.newCompositeSQLr ^DBAPI @DB) ]
       (try
         (.execWith
           sql
-          (fn [tx]
+          (fn [^SQLr tx]
             (get-loginAccount tx user (CE/pwdify "7soiwqhfasfhals"))))
         false
         (catch AuthError e#
           true)))))
 
 (defn- load-acct-ok [user pwd]
-  (binding [ *META-CACHE* (.getMetaCache @DB) ]
-    (let [ sql (.newCompositeSQLr @DB)
+  (binding [ *META-CACHE* (.getMetaCache ^DBAPI @DB) ]
+    (let [ ^Transactable sql (.newCompositeSQLr ^DBAPI @DB)
            u (.execWith
                sql
-               (fn [tx]
+               (fn [^SQLr tx]
                  (get-loginAccount tx user (CE/pwdify pwd)))) ]
       (not (nil? u)))))
 
 (deftest testdbio-dbstuff
+
+  (is (do (init-test nil) true))
+
   (is (create-roles))
   (is (create-acct))
   (is (load-acct-ok "joeb" "hi"))
@@ -137,7 +143,7 @@
 
 
 
-(use-fixtures :each init-test)
+;;(use-fixtures :each init-test)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -145,6 +151,6 @@
 
 (def ^:private auth-eof nil)
 
-(clojure.test/run-tests 'testcljc.hhh.auth)
+;;(clojure.test/run-tests 'testcljc.hhh.auth)
 
 
