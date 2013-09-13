@@ -140,7 +140,7 @@
       :fields {}
       :assocs {} }) )
 
-(defmacro ^:private defmodel! [ nsp model-name & body]
+(defmacro defmodel! [ nsp model-name & body]
   `(def ~model-name
     (-> (dbio-model ~nsp ~(name model-name))
                  ~@body)))
@@ -149,6 +149,12 @@
   `(def ~model-name
     (-> (dbio-model ~(name model-name))
                  ~@body)))
+
+(defmacro defjoined! [nsp model-name lhs rhs]
+  `(def ~model-name
+      (-> (dbio-model ~nsp ~(name model-name))
+                (with-db-parent-model JOINED-MODEL-MONIKER)
+                (with-db-joined-model ~lhs ~rhs))))
 
 (defmacro defjoined [model-name lhs rhs]
   `(def ~model-name
@@ -781,6 +787,40 @@
                 (dbio-set-fld :rhs-oid lv))) ]
     (.insert sql y)))
 
+(defn dbio-clr-m2m
+  ([ctx lhs] (dbio-clr-m2m ctx lhs nil))
+  ([ctx lhs rhs]
+    (let [ mc (.getMetas ^MetaCache *META-CACHE*)
+           lid (:typeid (meta lhs))
+           lv (:rowid (meta lhs))
+           rid (:typeid (meta rhs))
+           rv (:rowid (meta rhs))
+           zm (get mc lid)
+           ac (dbio-get-assoc mc zm (:as ctx))
+           mm (get mc (:joined ac))
+           flds (:fields (meta mm))
+           ml (:rhs (:lhs (:assocs mm)))
+           rl (:rhs (:rhs (:assocs mm)))
+           ^SQLr sql (:with ctx)
+           [x y a b]  (if (= ml lid)
+                        [ (:column (:lhs-oid flds)) (:column (:lhs-typeid flds))
+                          (:column (:rhs-oid flds)) (:column (:rhs-typeid flds)) ]
+                        [ (:column (:rhs-oid flds)) (:column (:rhs-typeid flds))
+                          (:column (:lhs-oid flds)) (:column (:lhs-typeid flds)) ]) ]
+      (if (nil? rhs)
+        (.execute
+          sql
+          (str "delete from " (ese (:table mm))
+           " where " (ese x) " =? and " (ese y) " =?")
+          [ lv (CU/stripNSPath lid) ] )
+        (.execute
+          sql
+          (str "delete from " (ese (:table mm))
+           " where " (ese x) " =? and " (ese y) " =? and "
+           (ese a) " =? and " (ese b) " =?" )
+          [ lv (CU/stripNSPath lid)
+            rv (CU/stripNSPath rid) ])) )))
+
 (defn dbio-clr-m2m [ctx lhs]
   (let [ mc (.getMetas ^MetaCache *META-CACHE*)
          lid (:typeid (meta lhs))
@@ -815,6 +855,8 @@
          ml (:rhs (:lhs (:assocs mm)))
          rl (:rhs (:rhs (:assocs mm)))
          ^SQLr sql (:with ctx)
+         eseRES (ese "RES")
+         eseMM (ese "MM")
          [x y z k a t]  (if (= ml lid)
                         [:lhs-typeid :rhs-typeid
                          :lhs-oid :rhs-oid ml rl]
@@ -823,17 +865,17 @@
     (.select
       sql
       t
-      (str "select distinct " (ese "RES") ".* from "
+      (str "select distinct " eseRES ".* from "
            (ese (:table (get mc t)))
-           " " (ese "RES") " join " (ese (:table mm)) " " (ese "MM") " on "
-           (str (ese "MM") "." (ese (:column (x flds))))
+           " " eseRES " join " (ese (:table mm)) " " eseMM " on "
+           (str eseMM "." (ese (:column (x flds))))
            "=? and "
-           (str (ese "MM") "." (ese (:column (y flds))))
+           (str eseMM "." (ese (:column (y flds))))
            "=? and "
-           (str (ese "MM") "." (ese (:column (z flds))))
+           (str eseMM "." (ese (:column (z flds))))
            "=? and "
-           (str (ese "MM") "." (ese (:column (k flds))))
-           " = " (str (ese "RES") "." (ese (:column (:rowid flds)))))
+           (str eseMM "." (ese (:column (k flds))))
+           " = " (str eseRES "." (ese (:column (:rowid flds)))))
       [ (CU/stripNSPath a) (CU/stripNSPath t) lv ]
       )))
 

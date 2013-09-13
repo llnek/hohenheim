@@ -34,7 +34,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmodel StdAddress
+(defmodel! "czc.hhh.auth" StdAddress
   (with-db-fields {
     :addr1 { :size 200 :null false }
     :addr2 { :size 64}
@@ -48,7 +48,7 @@
     :state #{ :state }
     :zip #{ :zip } } ))
 
-(defmodel AuthRole
+(defmodel! "czc.hhh.auth"  AuthRole
   (with-db-fields
     { :name { :column "role_name" :null false }
       :desc { :column "description" :null false }
@@ -57,33 +57,32 @@
     { :u1 #{ :name }
      }) )
 
-(defmodel LoginAccount
+(defmodel!  "czc.hhh.auth" LoginAccount
   (with-db-fields
     { :acctid { :null false }
       :passwd { :null false :domain :Password }
      })
   (with-db-assocs
     { :roles { :kind :M2M
-               :joined :comzotohcljc.hhh.auth.dms/AccountRole
-               :rhs :comzotohcljc.hhh.auth.dms/AuthRole }
+               :joined :czc.hhh.auth/AccountRole }
       :addr { :kind :O2O
               :cascade true
-              :rhs :comzotohcljc.hhh.auth.dms/StdAddress }
+              :rhs :czc.hhh.auth/StdAddress }
      })
   (with-db-uniques
     { :u2 #{ :acctid }
      }) )
 
-(defjoined AccountRole
-           :comzotohcljc.hhh.auth.dms/LoginAccount
-           :comzotohcljc.hhh.auth.dms/AuthRole)
+(defjoined! "czc.hhh.auth" AccountRole
+           :czc.hhh.auth/LoginAccount
+           :czc.hhh.auth/AuthRole)
 
-(deftype ModuleSchema []
+(deftype AuthPluginSchema []
   Schema
   (getModels [_] [ StdAddress AuthRole LoginAccount AccountRole] ))
 
-(defn generate-ddl ^String [dbtype]
-  (getDDL (make-MetaCache (ModuleSchema.))
+(defn generate-authPlugin-ddl ^String [dbtype]
+  (getDDL (make-MetaCache (AuthPluginSchema.))
     (case dbtype
       (:postgres :postgresql) Postgresql
       :mysql MySQL
@@ -92,13 +91,12 @@
       :oracle Oracle
       (throw (DBIOError. (str "Unsupported database type: " dbtype)))) ))
 
-(defn apply-ddl [^JDBCInfo jdbc]
+(defn apply-authPlugin-ddl [^JDBCInfo jdbc]
   (let [ dbtype (match-jdbc-url (.getUrl jdbc)) ]
-    (upload-ddl jdbc (generate-ddl dbtype))) )
+    (upload-ddl jdbc (generate-authPlugin-ddl dbtype))) )
 
-(defn export-ddl [dbtype ^File file]
-  (FileUtils/writeStringToFile file (generate-ddl dbtype) "utf-8"))
-
+(defn export-authPlugin-ddl [dbtype ^File file]
+  (FileUtils/writeStringToFile file (generate-authPlugin-ddl dbtype) "utf-8"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

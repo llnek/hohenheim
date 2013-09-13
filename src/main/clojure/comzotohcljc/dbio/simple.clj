@@ -49,7 +49,7 @@
          metas (.getMetas metaCache) ]
     (reify SQLr
 
-      (findAll [this model ordering] (.findSome this model {} ordering))
+      (findAll [this model extra] (.findSome this model {} extra))
       (findAll [this model] (.findAll this model ""))
 
       (findOne [this model filters]
@@ -58,18 +58,16 @@
 
       (findSome [this  model filters] (.findSome this model filters ""))
 
-      (findSome [this model filters ordering]
+      (findSome [this model filters extraSQL]
         (with-open [ conn (openDB db) ]
           (let [ zm (get metas model)
                  tbl (table-name zm)
                  s (str "SELECT * FROM " (ese tbl))
                  [wc pms] (sql-filter-clause zm filters)
-                 extra (if (SU/hgl? ordering)
-                           (str " ORDER BY " ordering)
-                           "") ]
+                 extra (if (SU/hgl? extraSQL) extraSQL "") ]
             (if (SU/hgl? wc)
-              (.doQuery proc conn (str s " WHERE " wc extra) pms model)
-              (.doQuery proc conn (str s extra) [] model))) ))
+              (.doQuery proc conn (str s " WHERE " wc " " extra) pms model)
+              (.doQuery proc conn (str s " " extra) [] model))) ))
 
       (update [this obj]
         (with-open [ conn (openDB db) ]

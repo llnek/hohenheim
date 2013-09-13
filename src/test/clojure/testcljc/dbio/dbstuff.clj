@@ -60,8 +60,8 @@
     } ))
 
 (defjoined EmpDepts
-           (dbio-scopeType "Employee")
-           (dbio-scopeType "Department"))
+           (dbio-scopeType "Department")
+           (dbio-scopeType "Employee"))
 
 (defmodel Employee
   (with-db-parent-model  (dbio-scopeType "Person"))
@@ -443,5 +443,5 @@
 
 (def ^:private dbstuff-eof nil)
 
-(clojure.test/run-tests 'testcljc.dbio.dbstuff)
+;;(clojure.test/run-tests 'testcljc.dbio.dbstuff)
 

@@ -38,30 +38,42 @@
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
 
-(require '[comzotohcljc.hhh.auth.dms :as DM])
-(require '[comzotohcljc.dbio.core :as DB])
+(use '[comzotohcljc.hhh.auth.dms])
+(use '[comzotohcljc.dbio.core])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn create-role [^SQLr db role desc]
-  (.insert db { :name (SU/nsb role) :desc (SU/nsb desc) } ))
+(defn create-authRole [ ^SQLr sql ^String role ^String desc]
+  (.insert sql (-> (dbio-create-obj :czc.hhh.auth/AuthRole)
+                 (dbio-set-fld :name role)
+                 (dbio-set-fld :desc desc)) ))
 
-(defn remove-role [^SQLr db role]
-  (.delete db (SU/nsb role)))
+(defn remove-authRole [^SQLr sql role]
+  (.execute sql
+            (str "delete from "
+                 (ese (:table AuthRole))
+                 " where "
+                 (ese (:column (:name (:fields (meta AuthRole)))))
+                 " = ?")
+            [(SU/nsb role)]))
 
-(defn list-roles [^SQLr db]
-  (.findAll db :AuthRole))
+(defn list-authRoles [^SQLr sql]
+  (.findAll sql :czc.hhh.auth/AuthRole))
 
-(defn create-account  ""
-  [^SQLr db user ^comzotohcljc.crypto.codec.Password pwdObj roles]
-  (let [ v1 { :acctid (SU/nsb user) :passwd (.hashed pwdObj) }
-         v2  (.insert db v1) ]
-    v2))
+(defn create-loginAccount  ""
+  [^SQLr sql user ^comzotohcljc.crypto.codec.Password pwdObj roleObjs]
+  (let [ acc (.insert sql (-> (dbio-create-obj :czc.hhh.auth/LoginAccount)
+                            (dbio-set-fld :acctid (SU/strim user))
+                            (dbio-set-fld :passwd (.hashed pwdObj)))) ]
+    (doseq [ r (seq roleObjs) ]
+      (dbio-set-m2m { :as :roles :with sql } acc r))
+    acc))
 
-(defn get-account  ""
-  [^SQLr db ^String user ^comzotohcljc.crypto.codec.Password pwdObj]
-  (let [ acct (.findOne db :LoginAccount { :acctid user } ) ]
+(defn get-loginAccount  ""
+  [^SQLr sql ^String user ^comzotohcljc.crypto.codec.Password pwdObj]
+  (let [ acct (.findOne sql :czc.hhh.auth/LoginAccount
+                        { :acctid (SU/strim user) } ) ]
     (cond
       (nil? acct)
       (throw (UnknownUser. user))
@@ -72,18 +84,34 @@
       :else
       (throw (AuthError. "Incorrect password"))) ))
 
+(defn update-loginAccount [^SQLr sql userObj
+                      ^comzotohcljc.crypto.codec.Password pwdObj details]
+  (with-local-vars [ u (-> userObj (dbio-set-fld :passwd (.hashed pwdObj))) ]
+    (doseq [ [f v] (seq details) ]
+      (var-set u (dbio-set-fld @u f v)))
+    (.update sql @u)))
 
-(defn update-account [^SQLr db user details]
-  )
+(defn remove-loginAccount-role [^SQLr sql userObj roleObj]
+  (dbio-clr-m2m {:as :roles :with sql } userObj roleObj))
 
-(defn remove-account [^SQLr db user]
-  (.delete db (SU/nsb user)))
+(defn add-loginAccount-role [^SQLr sql userObj roleObj]
+  (dbio-set-m2m {:as :roles :with sql } userObj roleObj))
 
-(defn list-accounts [^SQLr db]
-  (.findAll db :LoginAccount))
+(defn remove-loginAccount [^SQLr sql userObj]
+  (.delete sql userObj))
 
+(defn delete-loginAccount [^SQLr sql user]
+  (.execute
+    sql
+    (str "delete from " (ese (:table LoginAccount))
+         " where " (ese (:column (:acctid (:fields (meta LoginAccount)))))
+         " =?")
+    [ (SU/strim user) ]))
 
-(defn make-plugin ^Plugin []
+(defn list-loginAccounts [^SQLr sql]
+  (.findAll sql :czc.hhh.auth/LoginAccount))
+
+(defn make-auth-plugin ^Plugin []
   (let [ impl (CU/make-mmap) ]
     (reify
       Plugin
@@ -96,8 +124,8 @@
       (initialize [_]
         (let [ pkey (.mm-g impl :appKey)
                cfg (get (.mm-g impl :cfg) (keyword "*"))
-               j (DB/make-jdbc "x" cfg (CE/pwdify (:passwd cfg) pkey)) ]
-            (DM/apply-ddl j)))
+               j (make-jdbc "x" cfg (CE/pwdify (:passwd cfg) pkey)) ]
+            (apply-authPlugin-ddl j)))
       (start [_]
         (info "AuthPlugin started."))
       (stop [_]
@@ -109,7 +137,7 @@
   PluginFactory
   (createPlugin [_]
     (require 'comzotohcljc.hhh.auth.core)
-    (make-plugin)))
+    (make-auth-plugin)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -124,16 +152,16 @@
                :key-fn keyword)
          cfg (get (:jdbc (:databases env)) (keyword db)) ]
     (when-not (nil? cfg)
-      (let [ j (DB/make-jdbc db cfg (CE/pwdify (:passwd cfg) pkey))
-             t (DB/match-jdbc-url (SU/nsb (:url cfg))) ]
+      (let [ j (make-jdbc db cfg (CE/pwdify (:passwd cfg) pkey))
+             t (match-jdbc-url (SU/nsb (:url cfg))) ]
         (cond
           (= "init-db" cmd)
           (let []
-            (DM/apply-ddl j))
+            (apply-authPlugin-ddl j))
 
           (= "gen-sql" cmd)
           (if (> (count args) 3)
-            (DM/export-ddl t (File. ^String (nth args 3))))
+            (export-authPlugin-ddl t (File. ^String (nth args 3))))
 
           :else
           nil)) )))
