@@ -111,6 +111,12 @@
 (defn list-loginAccounts [^SQLr sql]
   (.findAll sql :czc.hhh.auth/LoginAccount))
 
+(defn- init-shiro [^File appDir ^String appKey]
+  (-> (IniSecurityManagerFactory. (-> appDir (.toURI)(.toURL)))
+    (.getInstance)
+    (SecurityUtils/setSecurityManager ))
+  )
+
 (defn make-auth-plugin ^Plugin []
   (let [ impl (CU/make-mmap) ]
     (reify
@@ -125,7 +131,9 @@
         (let [ pkey (.mm-g impl :appKey)
                cfg (get (.mm-g impl :cfg) (keyword "*"))
                j (make-jdbc "x" cfg (CE/pwdify (:passwd cfg) pkey)) ]
-            (apply-authPlugin-ddl j)))
+          (apply-authPlugin-ddl j)
+          (init-shiro (.mm-g impl :appDir)
+                      (.mm-g impl :appKey))))
       (start [_]
         (info "AuthPlugin started."))
       (stop [_]
