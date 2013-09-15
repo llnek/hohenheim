@@ -587,7 +587,7 @@
          rc (server-bootstrap options)
          ^ServerBootstrap bs (first rc)
          cg (channel-group)
-         pf (make-pipeServer ssl usercb) ]
+         pf (make-pipeServer ssl usercb nil) ]
      (.setPipelineFactory bs pf)
      (.add cg (.bind bs (InetSocketAddress. host (int port))))
      (debug "netty-xxx-server: running on host " host ", port " port)
