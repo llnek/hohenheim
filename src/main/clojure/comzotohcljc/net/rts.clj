@@ -16,7 +16,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
-  comzotohcljc.hhh.mvc.rts )
+  comzotohcljc.net.rts )
 
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.io File))
@@ -88,7 +88,7 @@
                                  (SU/nsb (.group mmc ^String @r2)))))
               (persistent! @rc)))) )
 
-      { :typeid :czc.hhh.mvc/RouteInfo } )) )
+      { :typeid :czc.net/RouteInfo } )) )
 
 (defn- initRoute
 
@@ -126,9 +126,9 @@
          mpt (.optString cfile path :mount "")
          pipe (.optString cfile path :pipe "")
          ^comzotohcljc.util.core.MuObj
-         rc (make-route-info 
-              path 
-              (if (and stat (SU/nichts? verb)) "GET" verb) 
+         rc (make-route-info
+              path
+              (if (and stat (SU/nichts? verb)) "GET" verb)
               pipe) ]
     (if stat
       (do

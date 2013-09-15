@@ -34,7 +34,7 @@
 (import '(org.jboss.netty.channel.group
   ChannelGroup))
 (import '(org.jboss.netty.bootstrap ServerBootstrap))
-(import '(com.zotoh.frwk.core Identifiable))
+(import '(com.zotoh.frwk.core Hierarchial Identifiable))
 (import '(com.zotoh.hohenheim.io WebSockEvent WebSockResult))
 (import '(com.zotoh.frwk.io XData))
 (import '(org.jboss.netty.handler.codec.http.websocketx
@@ -297,10 +297,15 @@
          file (.getAttr co :serverKey)
          ssl (CU/notnil? file)
          pwd (.getAttr co :pwd)
+         ^comzotohcljc.hhh.core.sys.Element
+         ctr (.parent ^Hierarchial co)
+         routes (.getAttr ctr :routes)
          ctx (if ssl (SS/make-sslContext file pwd)) ]
     (doto bs
       (.setPipelineFactory
-        (NE/make-pipeServer ctx  (make-service-io co reqcb))))
+        (NE/make-pipeServer ctx
+                            (make-service-io co reqcb)
+                            (NE/make-routeCracker routes) )))
     (.setAttr! co :netty
       (comzotohcljc.netty.comms.NettyServer. bs nil opts))
     co))

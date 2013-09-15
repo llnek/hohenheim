@@ -130,31 +130,6 @@
         (error "failed to get static resource " (.getUri evt) e#)
         (CU/Try!  (serve-error src ch 500)))) ))
 
-(defn- seekRoute [mtd uri rts]
-  (if-not (nil? rts)
-    (some (fn [^comzotohcljc.hhh.mvc.rts.RouteInfo ri]
-            (let [ m (.resemble? ri mtd uri) ]
-              (if (nil? m) nil [ri m])))
-          (seq rts)) ))
-
-(defn- routeCracker [^HTTPEvent evt]
-  (let [ ^comzotohcljc.hhh.core.sys.Element
-         ctr (.container ^Emitter (.emitter evt))
-         rts (.getAttr ctr :routes)
-         ;;cpath (.contextPath evt)
-         mtd (.method evt)
-         uri (.getUri evt)
-         ;; [ri mc] routeinfo matcher
-         rc (seekRoute mtd uri rts)
-         rt (if (nil? rc)
-              [false nil nil ""]
-              [true (first rc)(last rc) ""] ) ]
-    (if (and (not (nth rt 0))
-             (not (.endsWith uri "/"))
-             (seekRoute mtd (str uri "/") rts))
-      [true nil nil (str uri "/")]
-      rt)))
-
 (defn- serveWelcomeFile [^HTTPEvent evt]
   (if (not (.matches (.getUri evt) "/?"))
     nil
@@ -170,7 +145,7 @@
 
 (defn- serveStatic
   [^Emitter src
-   ^comzotohcljc.hhh.mvc.rts.RouteInfo ri
+   ^comzotohcljc.net.rts.RouteInfo ri
    ^Matcher mc ^Channel ch req ^HTTPEvent evt]
   (let [ ^File appDir (-> src (.container)(.getAppDir))
          mpt (SU/nsb (.getf ^comzotohcljc.util.core.MuObj ri :mountPoint))
@@ -197,7 +172,7 @@
 
 (defn- serveRoute
   [^comzotohcljc.hhh.core.sys.Element src
-   ^comzotohcljc.hhh.mvc.rts.RouteInfo ri
+   ^comzotohcljc.net.rts.RouteInfo ri
    ^Matcher mc
    ^Channel ch
    ^comzotohcljc.util.core.MuObj evt]
@@ -219,10 +194,14 @@
   [ ^Emitter co
     ^Channel ch
     ^HttpRequest req
-    ;;^comzotohcljc.net.comms.HTTPMsgInfo msginfo
+    ^comzotohcljc.net.comms.HTTPMsgInfo msgInfo
     ^XData xdata]
   (let [ ^HTTPEvent evt (ioes-reify-event co ch req xdata)
-         [r1 ^comzotohcljc.hhh.mvc.rts.RouteInfo r2 r3 r4] (routeCracker evt) ]
+         ^comzotohcljc.hhh.core.sys.Element
+         ctr (.container co)
+         rcc (NE/make-routeCracker (.getAttr ctr :routes))
+         [r1 ^comzotohcljc.net.rts.RouteInfo r2 r3 r4]
+         (.crack rcc msgInfo) ]
     (cond
       (and r1 (SU/hgl? r4))
       (NE/sendRedirect ch false r4)
@@ -247,7 +226,7 @@
 (defmethod netty-service-req :czc.hhh.io/NettyMVC
   [^comzotohcljc.hhh.io.core.EmitterAPI co
    ch req msginfo xdata]
-  (handleOneNettyREQ co ch req xdata))
+  (handleOneNettyREQ co ch req msginfo xdata))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

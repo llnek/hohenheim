@@ -39,6 +39,7 @@
   AuthenticationException AuthenticationToken SimpleAccount))
 (import '(com.zotoh.frwk.dbio DBAPI))
 (import '(org.apache.shiro.realm CachingRealm))
+(import '(java.util Collection))
 
 (require '[comzotohcljc.crypto.codec :as CE])
 (use '[comzotohcljc.hhh.auth.core])
@@ -68,13 +69,23 @@
           (.finz db)))
       ))
 
+(defn- getAvailablePrinc [^PrincipalCollection princs ^String rname]
+  (if (or (nil? princs)
+          (.isEmpty princs))
+    nil
+    (let [ ^Collection ps (.fromRealm princs rname) ]
+      (if (or (nil? ps) (.isEmpty ps))
+        (.getPrimaryPrincipal princs)
+        (-> ps (.iterator)(.next))))))
+
 (defn -doGetAuthorizationInfo
-  [^CachingRealm this ^PrincipalCollection principals]
+  [^AuthorizingRealm  this ^PrincipalCollection principals]
   (let [ ^DBAPI db (dbio-connect *JDBC-INFO* *META-CACHE*)
+         rname (.getName this)
          sql (.newSimpleSQLr db) ]
     (try
-      (let [ acc (.getAvailablePrincipal this principals)
-             rc (SimpleAccount.  acc (:passwd acc) (.getName this))
+      (let [ acc (getAvailablePrinc principals rname)
+             rc (SimpleAccount.  ^String acc (:passwd acc) rname)
              rs (dbio-get-m2m {:as :roles :with sql } acc) ]
           (doseq [ r (seq rs) ]
             (.addRole rc ^String (:name r)))

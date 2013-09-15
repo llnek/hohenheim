@@ -106,7 +106,6 @@
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
       <arg value="comzotohcljc.hhh.mvc.ios" />
-      <arg value="comzotohcljc.hhh.mvc.rts" />
       <arg value="comzotohcljc.hhh.mvc.tpls" />
       <arg value="comzotohcljc.hhh.mvc.handler" />
     </java>
@@ -135,6 +134,7 @@
       <sysproperty key="clojure.compile.warn-on-reflection" value="true"/>
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
       <arg value="comzotohcljc.net.comms" />
+      <arg value="comzotohcljc.net.rts" />
       <arg value="comzotohcljc.netty.comms" />
     </java>
   </target>
