@@ -17,44 +17,40 @@
 (ns ^{ :doc ""
        :author "kenl" }
 
-  comzotohcljc.hhh.auth.shiro
+  comzotohcljc.hhh.auth.shiro)
 
-  (:gen-class
-    :extends org.apache.shiro.realm.AuthorizingRealm
-    :name comzotohcljc.hhh.auth.shiro.JdbcRealm
-    :init myInit
-    :constructors {[] []}
-    :exposes-methods { init superInit  getServletName myName}
-    :state myState
-  ))
 
-(import '(org.apache.shiro.subject PrincipalCollection))
-(import '(org.apache.shiro.authz AuthorizationInfo))
+(use '[clojure.tools.logging :only (info warn error debug)])
+
+
+(import '(org.apache.shiro.authc.credential CredentialsMatcher))
+(import '(org.apache.shiro.authz AuthorizationException AuthorizationInfo))
 (import '(org.apache.shiro.realm AuthorizingRealm))
-(import '(org.apache.shiro.authc SimpleAccount))
+(import '(org.apache.shiro.authc
+  AuthenticationException AuthenticationToken AuthenticationInfo SimpleAccount))
+(import '(com.zotoh.frwk.dbio DBAPI))
 
-(defn -doGetAuthenticationInfo
-  [^AuthenticationToken token]
-    (let [ pwd (.getCredentials token)
-           user (.getPrincipal token)
-           db (dbio-connect jdbc mcache)
-           sql (.newSimpleSQLr db) ]
-      (try
-        (let[ acc (get-loginAccount sql user (CE/pwdify pwd)) ]
-          (SimpleAuthenticationInfo.
-            (:acctid acc)
-            (:passwd acc)
-            "realm-name")
-          )
-        (catch Throwable e#
-          (throw (AuthenticationException. e#))))
-      ))
+(require '[comzotohcljc.crypto.codec :as CE])
 
-(defn -doGetAuthorizationInfo [^PrincipalCollection principals]
-        String username = (String) getAvailablePrincipal(principals);
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        //call the underlying EIS for the account data:
-        return getAccount(username);
-    }
-}
+(deftype PwdMatcher [] CredentialsMatcher
+  (doCredentialsMatch [_ token info]
+    (let [ pwd (.getCredentials ^AuthenticationToken token)
+           uid (.getPrincipal ^AuthenticationToken token)
+           pc (.getCredentials ^AuthenticationInfo info)
+           pu (-> (.getPrincipals ^AuthenticationInfo info)
+                  (.getPrimaryPrincipal)) ]
+      (and (= pu uid)
+               (= pc (CE/pwdify pwd ""))) )))
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(def ^:private shiro-eof nil)
+
+
 

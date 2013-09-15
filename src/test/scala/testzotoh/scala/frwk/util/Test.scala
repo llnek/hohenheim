@@ -23,6 +23,17 @@ import org.scalatest.Assertions._
 import org.scalatest._
 
 
+    import org.apache.shiro.config._
+    import org.apache.shiro.realm._
+import org.apache.shiro.authc.credential._
+    
+    import org.apache.shiro.authc._
+    import org.apache.shiro.subject._
+import org.apache.shiro.SecurityUtils
+import org.apache.shiro.subject.Subject
+
+   
+    
 class Test  extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll {
 
   override def beforeAll(configMap: Map[String, Any]) {
@@ -40,4 +51,3 @@ class Test  extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll {
   }
 
 }
-

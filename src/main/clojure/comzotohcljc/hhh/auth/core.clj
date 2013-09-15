@@ -32,6 +32,10 @@
 (import '(java.io File))
 (import '(org.apache.commons.io FileUtils))
 
+(import '(org.apache.shiro.config IniSecurityManagerFactory))
+(import '(org.apache.shiro SecurityUtils))
+(import '(org.apache.shiro.subject Subject))
+
 (require '[clojure.data.json :as json])
 
 (require '[comzotohcljc.crypto.codec :as CE])
@@ -112,10 +116,12 @@
   (.findAll sql :czc.hhh.auth/LoginAccount))
 
 (defn- init-shiro [^File appDir ^String appKey]
-  (-> (IniSecurityManagerFactory. (-> appDir (.toURI)(.toURL)))
-    (.getInstance)
-    (SecurityUtils/setSecurityManager ))
-  )
+  (let [ ini (File. appDir "conf/shiro.ini")
+         sm (-> (IniSecurityManagerFactory. (-> ini (.toURI)(.toURL)(.toString)))
+              (.getInstance)) ]
+    (SecurityUtils/setSecurityManager sm)
+    (info "created shiro security manager: " sm)
+  ))
 
 (defn make-auth-plugin ^Plugin []
   (let [ impl (CU/make-mmap) ]
@@ -129,8 +135,8 @@
           (.mm-s impl :cfg (:jdbc dbs)) ))
       (initialize [_]
         (let [ pkey (.mm-g impl :appKey)
-               cfg (get (.mm-g impl :cfg) (keyword "*"))
-               j (make-jdbc "x" cfg (CE/pwdify (:passwd cfg) pkey)) ]
+               cfg (get (.mm-g impl :cfg) (keyword "_"))
+               j (make-jdbc (CU/uid) cfg (CE/pwdify (:passwd cfg) pkey)) ]
           (apply-authPlugin-ddl j)
           (init-shiro (.mm-g impl :appDir)
                       (.mm-g impl :appKey))))

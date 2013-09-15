@@ -96,6 +96,8 @@
       <sysproperty key="clojure.compile.path" value="${build.dir}" />
       <arg value="comzotohcljc.hhh.auth.dms" />
       <arg value="comzotohcljc.hhh.auth.core" />
+      <arg value="comzotohcljc.hhh.auth.rm" />
+      <arg value="comzotohcljc.hhh.auth.shiro" />
     </java>
   </target>
 

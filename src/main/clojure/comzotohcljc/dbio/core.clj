@@ -47,6 +47,7 @@
 (def ^:dynamic *USE_DDL_SEP* true)
 (def ^:dynamic *DDL_BVS* nil)
 (def ^:dynamic *META-CACHE* nil)
+(def ^:dynamic *JDBC-INFO* nil)
 (def DDL_SEP "-- :")
 
 

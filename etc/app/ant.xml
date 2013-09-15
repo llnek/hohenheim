@@ -281,6 +281,7 @@
       <mkdir dir="${app.dir}/conf"/>
       <copy todir="${app.dir}/conf" file="${hohenheim.home}/etc/app/app.conf"/>
       <copy todir="${app.dir}/conf" file="${hohenheim.home}/etc/app/env.conf"/>
+      <copy todir="${app.dir}/conf" file="${hohenheim.home}/etc/app/shiro.ini"/>
       <replace file="${app.dir}/conf/app.conf" token="@@USER@@" value="${user.name}"/>
       <mkdir dir="${app.dir}/src/main/clojure/${app.domain.path}"/>
       <mkdir dir="${app.dir}/src/main/scala"/>
