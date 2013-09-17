@@ -2,13 +2,13 @@
 
 (import '( com.zotoh.wflow 
   FlowPoint Activity Pipeline PipelineDelegate PTask Work))
-(import '(com.zotoh.wflow.core Job))
+(import '(com.zotoh.wflow.core Scope))
 (use '[clojure.tools.logging :only (info warn error debug)])
 
 (deftype Handler [] PipelineDelegate
   (getStartActivity [_  pipe] 
     (PTask. (reify Work
-              (perform [_ fw job arg]
+              (perform [_ fw scope arg]
                 (info "I  just handled a job!")))))
 
   (onStop [_ pipe]

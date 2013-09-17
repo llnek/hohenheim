@@ -19,19 +19,19 @@
 
 package com.zotoh.wflow
 
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 
 
 trait BoolExpr {
-  def evaluate(job:Job) : Boolean
+  def evaluate(job:Scope) : Boolean
 }
 
 trait ForLoopCountExpr {
-  def getCount(job:Job) : Int
+  def getCount(job:Scope) : Int
 }
 
 trait SwitchChoiceExpr {
-  def getChoice(job:Job) : Any
+  def getChoice(job:Scope) : Any
 }
 
 

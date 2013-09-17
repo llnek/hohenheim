@@ -19,7 +19,7 @@
 
 package com.zotoh.wflow
 
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 
 /**
  * @author kenl
@@ -29,7 +29,7 @@ class DelayPoint protected[wflow](cur:FlowPoint, a:Delay) extends FlowPoint(cur,
 
   private var _delayMillis= 0L
 
-  override def eval(j:Job ) = this
+  override def eval(j:Scope ) = this
 
   def delayMillis() = _delayMillis
 

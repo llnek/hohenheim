@@ -18,7 +18,7 @@
 
 package com.zotoh.wflow
 
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 
 /**
  * @author kenl
@@ -39,7 +39,7 @@ class IfPoint(s:FlowPoint , a:If) extends ConditionalPoint(s,a) {
     this
   }
 
-  def eval(j:Job ) = {
+  def eval(j:Scope ) = {
     val c= getClosureArg()   // data pass back from previous async call?
     val b = test(j)
     tlog().debug("If: test {}", ( if(b) "OK" else "FALSE"))

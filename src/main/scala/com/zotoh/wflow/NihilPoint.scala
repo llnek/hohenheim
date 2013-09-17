@@ -19,7 +19,7 @@
 
 package com.zotoh.wflow
 
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 
 /**
  * A nothing, nada Step.
@@ -31,6 +31,6 @@ class NihilPoint(f:Pipeline) extends FlowPoint(f) {
 
   override def nextPoint() = this
 
-  def eval(j:Job ) = this
+  def eval(j:Scope ) = this
 
 }

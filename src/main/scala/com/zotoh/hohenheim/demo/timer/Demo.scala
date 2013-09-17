@@ -26,7 +26,7 @@ import com.zotoh.hohenheim.runtime.AppMain
 import com.zotoh.hohenheim.core.Container
 import com.zotoh.hohenheim.io.TimerEvent
 
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 import com.zotoh.wflow._
 
 
@@ -56,7 +56,7 @@ class Demo() extends PipelineDelegate {
   import Demo._
 
   def getStartActivity(pipe:Pipeline) = new PTask( new Work() {
-    def perform(cur:FlowPoint, job:Job, arg:Any) = {
+    def perform(cur:FlowPoint, job:Scope, arg:Any) = {
       val ev= job.event.asInstanceOf[TimerEvent]
       if ( ev.isRepeating ) {
         println("-----> (" + count +  ") repeating-update: " + new JDate())

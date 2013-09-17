@@ -19,7 +19,7 @@
 
 package com.zotoh.wflow
 
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 
 
 /**
@@ -79,6 +79,6 @@ class NullJoin extends Join(null) {
  */
 class NullJoinPoint(s:FlowPoint, a:Join ) extends JoinPoint(s,a) {
 
-  def eval(j:Job ) = null
+  def eval(j:Scope ) = null
 
 }

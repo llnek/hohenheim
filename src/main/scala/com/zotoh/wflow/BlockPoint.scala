@@ -18,7 +18,7 @@
 
 package com.zotoh.wflow
 
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 
 
 /**
@@ -27,7 +27,7 @@ import com.zotoh.wflow.core.Job
  */
 class BlockPoint protected[wflow](s:FlowPoint, a:Block) extends CompositePoint(s,a) {
 
-  def eval(j:Job ) = {
+  def eval(j:Scope ) = {
     val c= getClosureArg()   // data pass back from previous async call?
     var rc:FlowPoint =null
 

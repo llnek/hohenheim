@@ -93,6 +93,7 @@
     (case (nth args 1)
       "web/jetty" (runTargetExtra "create-jetty" options)
       "web" (runTargetExtra "create-web" options)
+      "app" (runTargetExtra "create-app" options)
       (throw (CmdHelpError.)))
     (runTargetExtra "create-app" options)))
 
@@ -354,6 +355,7 @@
 
 
 (def ^:private _ARGS {
+  :create-app #'onCreate
   :create #'onCreate
   :ide #'onIDE
   :build #'onBuild

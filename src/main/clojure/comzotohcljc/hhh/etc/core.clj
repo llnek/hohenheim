@@ -95,7 +95,7 @@
       (usage)
       (let [ rc (apply parseArgs rcb args) ]
         (if (fn? rc)
-          (rc)
+          (try (rc) (catch CmdHelpError e# (usage)))
           (usage))))))
 
 

@@ -20,7 +20,7 @@
 package com.zotoh.wflow
 
 import com.zotoh.frwk.util.CoreUtils._
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 
 /**
  * A "AND" join enforces that all bound activities must return before Join continues.
@@ -30,7 +30,7 @@ import com.zotoh.wflow.core.Job
  */
 class AndPoint protected[wflow](s:FlowPoint,a:And) extends JoinPoint(s,a) {
 
-  def eval(j:Job) = {
+  def eval(j:Scope) = {
     val nv= _cntr.incrementAndGet()
     val c= getClosureArg()
     var rc:FlowPoint= null

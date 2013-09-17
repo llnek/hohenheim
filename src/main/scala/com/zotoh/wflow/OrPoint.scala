@@ -19,7 +19,7 @@
 
 package com.zotoh.wflow
 
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 
 /**
  * @author kenl
@@ -27,7 +27,7 @@ import com.zotoh.wflow.core.Job
  */
 class OrPoint(s:FlowPoint, a:Or)  extends JoinPoint(s,a) {
 
-  def eval(j:Job ) = {
+  def eval(j:Scope ) = {
     val nv= _cntr.incrementAndGet()
     var rc:FlowPoint = this
     val c= getClosureArg()

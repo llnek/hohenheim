@@ -19,7 +19,7 @@
 
 package com.zotoh.wflow
 
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 
 /**
  * @author kenl
@@ -34,7 +34,7 @@ class PTaskPoint(s:FlowPoint, a:PTask ) extends FlowPoint(s,a) {
     this
   }
 
-  def eval(j:Job ) = {
+  def eval(j:Scope ) = {
     //tlog.debug("PTaskPoint: {} about to perform work.", this.id )
     val a= _work.perform(this, j, popClosureArg())
     var rc= nextPoint()

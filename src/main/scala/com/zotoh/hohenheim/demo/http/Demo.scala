@@ -27,7 +27,7 @@ import com.zotoh.hohenheim.runtime.AppMain
 import com.zotoh.hohenheim.core.Container
 import com.zotoh.hohenheim.io.{HTTPEvent, TimerEvent}
 
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 import com.zotoh.wflow._
 
 
@@ -63,7 +63,7 @@ class Demo extends PipelineDelegate {
   """
 
   val task1= new Work() {
-    def perform(cur:FlowPoint, job:Job, arg:Any) = {
+    def perform(cur:FlowPoint, job:Scope, arg:Any) = {
         val ev= job.event.asInstanceOf[HTTPEvent]
         val res= ev.getResultObj
         /*

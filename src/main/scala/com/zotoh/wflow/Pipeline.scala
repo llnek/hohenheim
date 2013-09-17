@@ -23,7 +23,7 @@ import com.zotoh.frwk.util.CoreUtils._
 import org.slf4j._
 import com.zotoh.frwk.util.Schedulable
 import java.util.concurrent.atomic.AtomicLong
-import com.zotoh.wflow.core.Job
+import com.zotoh.wflow.core.Scope
 import com.zotoh.frwk.core.Startable
 import com.zotoh.frwk.server.ServerLike
 
@@ -47,7 +47,7 @@ object Pipeline {
  * @author kenl
  *
  */
-class Pipeline (private val _theJob:Job, private val _delegateClass:String) extends Startable {
+class Pipeline (private val _theScope:Scope, private val _delegateClass:String) extends Startable {
 
   private val _log:Logger= LoggerFactory.getLogger(classOf[Pipeline] )
   def tlog() = _log
@@ -64,16 +64,16 @@ class Pipeline (private val _theJob:Job, private val _delegateClass:String) exte
   private var _active=false
 
   tlog().debug("{}: {} => pid : {}" , "Pipeline", getClass().getName() , asJObj(_pid))
-  require(_theJob != null, "Job is null.")
+  require(_theScope != null, "Scope is null.")
 
   def core() : Schedulable = container() match {
     case x:ServerLike => x.core()
     case _ => null
   }
 
-  def container() = _theJob.container()
+  def container() = _theScope.container()
   def isActive() = _active
-  def job() = _theJob
+  def job() = _theScope
   def getPID() = _pid
 
   protected def onEnd() {
