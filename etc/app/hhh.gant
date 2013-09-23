@@ -2,8 +2,8 @@
       FRAMEWORK
 project-name="hohenheim-runner"
 */
+import static groovy.io.FileType.*
 import java.util.UUID
-
 //////////////////////////////////////////////////////////////////////////////
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -129,8 +129,7 @@ target (ct_j: '') {
   }
 }
 
-target (cc_g: '') {
-  if (${srcGroovy} == true) {} else { return }
+target (cc_g: '') { if (srcGroovy) {
   groovyc (destdir: "${czDir}", srcdir: "${srcMain}/groovy") {
     classpath (refid: 'compileClassPath')
   }
@@ -140,123 +139,118 @@ target (cc_g: '') {
       exclude (name: '**/.svn')
     }
   }
+}}
+
+target (ct_g: '') { if (srcGroovy) {
+  groovyc (destdir: "${testCzDir}", srcdir: "${srcTest}/groovy") {
+    classpath (refid: 'compileTestClassPath')
+  }
+  ant.copy (todir: "${testCzDir}") {
+    fileset (dir: "${srcTest}/groovy") {
+      exclude (name: '**/*.groovy')
+      exclude (name: '**/.svn')
+    }
+  }
+}}
+
+target (cc_s: '') { if (srcScala) {
+  scalac (destdir: "${czDir}", srcdir: "${srcMain}/scala",
+      classpathref: 'compileClassPath')
+      include (name: '**/*.scala')
+  }
+  ant.copy (todir: "${czDir}") {
+    fileset (dir: "${srcMain}/scala") {
+      exclude (name: '**/*.scala')
+      exclude (name: '**/.svn')
+    }
+  }
+}}
+
+target (ct_s: '') { if (srcScala) {
+  scalac (destdir: "${testCzDir}", srcdir: "${srcTest}/scala",
+        classpathref: 'compileTestClassPath') {
+    include (name: '**/*.scala')
+  }
+  ant.copy (todir: "${testCzDir}") {
+    fileset (dir: "${srcTest}/scala") {
+      exclude (name: '**/*.scala')
+      exclude (name: '**/.svn')
+    }
+  }
+}}
+
+target (jar: '') {
+  jar (destfile: "${appDir}/POD-INF/lib${appName}.jar",
+  basedir="${czDir}")
+  delete (dir: "${czDir}")
+  mkdir (dir: "${czDir}")
 }
 
-<target name="ct-g" depends="" if="src.groovy">
-  <groovyc destdir="${test.cz.dir}" srcdir="${src.test}/groovy" >
-      <classpath refid="compile.test.classpath"/>
-  </groovyc>
-  <copy todir="${test.cz.dir}">
-    <fileset dir="${src.test}/groovy">
-      <exclude name="**/*.groovy"/>
-      <exclude name="**/.svn"/>
-    </fileset>
-  </copy>
-</target>
+target (runAppBgNix: '') {
+  exec (executable: "${hohenheimHome}/bin/hohenheim", dir: "${hohenheimHome}") {
+    arg (value: 'app')
+    arg (value: 'start')
+    arg (value: 'bg')
+  }
+}
 
-    <target name="cc-s" depends="" if="src.scala">
-      <scalac destdir="${cz.dir}" srcdir="${src.main}/scala"
-          classpathref="compile.classpath">
-          <include name="**/*.scala"/>
-      </scalac>
-      <copy todir="${cz.dir}">
-        <fileset dir="${src.main}/scala">
-          <exclude name="**/*.scala"/>
-          <exclude name="**/.svn"/>
-        </fileset>
-      </copy>
-    </target>
+target (runAppBgW32: '') {
+  exec (executable: 'cmd.exe', dir: "${hohenheimHome}") {
+    arg (value: '/C')
+    arg (value: 'start')
+    arg (value: '/B')
+    arg (value: '/MIN')
+    arg (value: "${hohenheimHome}/bin/hohenheim.bat")
+    arg (value: 'start')
+  }
+}
 
-    <target name="ct-s" depends="" if="src.scala">
-      <scalac destdir="${test.cz.dir}" srcdir="${src.test}/scala"
-            classpathref="compile.test.classpath">
-        <include name="**/*.scala"/>
-      </scalac>
-      <copy todir="${test.cz.dir}">
-        <fileset dir="${src.test}/scala">
-          <exclude name="**/*.scala"/>
-          <exclude name="**/.svn"/>
-        </fileset>
-      </copy>
-    </target>
+target (runDbgAppW32: '') {
+  exec (executable: "${hohenheimHome}/bin/hohenheim.bat",
+  dir: "${hohenheimHome}") {
+    arg (value: 'debug')
+  }
+}
 
-    <target name="jar" depends="">
-      <jar destfile="${app.dir}/POD-INF/lib${app.name}.jar" basedir="${cz.dir}"/>
-      <delete dir="${cz.dir}"/>
-      <mkdir dir="${cz.dir}"/>
-    </target>
+target (runDbgAppNix: '') {
+  exec (executable: "${hohenheimHome}/bin/hohenheim",
+  dir: "${hohenheimHome}") {
+    arg (value: 'debug')
+  }
+}
 
-    <target name="run-app-bg-nix" depends="">
-        <exec executable="${hohenheim.home}/bin/hohenheim" dir="${hohenheim.home}">
-            <arg value="app"/>
-            <arg value="start"/>
-            <arg value="bg"/>
-        </exec>
-    </target>
+target (testCode:'') {
+  depends(compileTestCode)
+  junit (logfailedtests: true, showoutput: false,
+    printsummary: true, fork: true, haltonfailure: true) {
+    classpath (refid: 'compileTestClassPath')
+    batchtest (todir: "${testRptDir}") {
+      fileset (dir: "${testCzDir}") {
+        include (name: '**/Test*.*')
+      }
+      formatter (type: 'plain', usefile: false)
+    }
+  }
+}
 
-    <target name="run-app-bg-w32" depends="">
-        <exec executable="cmd.exe" dir="${hohenheim.home}">
-            <arg value="/C"/>
-            <arg value="start"/>
-            <arg value="/B"/>
-            <arg value="/MIN"/>
-            <arg value="${hohenheim.home}/bin/hohenheim.bat"/>
-            <arg value="start"/>
-        </exec>
-    </target>
+target (createDemo: '') { if (${demoId} != "") {
+  final fp = new File("${hohenheimHome}/docs/samples/${demoId}.pod")
+  if (fp.exists()) {
+    mkdir (dir: "${appsDir}/demo-${demoId}")
+    unzip (src: "${hohenheimHome}/docs/samples/${demoId}.pod",
+           dest: "${appsDir}/demo-${demoId}")
+  } else {
+    println "Cannot locate ${demoId}.pod."
+  }
+}}
 
-    <target name="run-dbg-app-w32" depends="">
-        <exec executable="${hohenheim.home}/bin/hohenheim.bat" dir="${hohenheim.home}">
-            <arg value="debug"/>
-        </exec>
-    </target>
-
-    <target name="run-dbg-app-nix" depends="">
-        <exec executable="${hohenheim.home}/bin/hohenheim" dir="${hohenheim.home}">
-            <arg value="debug"/>
-        </exec>
-    </target>
-
-    <target name="test-code" depends="compile-test-code">
-      <junit logfailedtests="true" showoutput="false" printsummary="yes" fork="yes" haltonfailure="yes" >
-        <classpath refid="compile.test.classpath"/>
-        <batchtest todir="${test.rpt.dir}" >
-            <fileset dir="${test.cz.dir}">
-                <include name="**/Test*.*"/>
-            </fileset>
-            <formatter type="plain" usefile="false"/>
-        </batchtest>
-      </junit>
-    </target>
-
-    <target name="create-demo" if="demo.id">
-      <available file="${hohenheim.home}/docs/samples/${demo.id}.pod" property="demo.pod.ok"/>
-      <if><equals arg1="${demo.pod.ok}" arg2="true"/>
-        <then>
-          <mkdir dir="${apps.dir}/demo-${demo.id}"/>
-          <unzip src="${hohenheim.home}/docs/samples/${demo.id}.pod" dest="${apps.dir}/demo-${demo.id}" />
-        </then>
-        <else>
-          <echo message="Cannot locate ${demo.id}.pod."/>
-        </else>
-      </if>
-    </target>
-
-    <target name="create-samples">
-      <for param="pod">
-        <path>
-          <fileset dir="${hohenheim.home}/docs/samples">
-            <include name="*.pod"/>
-          </fileset>
-        </path>
-        <sequential>
-          <var name="appid" value="" unset="true"/>
-          <basename property="appid" file="@{pod}" suffix=".pod"/>
-          <mkdir dir="${apps.dir}/demo-${appid}"/>
-          <unzip src="@{pod}" dest="${apps.dir}/demo-${appid}" />
-        </sequential>
-      </for>
-    </target>
+target (createSamples: '') {
+  new File("${hohenheimHome}/docs/samples").eachFileMatch FILES, ~/.pod$/ , { f ->
+    final pod= f.getName().replaceAll('.pod$',"")
+    mkdir (dir: "${appsDir}/demo-${pod}")
+    unzip (src: f.getCanonicalPath(), dest: "${appsDir}/demo-${pod}")
+  }
+}
 
     <target name="create-app">
       <antcall target="create-app-common"/>
