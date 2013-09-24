@@ -73,6 +73,7 @@
     <dependency org="ant-contrib" name="ant-contrib" rev="1.0b3"  conf="libjar->default">
       <exclude org="ant"/>
     </dependency>
+    <dependency org="org.codehaus.gant" name="gant_groovy2.1" rev="1.9.9"  conf="libjar->default"/>
 
     <!-- jdbc stuff
     <dependency org="com.j256.ormlite" name="ormlite-core" rev="4.42" conf="libjar->default"/>
@@ -106,7 +107,7 @@
     <dependency org="org.eclipse.jetty.websocket" name="websocket-server" rev="9.0.4.v20130625"  conf="libjar->default"/>
 
     <!-- languages -->
-    <dependency org="org.codehaus.groovy" name="groovy-all" rev="2.1.6"  conf="libjar->default"/>
+    <dependency org="org.codehaus.groovy" name="groovy-all" rev="2.1.7"  conf="libjar->default"/>
     <dependency org="org.scala-lang" name="scala-library" rev="2.10.2"  conf="libjar->default"/>
     <dependency org="org.scala-lang" name="scala-compiler" rev="2.10.2"  conf="libjar->default"/>
     <dependency org="com.sun.tools" name="tools" rev="1.7.0"  conf="libjar->default"/>

@@ -87,6 +87,7 @@
         (fn [] (apply CL/eval-command h rcb (drop 1 args))))))
 
 (defn -main "Main Entry" [& args]
+  (debug "Hohenheim: Main Entry")
   ;; for security, don't just eval stuff
   ;;(alter-var-root #'*read-eval* (constantly false))
   (let [ rcpath (str "comzotohcljc/hhh/etc/Resources")

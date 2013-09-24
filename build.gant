@@ -407,6 +407,8 @@ target (cljUtil: '') { clj_Util() }
 
 target (jarit: '') { jarAll() }
 
+target (compileClj: '') { compile_clj() }
+
   /*
        compile test code
        */
@@ -564,7 +566,7 @@ setDefaultTarget (release)
 //////////////////////
 //
 
-def compileClj() {
+def compile_clj() {
 
   clj_Util()
   clj_Crypto()
@@ -642,7 +644,7 @@ def compileAndJar() {
     }
   }
 
-  compileClj()
+  compile_clj()
   jarit()
 
 }
@@ -818,6 +820,7 @@ def cljhhh_Main() {
     arg (value: 'comzotohcljc.hhh.core.climain')
     arg (value: 'comzotohcljc.hhh.core.sys')
     arg (value: 'comzotohcljc.hhh.etc.cmdline')
+    arg (value: 'comzotohcljc.hhh.etc.cli')
     arg (value: 'comzotohcljc.hhh.etc.core')
     arg (value: 'comzotohcljc.hhh.etc.misc')
     arg (value: 'comzotohcljc.hhh.impl.defaults')
