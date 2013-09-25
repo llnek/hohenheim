@@ -33,7 +33,7 @@
 
     <!-- miscellaneous -->
     <dependency org="net.sourceforge.jregex" name="jregex" rev="1.2_01"  conf="libjar->default"/>
-    <dependency org="com.beust" name="jcommander" rev="1.30" conf="libjar->default"/>
+    <dependency org="net.sf.jopt-simple" name="jopt-simple" rev="4.5" conf="libjar->default"/>
     <dependency org="com.google.guava" name="guava" rev="14.0.1" conf="libjar->default"/>
     <dependency org="com.google.code.findbugs" name="jsr305" rev="2.0.1" conf="libjar->default"/>
     <dependency org="joda-time" name="joda-time" rev="2.2" conf="libjar->default"/>
