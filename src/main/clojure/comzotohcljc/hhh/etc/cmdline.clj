@@ -29,6 +29,7 @@
 (import '(com.zotoh.frwk.io IOUtils))
 
 (require '[comzotohcljc.hhh.core.climain :as CLI])
+(require '[comzotohcljc.hhh.etc.cli :as CI])
 (require '[comzotohcljc.i18n.resources :as RC])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.dates :as DU])
@@ -55,7 +56,8 @@
   (CU/nice-fpath (File. (File. (getHomeDir) (str DN_CFG "/app")) "ant.xml")))
 
 (defn- runTarget [target]
-  (org.apache.tools.ant.Main/main  (into-array String
+  (org.apache.tools.ant.Main/main
+    (into-array String
       [ (str "-Dhohenheim_home=" (CU/nice-fpath (getHomeDir)))
         "-buildfile"
         (getBuildFilePath)
@@ -77,50 +79,44 @@
       nil
       (MU/get-cldr))))
 
-(defn- onCreatePrompt []
-  (let [ domain (-> (str "com." (SU/nsb (CU/getuser))) (.toLowerCase))
-         q1 (CQ/make-CmdSeqQ "domain" "What is the application domain"
-                       domain domain true
-                       (fn [ans ^Properties jps] (do (.put jps "hohenheim.app.domain" ans) "app" )))
-         q2 (CQ/make-CmdSeqQ "app" "What is the application name"
-                       "" "" true
-                       (fn [ans ^Properties jps] (do (.put jps "hohenheim.appid" ans) "" )))
-         ps (CQ/cli-converse {"domain" q1 "app" q2} "domain") ]
-    [ (CU/notnil? ps) ps ] ))
-
-(defn- onCreateApp [options & args]
-  (if (> (count args) 1)
-    (case (nth args 1)
-      "web/jetty" (runTargetExtra "create-jetty" options)
-      "web" (runTargetExtra "create-web" options)
-      "app" (runTargetExtra "create-app" options)
-      (throw (CmdHelpError.)))
-    (runTargetExtra "create-app" options)))
+(defn- onCreateApp [ & args]
+  (let [ hhh (getHomeDir)
+         app (nth args 2)
+         t (re-matches #"^[a-zA-Z](\.[a-zA-Z0-9_]+)*" app)
+         d (if (nil? t)
+              nil
+              (if (nil? (last t))
+                (first t)
+                (.substring ^String (last t) 1))) ]
+    (if (nil? d)
+      (throw (CmdHelpError.))
+      (case (nth args 1)
+        "jetty" (CI/createJetty hhh app d)
+        "mvc" (CI/createWeb hhh app d)
+        "basic" (CI/createBasic hhh app d)
+        (throw (CmdHelpError.)))) ))
 
 (defn- onCreate [ & args]
-  (if (< (count args) 1)
+  (if (< (count args) 3)
     (throw (CmdHelpError.))
-    (let [ [ok x] (onCreatePrompt) ]
-      (when ok
-        (when (or (SU/nichts? (:hohenheim.app.domain x)) (SU/nichts? (:hohenheim.appid x)))
-          (throw (CmdHelpError.)))
-        (apply onCreateApp x args)))))
+    (apply onCreateApp args)))
 
 (defn- onBuild [ & args]
   (if (>= (count args) 2)
     (runTargetExtra "build-app"
-        { :hohenheim.appid (nth args 1)
-          :hohenheim.app.task (if (> (count args) 2) (nth args 2) "devmode") } )
+                    { :hhh.appid (nth args 1)
+                      :hhh.task (if (> (count args) 2) (nth args 2) "devmode") } )
     (throw (CmdHelpError.))))
 
 (defn- onPodify [ & args]
   (if (> (count args) 1)
-    (runTargetExtra "bundle-app" { :hohenheim.appid (nth args 1) :hohenheim.app.task "release" })
+    (runTargetExtra "bundle-app"
+                    { :hhh.appid (nth args 1) :hhh.task "release" })
     (throw (CmdHelpError.))))
 
 (defn- onTest [ & args]
   (if (> (count args) 1)
-    (runTargetExtra "test-code" { :hohenheim.appid (nth args 1) })
+    (runTargetExtra "test-app" { :hhh.appid (nth args 1) })
     (throw (CmdHelpError.))))
 
 (defn- onStart [ & args]
@@ -138,10 +134,10 @@
 
 (defn- onDemo [ & args]
   (if (> (count args) 1)
-    (let [ s (nth args 1) ]
+    (let [ s (nth args 1) h (getHomeDir) ]
       (if (= "samples" s)
-        (runTarget "create-samples")
-        (runTargetExtra "create-demo" { :demo.id s})) )
+        (CI/createSamples h)
+        (CI/createDemo h s)))
     (throw (CmdHelpError.))))
 
 (defn- generatePassword [len]
@@ -355,8 +351,7 @@
 
 
 (def ^:private _ARGS {
-  :create-app #'onCreate
-  :create #'onCreate
+  :new #'onCreate
   :ide #'onIDE
   :build #'onBuild
   :podify #'onPodify

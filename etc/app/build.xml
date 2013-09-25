@@ -1,16 +1,8 @@
 <project name="@@APPID@@" basedir="." default="devmode" xmlns:ivy="antlib:org.apache.ivy.ant">
 
-  <scriptdef name="generateguid" language="javascript">
-      <attribute name="property" />
-      <![CDATA[
-      importClass( java.util.UUID );
-      project.setProperty( attributes.get( "property" ), UUID.randomUUID() );
-      ]]>
-  </scriptdef>
-  <generateguid property="uuid" />
-
   <property name="PID" value="${ant.project.name}"/>
   <property file="build.properties" />
+
   <ivy:settings file="${basedir}/ivysettings.xml"/>
 
   <path id="hohenheimlibs.id">
@@ -28,9 +20,9 @@
 
   <path id="test.path.id">
     <path location="${out.test.dir}" />
+    <path location="${test.dir}/clojure" />
     <path refid="compile.path.id" />
   </path>
-
 
   <taskdef name="scalac" classname="scala.tools.ant.Scalac" classpathref="hohenheimlibs.id"/>
   <taskdef resource="net/sf/antcontrib/antlib.xml"/>
@@ -48,7 +40,6 @@
     <antcall target="compile_and_jar"/>
   </target>
 
-
   <!-- target: build-prod ================================= -->
   <target name="build-prod" depends="build">
     <antcall target="final_phase"/>
@@ -58,7 +49,7 @@
   <target name="test-build" depends="build">
     <antcall target="compile_test_code"/>
     <antcall target="run_test_code"/>
-    <echo level="verbose" message="test called - OK"/>
+    <echo level="verbose" message="Test called - OK"/>
   </target>
 
   <!-- target: clean ================================= -->

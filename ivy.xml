@@ -37,6 +37,7 @@
     <dependency org="com.google.guava" name="guava" rev="14.0.1" conf="libjar->default"/>
     <dependency org="com.google.code.findbugs" name="jsr305" rev="2.0.1" conf="libjar->default"/>
     <dependency org="joda-time" name="joda-time" rev="2.2" conf="libjar->default"/>
+    <dependency org="org.zeroturnaround" name="zt-zip" rev="1.6" conf="libjar->default"/>
 
     <!-- xml, dom -->
     <dependency org="org.jdom" name="jdom2" rev="2.0.4" conf="libjar->default"/>

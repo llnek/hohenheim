@@ -167,7 +167,7 @@
 
     )))
 
-(defn createApp "" [^File hhhHome appId ^String appDomain]
+(defn createBasic "" [^File hhhHome appId ^String appDomain]
   (create-app-common hhhHome appId appDomain)
   (FileUtils/copyFileToDirectory (File. hhhHome "etc/app/build.xml")
                                  (File. hhhHome (str "apps/" appId)))

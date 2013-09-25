@@ -38,8 +38,7 @@
 
 
 (def ^:private CMDLINE-INFO [
-  ["create web[/jetty]"  "e.g. create app as a webapp."]
-  ["create"  "e.g. create an app."]
+  ["new [mvc|jetty|basic] <app-name> "  "e.g. new mvc foo"]
   ["podify <app-name>"  "e.g. package app as a pod file"]
 
   ["ide eclipse <app-name>" "Generate eclipse project files."]
@@ -87,7 +86,7 @@
         (fn [] (apply CL/eval-command h rcb (drop 1 args))))))
 
 (defn -main "Main Entry" [& args]
-  (debug "Hohenheim: Main Entry")
+  ;;(debug "Hohenheim: Main Entry")
   ;; for security, don't just eval stuff
   ;;(alter-var-root #'*read-eval* (constantly false))
   (let [ rcpath (str "comzotohcljc/hhh/etc/Resources")
