@@ -1,16 +1,8 @@
 <project name="@@APPID@@" basedir="." default="devmode" xmlns:ivy="antlib:org.apache.ivy.ant">
 
-  <scriptdef name="generateguid" language="javascript">
-      <attribute name="property" />
-      <![CDATA[
-      importClass( java.util.UUID );
-      project.setProperty( attributes.get( "property" ), UUID.randomUUID() );
-      ]]>
-  </scriptdef>
-  <generateguid property="uuid" />
-
   <property name="PID" value="${ant.project.name}"/>
   <property file="build.properties" />
+
   <ivy:settings file="${basedir}/ivysettings.xml"/>
 
   <path id="hohenheimlibs.id">
@@ -28,6 +20,7 @@
 
   <path id="test.path.id">
     <path location="${out.test.dir}" />
+    <path location="${test.dir}/clojure" />
     <path refid="compile.path.id" />
   </path>
 
@@ -86,6 +79,7 @@
     <delete file="${PID}-${build.version}.jar" quiet="true"/>
     <antcall target="clean-public"/>
   </target>
+
   <target name="clean-public">
     <delete includeemptydirs="true">
     <fileset erroronmissingdir="false" dir="${basedir}/public/scripts" includes="**/*"/>
