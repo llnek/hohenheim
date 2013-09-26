@@ -61,6 +61,7 @@
     </delete>
     <delete file="${PID}-${build.version}.jar" quiet="true"/>
   </target>
+
   <!-- target: clean-cache ================================= -->
   <target name="clean-cache">
     <ivy:cleancache />
@@ -80,7 +81,6 @@
     <mkdir dir="${basedir}/POD-INF/classes" />
     <mkdir dir="${build.dir}" />
   </target>
-
 
   <!-- target: compile server-side source code ================================= -->
   <target name="compile-clj">

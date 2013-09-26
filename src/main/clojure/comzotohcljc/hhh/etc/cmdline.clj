@@ -55,30 +55,6 @@
 (defn- getBuildFilePath ^String []
   (CU/nice-fpath (File. (File. (getHomeDir) (str DN_CFG "/app")) "ant.xml")))
 
-(defn- runTarget [target]
-  (org.apache.tools.ant.Main/main
-    (into-array String
-      [ (str "-Dhohenheim_home=" (CU/nice-fpath (getHomeDir)))
-        "-buildfile"
-        (getBuildFilePath)
-        ;; "-quiet"
-        target ])))
-
-(defn- runTargetExtra [target options]
-  (let [ rc (persistent! (reduce (fn [sum en]
-                      (conj! sum (str "-D" (name (first en)) "=" (SU/nsb (last en) ))))
-                 (transient []) (seq options))) ]
-    (org.apache.tools.ant.Main/start
-      (into-array String
-        (-> rc
-          (conj (str "-Dhohenheim_home=" (CU/nice-fpath (getHomeDir))) )
-          (conj "-buildfile")
-          (conj (getBuildFilePath))
-          ;;(conj "-quiet")
-          (conj target)) )
-      nil
-      (MU/get-cldr))))
-
 (defn- onCreateApp [ & args]
   (let [ hhh (getHomeDir)
          ;; treat as domain e.g com.acme => app = acme
@@ -111,26 +87,24 @@
 
 (defn- onPodify [ & args]
   (if (> (count args) 1)
-    (runTargetExtra "bundle-app"
-                    { :hhh.appid (nth args 1) :hhh.task "release" })
+    (CI/bundleApp (getHomeDir) (nth args 1))
     (throw (CmdHelpError.))))
 
 (defn- onTest [ & args]
   (if (> (count args) 1)
-    (runTargetExtra "test-app" { :hhh.appid (nth args 1) })
+    (CI/antBuildApp (getHomeDir) (nth args 1) "test")
     (throw (CmdHelpError.))))
 
 (defn- onStart [ & args]
   (let [ s2 (if (> (count args) 1) (nth args 1) "") ]
     (cond
       (and (= s2 "bg") (CU/is-windows?))
-      (runTarget "run-app-bg-w32")
+      (CI/runAppBg (getHomeDir) true)
 
       :else
       (CLI/start-main (CU/nice-fpath (getHomeDir))))))
 
 (defn- onDebug [ & args]
-  ;;runTarget( if (isWindows() ) "run-dbg-app-w32" else "run-dbg-app-nix")
   (onStart args))
 
 (defn- onDemo [ & args]

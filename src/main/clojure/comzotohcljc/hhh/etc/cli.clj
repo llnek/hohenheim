@@ -56,6 +56,12 @@
               (make-ExecTask prog hhhHome [ "start" "bg" ])) ]
     (execProj pj)))
 
+(defn bundleApp "" [^File hhhHome appId]
+  (let [ srcDir (File. hhhHome (str "apps/" appId))
+         pod (File. hhhHome (str "pods/" appId ".pod"))
+         pj (make-ZipTask srcDir pod [] [ "build.output.folder/**" ]) ]
+    (execProj pj)))
+
 (defn antBuildApp "" [^File hhhHome appId antTarget]
   (let [ pj (make-AntTask hhhHome appId antTarget) ]
     (execProj pj)))
