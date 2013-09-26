@@ -31,9 +31,9 @@ splash() {
   echo ""
   splash_crawford2
   #splash_bubble
-  echo ""
-  echo -n "Version: "
-  cat $HOHENHEIM_HOME/VERSION
+  #echo ""
+  #echo -n "Version: "
+  #cat $HOHENHEIM_HOME/VERSION
   echo ""
   echo ""
 }

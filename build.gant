@@ -820,6 +820,7 @@ def cljhhh_Main() {
     arg (value: 'comzotohcljc.hhh.core.climain')
     arg (value: 'comzotohcljc.hhh.core.sys')
     arg (value: 'comzotohcljc.hhh.etc.cmdline')
+    arg (value: 'comzotohcljc.hhh.etc.task')
     arg (value: 'comzotohcljc.hhh.etc.cli')
     arg (value: 'comzotohcljc.hhh.etc.core')
     arg (value: 'comzotohcljc.hhh.etc.misc')

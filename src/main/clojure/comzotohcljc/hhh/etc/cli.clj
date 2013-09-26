@@ -29,6 +29,7 @@
 
 (require '[comzotohcljc.util.files :as FS])
 (require '[comzotohcljc.util.core :as CU])
+(use '[comzotohcljc.hhh.etc.task])
 
 
 
@@ -46,6 +47,18 @@
     (StringUtils/stripStart ".")
     (StringUtils/stripEnd ".")))
 
+(defn runAppBg "" [^File hhhHome bg]
+  (let [ prog2 (.getCanonicalPath (File. hhhHome "bin/hohenheim.bat"))
+         prog (.getCanonicalPath (File. hhhHome "bin/hohenheim"))
+         pj (if (CU/is-windows?)
+              (make-ExecTask "cmd.exe" hhhHome
+                             [ "/C" "start" "/B" "/MIN" prog2 "start" ])
+              (make-ExecTask prog hhhHome [ "start" "bg" ])) ]
+    (execProj pj)))
+
+(defn antBuildApp "" [^File hhhHome appId antTarget]
+  (let [ pj (make-AntTask hhhHome appId antTarget) ]
+    (execProj pj)))
 
 (defn cleanAppClasses "" [^File webzDir ^File czDir]
   (FileUtils/cleanDirectory webzDir)
@@ -118,7 +131,7 @@
       (-> (File. appDir "docs")(.mkdirs))
 
       (doseq [ s ["app.conf" "env.conf" "shiro.ini"]]
-        (FileUtils/copyFileToDirectory (File. hhhHome (str "etc/app" s))
+        (FileUtils/copyFileToDirectory (File. hhhHome (str "etc/app/" s))
                                        (File. appDir "conf")))
 
       (var-set fp (File. appDir "conf/app.conf"))
@@ -144,7 +157,7 @@
       (var-set fp (File. mfDir "MANIFEST.MF"))
       (FileUtils/writeStringToFile ^File @fp
         (-> (FileUtils/readFileToString ^File @fp "utf-8")
-          (StringUtils/replace "@@APPKEY@@" (UUID/randomUUID))
+          (StringUtils/replace "@@APPKEY@@" (.toString (UUID/randomUUID)))
           (StringUtils/replace "@@APPMAINCLASS@@"  (str appDomain ".core.MyAppMain")))
                                    "utf-8")
 
@@ -202,7 +215,7 @@
     (post-create-app hhhHome appId appDomain)))
 
 (defn createWeb "" [^File hhhHome appId ^String appDomain]
-  (let [ appDir (File. hhhHome "apps")
+  (let [ appDir (File. hhhHome (str "apps/" appId))
          appDomainPath (.replace appDomain "." "/") ]
     (with-local-vars [fp nil]
       (create-app-common hhhHome appId appDomain)
@@ -226,7 +239,7 @@
       (FileUtils/copyFileToDirectory (File. hhhHome "etc/netty/main.less")
                                      (File. appDir "src/main/resources/less"))
 
-      (var-set fp (File. appDir "conf/routes-conf"))
+      (var-set fp (File. appDir "conf/routes.conf"))
       (FileUtils/writeStringToFile ^File @fp
         (-> (FileUtils/readFileToString ^File @fp "utf-8")
           (StringUtils/replace "@@APPDOMAIN@@" appDomain)) "utf-8")

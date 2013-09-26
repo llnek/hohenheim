@@ -81,19 +81,20 @@
 
 (defn- onCreateApp [ & args]
   (let [ hhh (getHomeDir)
+         ;; treat as domain e.g com.acme => app = acme
          app (nth args 2)
-         t (re-matches #"^[a-zA-Z](\.[a-zA-Z0-9_]+)*" app)
-         d (if (nil? t)
+         t (re-matches #"^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)*" app)
+         id (if (nil? t)
               nil
               (if (nil? (last t))
                 (first t)
                 (.substring ^String (last t) 1))) ]
-    (if (nil? d)
+    (if (nil? id)
       (throw (CmdHelpError.))
       (case (nth args 1)
-        "jetty" (CI/createJetty hhh app d)
-        "mvc" (CI/createWeb hhh app d)
-        "basic" (CI/createBasic hhh app d)
+        ("mvc" "web") (CI/createWeb hhh id app)
+        "jetty" (CI/createJetty hhh id app)
+        "basic" (CI/createBasic hhh id app)
         (throw (CmdHelpError.)))) ))
 
 (defn- onCreate [ & args]
@@ -103,9 +104,9 @@
 
 (defn- onBuild [ & args]
   (if (>= (count args) 2)
-    (runTargetExtra "build-app"
-                    { :hhh.appid (nth args 1)
-                      :hhh.task (if (> (count args) 2) (nth args 2) "devmode") } )
+    (let [ appId (nth args 1)
+           taskId (if (> (count args) 2) (nth args 2) "devmode") ]
+      (CI/antBuildApp (getHomeDir) appId taskId))
     (throw (CmdHelpError.))))
 
 (defn- onPodify [ & args]
