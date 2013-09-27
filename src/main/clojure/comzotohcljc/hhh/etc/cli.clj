@@ -196,6 +196,7 @@
 (defn- create-web-common "" [^File hhhHome appId ^String appDomain]
   (let [ hf (WI/parse-inifile (File. hhhHome "etc/app/hohenheim.conf"))
          appDir (File. hhhHome (str "apps/" appId))
+         wlib (doto (File. appDir "weblibs") (.mkdirs))
          appDomainPath (.replace appDomain "." "/") ]
     (doseq [ s ["coffee" "js" "less"]]
       (-> (File. appDir (str "src/main/resources/" s)) (.mkdirs)))
@@ -208,10 +209,12 @@
     (FileUtils/copyFileToDirectory (File. hhhHome "etc/web/build.xml") appDir)
 
     (doseq [ k (keys (.getSection hf "weblibs")) ]
-      (let [ dd (File. hhhHome (str "etc/weblibs/" (name k)))
-             pu (File. appDir "public") ]
+      (let [ dd (File. hhhHome (str "etc/weblibs/" (name k))) ]
         (when (.isDirectory dd)
-          (FileUtils/copyDirectoryToDirectory dd pu))))
+          (when (or (= "jquery" (name k)) 
+                    (= "underscore" (name k)))
+            (FileUtils/copyDirectoryToDirectory dd (File. appDir "public")))
+          (FileUtils/copyDirectoryToDirectory dd wlib))))
     ))
 
 (defn createJetty "" [^File hhhHome appId ^String appDomain]
