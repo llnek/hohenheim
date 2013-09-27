@@ -29,6 +29,7 @@
 
 (require '[comzotohcljc.util.files :as FS])
 (require '[comzotohcljc.util.core :as CU])
+(require '[comzotohcljc.util.ini :as WI])
 (use '[comzotohcljc.hhh.etc.task])
 
 
@@ -193,7 +194,8 @@
   (post-create-app hhhHome appId appDomain))
 
 (defn- create-web-common "" [^File hhhHome appId ^String appDomain]
-  (let [ appDir (File. hhhHome (str "apps/" appId))
+  (let [ hf (WI/parse-inifile (File. hhhHome "etc/app/hohenheim.conf"))
+         appDir (File. hhhHome (str "apps/" appId))
          appDomainPath (.replace appDomain "." "/") ]
     (doseq [ s ["coffee" "js" "less"]]
       (-> (File. appDir (str "src/main/resources/" s)) (.mkdirs)))
@@ -204,8 +206,12 @@
     (FileUtils/copyFileToDirectory (File. hhhHome "etc/web/pipe.clj")
                                    (File. appDir (str "src/main/clojure/" appDomainPath)))
     (FileUtils/copyFileToDirectory (File. hhhHome "etc/web/build.xml") appDir)
-    (FileUtils/copyDirectory (File. hhhHome "etc/weblibs")
-                             (File. appDir "public"))
+
+    (doseq [ k (keys (.getSection hf "weblibs")) ]
+      (let [ dd (File. hhhHome (str "etc/weblibs/" (name k)))
+             pu (File. appDir "public") ]
+        (when (.isDirectory dd)
+          (FileUtils/copyDirectoryToDirectory dd pu))))
     ))
 
 (defn createJetty "" [^File hhhHome appId ^String appDomain]
