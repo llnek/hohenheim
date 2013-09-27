@@ -117,6 +117,7 @@
                                     "<arg value=\""
                                     appDomain
                                     ".pipe\"/>" ))
+          (StringUtils/replace "@@APPDOMAIN@@" appDomain)
           (StringUtils/replace "@@APPID@@" appId)) "utf-8")
     )))
 
