@@ -3,7 +3,7 @@
   <property name="PID" value="${ant.project.name}"/>
   <property file="build.properties" />
 
-  <ivy:settings file="${basedir}/ivysettings.xml"/>
+  <ivy:settings file="${basedir}/ivyconfig.xml"/>
 
   <path id="hohenheimlibs.id">
     <fileset dir="${hohenheim.home}/lib"/>
@@ -27,52 +27,86 @@
   <taskdef name="scalac" classname="scala.tools.ant.Scalac" classpathref="hohenheimlibs.id"/>
   <taskdef resource="net/sf/antcontrib/antlib.xml"/>
 
-  <!-- resolve ivy stuff ================================= -->
+  <!-- resolve ivy stuff
+       ================================= -->
   <target name="resolve">
     <ivy:retrieve pattern="${lib.dir}/[artifact]-[revision].[ext]"/>
   </target>
 
-  <!-- target: build ================================= -->
+  <!-- target: build  (called by hohenheim)
+       ================================= -->
   <target name="build" depends="clean,resolve,pre-build">
     <echo level="info" message="#############################################"/>
     <echo level="info" message="# building: ${ant.project.name}"/>
     <echo level="info" message="#############################################"/>
-    <antcall target="compile_and_jar"/>
+    <antcall target="compile-and-jar"/>
+    <if> <equals arg1="${build.type}" arg2="web" />
+      <then>
+        <antcall target="build-web"/>
+      </then>
+    </if>
   </target>
 
-  <!-- target: build-prod ================================= -->
-  <target name="build-prod" depends="build">
-    <antcall target="final_phase"/>
+  <target name="build-web">
+    <if> <equals arg1="${jslang}" arg2="typescript" />
+       <then> <antcall target="compile-typescript"/> </then>
+    </if>
+    <if> <equals arg1="${jslang}" arg2="coffee" />
+       <then> <antcall target="compile-coffee"/> </then>
+    </if>
+    <antcall target="compile-js"/>
+    <antcall target="compile-less"/>
   </target>
 
-  <!-- target: test-build ================================= -->
+  <target name="finz-build">
+    <touch file="${basedir}/public/scripts/webcommon.js"/>
+      <!--
+    <concat destfile="${basedir}/public/scripts/webcommon.js" append="true">
+      <filelist dir="${basedir}/public/jquery" files="jquery.min.js" />
+    </concat>
+      -->
+  </target>
+
+  <!-- target: test-build
+       ================================= -->
   <target name="test-build" depends="build">
     <antcall target="compile_test_code"/>
     <antcall target="run_test_code"/>
     <echo level="verbose" message="Test called - OK"/>
   </target>
 
-  <!-- target: clean ================================= -->
+  <!-- target: clean
+       ================================= -->
   <target name="clean">
     <delete includeemptydirs="true">
-      <fileset erroronmissingdir="false" dir="${out.test.dir}" includes="**/*"/>
       <fileset erroronmissingdir="false" dir="${out.jar.dir}" includes="**/*"/>
       <fileset erroronmissingdir="false" dir="${build.dir}" includes="**/*"/>
+      <fileset erroronmissingdir="false" dir="${lib.dir}" includes="**/*.jar"/>
     </delete>
-    <delete file="${PID}-${build.version}.jar" quiet="true"/>
+    <antcall target="clean-public"/>
   </target>
 
-  <!-- target: clean-cache ================================= -->
+  <target name="clean-public">
+    <delete includeemptydirs="true">
+      <fileset erroronmissingdir="false" dir="${basedir}/public/scripts" includes="**/*"/>
+      <fileset erroronmissingdir="false" dir="${basedir}/public/styles" includes="**/*"/>
+    </delete>
+  </target>
+
+  <!-- target: clean-cache
+       ================================= -->
   <target name="clean-cache">
     <ivy:cleancache />
   </target>
 
-  <!-- target: clean-local ================================= -->
+  <!-- target: clean-local
+       ================================= -->
   <target name="clean-local">
     <echo message="${ivy.lrepo.dir}"/>
   </target>
 
-  <!-- target: report ================================= -->
+  <!-- target: report
+       ================================= -->
   <target name="report" depends="resolve">
     <ivy:report todir="${build.dir}"/>
   </target>
@@ -80,9 +114,15 @@
   <target name="pre-build">
     <mkdir dir="${basedir}/POD-INF/classes" />
     <mkdir dir="${build.dir}" />
+    <mkdir dir="${build.dir}/coffee" />
+    <mkdir dir="${build.dir}/less" />
+    <mkdir dir="${build.dir}/ts" />
+    <mkdir dir="${build.dir}/js" />
   </target>
 
+
   <!-- target: compile server-side source code ================================= -->
+
   <target name="compile-clj">
     <java classname="clojure.lang.Compile" fork="true" failonerror="true" 
       maxmemory="2048m" classpathref="compile.path.id">
@@ -96,7 +136,7 @@
     </copy>
   </target>
 
-  <target name="compile_and_jar">
+  <target name="compile-and-jar">
 
     <javac sourcepath="" srcdir="${src.dir}/java" destdir="${out.jar.dir}"
       includeantruntime="false" excludes=""
@@ -105,7 +145,9 @@
       <include name="**/*.java"/>
     </javac>
 
-    <scalac srcdir="${src.dir}/scala" destdir="${out.jar.dir}" classpathref="compile.path.id" jvmargs="-Xmx5120M -Xms1024M " fork="false">
+    <scalac srcdir="${src.dir}/scala" destdir="${out.jar.dir}"
+      classpathref="compile.path.id"
+      fork="false" jvmargs="-Xmx5120M -Xms1024M ">
       <include name="**/*.scala"/>
     </scalac>
 
@@ -113,23 +155,19 @@
 
     <!-- copy over other resources -->
     <copy todir="${out.jar.dir}">
-      <fileset dir="${src.dir}/java">
-        <exclude name="**/*.java"/>
-        <exclude name="**/.svn"/>
+      <fileset dir="${src.dir}/clojure">
+        <exclude name="**/*.clojure"/>
       </fileset>
       <fileset dir="${src.dir}/scala">
         <exclude name="**/*.scala"/>
-        <exclude name="**/.svn"/>
       </fileset>
-      <fileset dir="${src.dir}/clojure">
-        <exclude name="**/*.clj"/>
-        <exclude name="**/.svn"/>
+      <fileset dir="${src.dir}/java">
+        <exclude name="**/*.java"/>
       </fileset>
     </copy>
 
     <jar destfile="${lib.dir}/${PID}-${build.version}.jar" >
-      <fileset dir="${out.jar.dir}">
-      </fileset>
+      <fileset dir="${out.jar.dir}"></fileset>
     </jar>
 
   </target>
@@ -140,13 +178,13 @@
     <mkdir dir="${out.test.dir}"/>
     <mkdir dir="${report.dir}"/>
 
-    <scalac srcdir="${test.dir}/scala" destdir="${out.test.dir}" classpathref="test.path.id" jvmargs="-Xmx5120M -Xms1024M" fork="false">
+    <scalac srcdir="${test.dir}/scala" destdir="${out.test.dir}" 
+      classpathref="test.path.id" fork="false" jvmargs="-Xmx5120M -Xms1024M">
       <include name="**/*.scala"/>
     </scalac>
 
     <copy todir="${out.test.dir}">
       <fileset dir="${test.dir}/scala">
-        <exclude name="**/.svn"/>
         <exclude name="**/*.scala"/>
       </fileset>
     </copy>
@@ -162,7 +200,7 @@
 
     <scalatest haltonfailure="true" fork="false" maxmemory="888M">
       <reporter type="stderr"/>
-      <wildcard package="application"/>
+      <wildcard package="@@APPDOMAIN@@"/>
       <runpath>
         <pathelement path="${out.test.dir}"/>
       </runpath>
@@ -170,24 +208,107 @@
 
   </target>
 
-  <target name="final_phase">
+  <target name="compile-typescript">
+    <copy todir="${build.dir}/ts">
+      <fileset dir="${src.dir}/typescript"><include name="*.ts"/></fileset>
+    </copy>
+    <exec executable="tsc" dir="${build.dir}/ts">
+      <arg value="--outDir"/> <arg value="--output"/> <arg value="${build.dir}/ts"/>
+      <arg value="*.ts"/>
+    </exec>
   </target>
+
+  <target name="compile-coffee">
+    <copy todir="${build.dir}/coffee">
+      <fileset dir="${src.dir}/coffee"><include name="*.coffee"/></fileset>
+    </copy>
+    <exec executable="coffee">
+      <arg value="--bare"/> <arg value="--output"/> <arg value="${build.dir}/coffee"/>
+      <arg value="--compile"/> <arg value="${build.dir}/coffee"/>
+    </exec>
+  </target>
+
+  <target name="compile-js">
+    <copy todir="${basedir}/public/scripts">
+      <fileset dir="${build.dir}/coffee"><include name="*.js"/></fileset>
+      <fileset dir="${build.dir}/ts"><include name="*.js"/></fileset>
+      <fileset dir="${build.dir}/js"><include name="*.js"/></fileset>
+      <fileset dir="${src.dir}/js"><include name="*.js"/></fileset>
+    </copy>
+  </target>
+
+  <target name="compile-less">
+    <copy todir="${build.dir}/less">
+      <fileset dir="${src.dir}/less"><include name="*.less"/></fileset>
+    </copy>
+    <apply executable="lessc" parallel="false">
+      <fileset dir="${build.dir}/less">
+        <include name="*.less"/>
+      </fileset>
+      <srcfile/>
+      <chainedmapper>
+        <mapper type="glob" from="*.less" to="*.css"/>
+        <globmapper from="*" to="${build.dir}/less/*"/>
+      </chainedmapper>
+      <targetfile/>
+    </apply>
+    <copy todir="${basedir}/public/styles">
+      <fileset dir="${build.dir}/less"><include name="*.css"/></fileset>
+    </copy>
+  </target>
+
+  <target name="yui-css">
+    <apply executable="java" parallel="false">
+      <fileset dir="${basedir}/styles">
+        <exclude name="*.min.css"/>
+        <include name="*.css"/>
+      </fileset>
+      <arg line="-jar" />
+      <arg path="${hohenheim.home}/lib/yuicompressor-2.4.7.jar" />
+      <srcfile/>
+      <arg line="-o"/>
+      <chainedmapper>
+        <mapper type="glob" from="*.css" to="*.min.css"/>
+        <globmapper from="*" to="${basedir}/styles/*"/>
+      </chainedmapper>
+      <targetfile/>
+    </apply>
+  </target>
+
+  <target name="yui-js">
+    <apply executable="java" parallel="false">
+      <fileset dir="${basedir}/public/scripts">
+        <exclude name="*.min.js"/>
+        <include name="*.js"/>
+      </fileset>
+      <arg line="-jar" />
+      <arg path="${hohenheim.home}/lib/yuicompressor-2.4.7.jar" />
+      <srcfile/>
+      <arg line="-o"/>
+      <chainedmapper>
+        <mapper type="glob" from="*.js" to="*.min.js"/>
+        <globmapper from="*" to="${basedir}/public/scripts/*"/>
+      </chainedmapper>
+      <targetfile/>
+    </apply>
+  </target>
+
 
   <!--
        public TARGETS
        -->
 
-  <target name="release" depends="build-prod"/>
-  <target name="devmode" depends="build"/>
-  <target name="test" depends="test-build"/>
+  <target name="release" depends="build">
+    <antcall target="yui-css"/>
+    <antcall target="yui-js"/>
+    <antcall target="finz-build"/>
+  </target>
 
-  <target name="c4git">
-    <delete includeemptydirs="true">
-      <fileset erroronmissingdir="false" dir="${basedir}/src/main/resources/less" includes="*.min.css"/>
-      <fileset erroronmissingdir="false" dir="${basedir}/src/main/resources/js" includes="*.min.js"/>
-      <fileset erroronmissingdir="false" dir="${basedir}/public/styles" includes="*.min.css"/>
-      <fileset erroronmissingdir="false" dir="${basedir}/public/scripts" includes="*.min.js"/>
-    </delete> 
+  <target name="devmode" depends="build">
+    <antcall target="finz-build"/>
+  </target>
+
+  <target name="test" depends="test-build">
   </target>
 
 </project>

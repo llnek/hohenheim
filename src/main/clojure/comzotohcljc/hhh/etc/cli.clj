@@ -121,7 +121,7 @@
           (StringUtils/replace "@@APPID@@" appId)) "utf-8")
     )))
 
-(defn- create-app-common "" [^File hhhHome appId ^String appDomain]
+(defn- create-app-common "" [^File hhhHome appId ^String appDomain flavor]
   (let [ appDir (doto (File. hhhHome (str "apps/" appId)) (.mkdirs))
          mfDir (doto (File. appDir "META-INF")(.mkdirs))
          appDomainPath (.replace appDomain "." "/") ]
@@ -132,8 +132,12 @@
       (doseq [ s ["RELEASE-NOTES.txt" "NOTES.txt" "LICENSE.txt" "README.md"]]
         (FileUtils/touch (File. mfDir ^String s)))
 
+      (FileUtils/copyFileToDirectory (File. hhhHome "etc/app/build.xml")
+                                     (File. hhhHome (str "apps/" appId)))
+
       (FileUtils/copyFileToDirectory (File. hhhHome "etc/app/MANIFEST.MF")
                                      mfDir)
+
       (-> (File. appDir "modules")(.mkdirs))
       (-> (File. appDir "conf")(.mkdirs))
       (-> (File. appDir "docs")(.mkdirs))
@@ -158,7 +162,7 @@
       (FileUtils/copyFileToDirectory (File. hhhHome "etc/app/pipe.clj")
                                      (File. appDir (str "src/main/clojure/" appDomainPath)))
 
-      (doseq [ s ["build.properties" "ivysettings.xml" "ivy.xml" "pom.xml"]]
+      (doseq [ s ["build.properties" "ivyconfig.xml" "ivy.xml" "pom.xml"]]
         (FileUtils/copyFileToDirectory (File. hhhHome (str "etc/app/" s))
                                        appDir))
 
@@ -184,14 +188,13 @@
       (var-set fp (File. appDir "build.properties"))
       (FileUtils/writeStringToFile  ^File @fp
         (-> (FileUtils/readFileToString ^File @fp "utf-8")
+          (StringUtils/replace "@@APPTYPE@@" flavor)
           (StringUtils/replace "@@HOHENHEIMHOME@@" (.getCanonicalPath hhhHome))) "utf-8")
 
     )))
 
 (defn createBasic "" [^File hhhHome appId ^String appDomain]
-  (create-app-common hhhHome appId appDomain)
-  (FileUtils/copyFileToDirectory (File. hhhHome "etc/app/build.xml")
-                                 (File. hhhHome (str "apps/" appId)))
+  (create-app-common hhhHome appId appDomain "basic")
   (post-create-app hhhHome appId appDomain))
 
 (defn- create-web-common "" [^File hhhHome appId ^String appDomain]
@@ -199,15 +202,14 @@
          appDir (File. hhhHome (str "apps/" appId))
          wlib (doto (File. appDir "weblibs") (.mkdirs))
          appDomainPath (.replace appDomain "." "/") ]
-    (doseq [ s ["coffee" "js" "less"]]
-      (-> (File. appDir (str "src/main/resources/" s)) (.mkdirs)))
+    (doseq [ s ["coffee" "typescript" "js" "less"]]
+      (-> (File. appDir (str "src/main/" s)) (.mkdirs)))
     (doseq [ s ["images" "scripts" "styles"]]
       (-> (File. appDir (str "public/" s)) (.mkdirs)))
     (FileUtils/copyFileToDirectory (File. hhhHome "etc/web/favicon.png")
                                    (File. appDir "public/images"))
     (FileUtils/copyFileToDirectory (File. hhhHome "etc/web/pipe.clj")
                                    (File. appDir (str "src/main/clojure/" appDomainPath)))
-    (FileUtils/copyFileToDirectory (File. hhhHome "etc/web/build.xml") appDir)
 
     (doseq [ k (keys (.getSection hf "weblibs")) ]
       (let [ dd (File. hhhHome (str "etc/weblibs/" (name k))) ]
@@ -220,7 +222,7 @@
 
 (defn createJetty "" [^File hhhHome appId ^String appDomain]
   (let [ appDir (File. hhhHome (str "apps/" appId)) ]
-    (create-app-common hhhHome appId appDomain)
+    (create-app-common hhhHome appId appDomain "web")
     (create-web-common hhhHome appId appDomain)
     (doseq [ s [ "classes" "lib" ]]
       (-> (File. appDir (str "WEB-INF/" s)) (.mkdirs)))
@@ -234,7 +236,7 @@
   (let [ appDir (File. hhhHome (str "apps/" appId))
          appDomainPath (.replace appDomain "." "/") ]
     (with-local-vars [fp nil]
-      (create-app-common hhhHome appId appDomain)
+      (create-app-common hhhHome appId appDomain "web")
       (create-web-common hhhHome appId appDomain)
       (copy-files (File. hhhHome "etc/netty") (File. appDir "conf") "conf")
       (FileUtils/copyFileToDirectory (File. hhhHome "etc/netty/static-routes.conf")

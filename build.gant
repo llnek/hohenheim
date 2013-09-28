@@ -56,7 +56,7 @@ def generateUUID() { UUID.randomUUID() }
         target: ivy stuff
        ================================= */
 
-ivy.settings( file: "${ivySettingsDir}/ivysettings.xml" )
+ivy.settings( file: "${ivySettingsDir}/ivyconfig.xml" )
 
 target (resolve: '') {
   // conf="*" will copie artifacts defined for each conf in a dir matching conf name
@@ -471,11 +471,8 @@ def createOneDemoApp(dir) {
     ant.mkdir (dir: res + "coffee")
     ant.mkdir (dir: res + "less")
     ant.mkdir (dir: res + "js")
-    ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/web/build.xml")
   }
-  else {
-    ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/app/build.xml")
-  }
+  ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/app/build.xml")
   if ("jetty" == "${appid}") {
     ant.mkdir (dir: "${demoDir}/${appid}/WEB-INF/classes")
     ant.mkdir (dir: "${demoDir}/${appid}/WEB-INF/lib")
@@ -512,7 +509,7 @@ def createOneDemoApp(dir) {
   ant.replace (file: "${demoDir}/${appid}/build.properties", token: "@@HOHENHEIMHOME@@", value: "${basedir}/../..")
   ant.replace (file: "${demoDir}/${appid}/build.xml", token: "@@APPID@@", value: "${appid}")
   ant.replace (file: "${demoDir}/${appid}/build.xml", token: "@@APPCLJFILES@@", value: '')
-  ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/app/ivysettings.xml")
+  ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/app/ivyconfig.xml")
   ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/app/ivy.xml")
   ant.replace (file: "${demoDir}/${appid}/ivy.xml", token: "@@APPDOMAIN@@", value: 'demoware')
   ant.replace (file: "${demoDir}/${appid}/ivy.xml", token: "@@APPID@@", value: "${appid}")
