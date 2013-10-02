@@ -31,7 +31,7 @@ includeTool << gant.tools.Ivy
 property( name: 'gantProjectName' , value: 'hohenheim')
 property( name: 'PID_DISTRO', value: "${gantProjectName}-distro")
 property( name: "PID", value: "${gantProjectName}")
-property ( file: "build.properties" )
+property ( file: "build.xs" )
 property( name: 'ivySettingsDir', value: "${basedir}")
 
 //////////////////////////////////////////////////////////////////////////////
@@ -56,7 +56,7 @@ def generateUUID() { UUID.randomUUID() }
         target: ivy stuff
        ================================= */
 
-ivy.settings( file: "${ivySettingsDir}/ivyconfig.xml" )
+ivy.settings( file: "${ivySettingsDir}/ivy.config.xml" )
 
 target (resolve: '') {
   // conf="*" will copie artifacts defined for each conf in a dir matching conf name
@@ -505,11 +505,11 @@ def createOneDemoApp(dir) {
   ant.mkdir(dir: "${demoDir}/${appid}/src/main/clojure")
   ant.mkdir(dir: "${demoDir}/${appid}/src/main/java")
   ant.mkdir(dir: "${demoDir}/${appid}/docs")
-  ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/app/build.properties")
-  ant.replace (file: "${demoDir}/${appid}/build.properties", token: "@@HOHENHEIMHOME@@", value: "${basedir}/../..")
+  ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/app/build.xs")
+  ant.replace (file: "${demoDir}/${appid}/build.xs", token: "@@HOHENHEIMHOME@@", value: "${basedir}/../..")
   ant.replace (file: "${demoDir}/${appid}/build.xml", token: "@@APPID@@", value: "${appid}")
   ant.replace (file: "${demoDir}/${appid}/build.xml", token: "@@APPCLJFILES@@", value: '')
-  ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/app/ivyconfig.xml")
+  ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/app/ivy.config.xml")
   ant.copy (todir: "${demoDir}/${appid}", file: "${basedir}/etc/app/ivy.xml")
   ant.replace (file: "${demoDir}/${appid}/ivy.xml", token: "@@APPDOMAIN@@", value: 'demoware')
   ant.replace (file: "${demoDir}/${appid}/ivy.xml", token: "@@APPID@@", value: "${appid}")

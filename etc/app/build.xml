@@ -1,9 +1,9 @@
 <project name="@@APPID@@" basedir="." default="devmode" xmlns:ivy="antlib:org.apache.ivy.ant">
 
   <property name="PID" value="${ant.project.name}"/>
-  <property file="build.properties" />
+  <property file="build.xs" />
 
-  <ivy:settings file="${basedir}/ivyconfig.xml"/>
+  <ivy:settings file="${basedir}/ivy.config.xml"/>
 
   <path id="hohenheimlibs.id">
     <fileset dir="${hohenheim.home}/lib"/>

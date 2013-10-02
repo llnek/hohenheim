@@ -162,7 +162,7 @@
       (FileUtils/copyFileToDirectory (File. hhhHome "etc/app/pipe.clj")
                                      (File. appDir (str "src/main/clojure/" appDomainPath)))
 
-      (doseq [ s ["build.properties" "ivyconfig.xml" "ivy.xml" "pom.xml"]]
+      (doseq [ s ["build.xs" "ivy.config.xml" "ivy.xml" "pom.xml"]]
         (FileUtils/copyFileToDirectory (File. hhhHome (str "etc/app/" s))
                                        appDir))
 
@@ -185,7 +185,7 @@
           (StringUtils/replace "@@APPDOMAIN@@" appDomain)
           (StringUtils/replace "@@APPID@@" appId)) "utf-8")
 
-      (var-set fp (File. appDir "build.properties"))
+      (var-set fp (File. appDir "build.xs"))
       (FileUtils/writeStringToFile  ^File @fp
         (-> (FileUtils/readFileToString ^File @fp "utf-8")
           (StringUtils/replace "@@APPTYPE@@" flavor)
