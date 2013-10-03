@@ -30,6 +30,7 @@
 (require '[comzotohcljc.util.files :as FS])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.ini :as WI])
+(use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.etc.task])
 
 
@@ -201,25 +202,35 @@
   (post-create-app hhhHome appId appDomain))
 
 (defn- create-web-common "" [^File hhhHome appId ^String appDomain]
-  (let [ hf (WI/parse-inifile (File. hhhHome "etc/app/hohenheim.conf"))
+  (let [ hf (WI/parse-inifile (File. hhhHome (str DN_CONF "/" (name K_PROPS) )))
          appDir (File. hhhHome (str "apps/" appId))
          wlib (doto (File. appDir "weblibs") (.mkdirs))
+         wlg (.optString hf "webdev" "lang" "coffee")
          appDomainPath (.replace appDomain "." "/") ]
-    (doseq [ s ["coffee" "typescript" "js" "less"]]
+
+    (doseq [ s ["js" "less"]]
       (-> (File. appDir (str "src/main/" s)) (.mkdirs)))
+
+    (doseq [ s ["controllers" "views" "models"]]
+      (-> (File. appDir (str "src/main/" wlg "/" s)) (.mkdirs)))
+
     (doseq [ s ["images" "scripts" "styles"]]
       (-> (File. appDir (str "public/" s)) (.mkdirs)))
+
     (FileUtils/copyFileToDirectory (File. hhhHome "etc/web/favicon.png")
                                    (File. appDir "public/images"))
     (FileUtils/copyFileToDirectory (File. hhhHome "etc/web/pipe.clj")
                                    (File. appDir (str "src/main/clojure/" appDomainPath)))
 
+    (-> (File. appDir (str "src/test/" wlg)) (.mkdirs))
+    (-> (File. appDir "public/vendors") (.mkdirs))
+
     (doseq [ k (keys (.getSection hf "weblibs")) ]
       (let [ dd (File. hhhHome (str "etc/weblibs/" (name k))) ]
         (when (.isDirectory dd)
-          (when (or (= "jquery" (name k)) 
+          (when (or (= "jquery" (name k))
                     (= "underscore" (name k)))
-            (FileUtils/copyDirectoryToDirectory dd (File. appDir "public")))
+            (FileUtils/copyDirectoryToDirectory dd (File. appDir "public/vendors")))
           (FileUtils/copyDirectoryToDirectory dd wlib))))
     ))
 
@@ -248,11 +259,11 @@
                                      (File. appDir "conf"))
       (FileUtils/copyFileToDirectory (File. hhhHome "etc/web/favicon.png")
                                      (File. appDir "public/images"))
-      (doseq [ s ["errors" "views"]]
+      (doseq [ s ["errors" "htmls"]]
         (-> (File. appDir (str "pages/" s)) (.mkdirs)))
 
-      (copy-files (File. hhhHome "etc/netty") (File. appDir "pages/views") "ftl")
-      (copy-files (File. hhhHome "etc/netty") (File. appDir "pages") "html")
+      (copy-files (File. hhhHome "etc/netty") (File. appDir "pages/errors") ".err")
+      (copy-files (File. hhhHome "etc/netty") (File. appDir "pages/htmls") "ftl")
 
       (FileUtils/copyFileToDirectory (File. hhhHome "etc/netty/index.html")
                                      (File. appDir "public"))

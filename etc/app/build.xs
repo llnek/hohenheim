@@ -1,6 +1,6 @@
 hohenheim.home=@@HOHENHEIMHOME@@
 
-ivy.root=${hohenheim.home}/ivy
+ivy.root=${hohenheim.home}/.ivyroot
 ivy.lcache.dir=${ivy.root}/cache
 ivy.lrepo.dir=${ivy.root}/repos
 

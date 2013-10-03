@@ -100,7 +100,7 @@
   [co ctx]
   (do
     (precondDir (maybeDir ctx K_BASEDIR))
-    (precondDir (maybeDir ctx K_PODSDIR))
+    ;;(precondDir (maybeDir ctx K_PODSDIR))
     (precondDir (maybeDir ctx K_PLAYDIR))
     (comp-clone-context co ctx)))
 
@@ -108,10 +108,10 @@
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
          py (.getf ctx K_PLAYDIR)
-         pd (.getf ctx K_PODSDIR)
-         fs (IOUtils/listFiles ^File pd "pod" false) ]
-    (doseq [ ^File f (seq fs)]
-      (.deploy ^comzotohcljc.hhh.impl.defaults.Deployer co f))))
+         pd (.getf ctx K_PODSDIR) ]
+    (when (.isDirectory pd)
+      (doseq [ ^File f (seq (IOUtils/listFiles ^File pd "pod" false)) ]
+        (.deploy ^comzotohcljc.hhh.impl.defaults.Deployer co f)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Kernel
@@ -255,7 +255,7 @@
   [co ctx]
   (let [ base (maybeDir ctx K_BASEDIR) ]
     (precondDir base)
-    (precondDir (maybeDir ctx K_PODSDIR))
+    ;;(precondDir (maybeDir ctx K_PODSDIR))
     (precondDir (maybeDir ctx K_PLAYDIR))
     (MI/setup-cache (-> (File. base (str DN_CFG "/app/mime.properties"))
                       (.toURI)(.toURL )))

@@ -14,7 +14,7 @@
   <dependencies defaultconf="libjar">
 
 <!--
-    <dependency org="junit" name="junit" rev="4.10"  conf="libjar->default"/>
+    <dependency org="junit" name="junit" rev="4.11"  conf="libjar->default"/>
 -->
 
   </dependencies>

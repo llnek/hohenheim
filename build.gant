@@ -162,25 +162,29 @@ target (distroPackage: '') {
 target (distroInit: '') {
   delete (dir: "${packDir}")
   mkdir (dir: "${packDir}")
+  mkdir (dir: "${packDir}/conf")
   mkdir (dir: "${packDir}/boot")
   mkdir (dir: "${packDir}/dist")
   mkdir (dir: "${packDir}/bin")
-  mkdir (dir: "${packDir}/etc")
+  mkdir (dir: "${packDir}/etc/blocks")
+  //mkdir (dir: "${packDir}/etc")
   mkdir (dir: "${packDir}/patch")
   mkdir (dir: "${packDir}/lib")
   mkdir (dir: "${packDir}/logs")
   mkdir (dir: "${packDir}/docs/samples")
   mkdir (dir: "${packDir}/docs/src")
-  mkdir (dir: "${packDir}/lics")
+  //mkdir (dir: "${packDir}/lics")
   mkdir (dir: "${packDir}/tmp")
   mkdir (dir: "${packDir}/apps")
-  mkdir (dir: "${packDir}/blocks")
-  mkdir (dir: "${packDir}/pods")
-  mkdir (dir: "${packDir}/ivy")
+  //mkdir (dir: "${packDir}/pods")
+  mkdir (dir: "${packDir}/.ivyroot")
   touch (file: "${packDir}/VERSION")
   echo (message: "${buildVersion}" , file: "${packDir}/VERSION")
   copy (todir: "${packDir}/etc") {
     fileset (dir: "${basedir}/etc")
+  }
+  copy (todir: "${packDir}/conf") {
+    fileset (dir: "${basedir}/etc/conf")
   }
 }
 
@@ -201,7 +205,7 @@ target (packAndDistro : '') {
        ================================= */
 
 target (packRes: '') {
-  copy (todir: "${packDir}/blocks", flatten: true) {
+  copy (todir: "${packDir}/etc/blocks", flatten: true) {
     fileset (dir: "${srcDir}/clojure") {
       include (name: '**/*.meta')
     }

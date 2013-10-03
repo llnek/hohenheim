@@ -58,11 +58,9 @@
 
 (defn- inizContext ^comzotohcljc.util.core.MuObj [^File baseDir]
   (let [ cfg (File. baseDir ^String DN_CFG)
-         f (File. cfg (str "app/" (name K_PROPS)))
          home (.getParentFile cfg) ]
     (precondDir home)
     (precondDir cfg)
-    (precondFile f)
     (doto (make-context)
       (.setf! K_BASEDIR home)
       (.setf! K_CFGDIR cfg))))
@@ -97,7 +95,7 @@
 
 (defn- loadConf [^comzotohcljc.util.core.MuObj ctx]
   (let [ ^File home (.getf ctx K_BASEDIR)
-         cf (File. home  (str DN_CFG "/app/" (name K_PROPS) ))
+         cf (File. home  (str DN_CONF "/" (name K_PROPS) ))
         ^comzotohcljc.util.ini.IWin32Conf
          w (WI/parse-inifile cf)
          lg (.toLowerCase ^String (.optString w K_LOCALE K_LANG "en"))
@@ -120,7 +118,7 @@
   (let [ bh (File. ^String (first args))
          ctx (inizContext bh) ]
     (info "inside pre-parse()")
-    (precondDir (File. bh ^String DN_BLOCKS))
+    ;;(precondDir (File. bh ^String DN_BLOCKS))
     (precondDir (File. bh ^String DN_CFG))
     (precondDir (File. bh ^String DN_BOXX))
     (.setf! ctx K_CLISH cli)
