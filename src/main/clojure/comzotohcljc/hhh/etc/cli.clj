@@ -90,7 +90,9 @@
 
 (defn- post-create-app "" [^File hhhHome appId ^String appDomain]
   (let [ appDir (File. hhhHome (str "apps/" appId))
+         h2db (str (if (CU/is-windows?) "/c:/temp/" "/tmp/") (CU/uid))
          appDomainPath (.replace appDomain "." "/") ]
+    (-> (File. h2db) (.mkdirs))
     (with-local-vars [ fp nil ]
       (var-set fp (File. appDir (str "src/main/clojure/" appDomainPath "/core.clj")))
       (FileUtils/writeStringToFile ^File @fp
@@ -105,6 +107,7 @@
       (var-set fp (File. appDir "conf/env.conf"))
       (FileUtils/writeStringToFile ^File @fp
         (-> (FileUtils/readFileToString ^File @fp "utf-8")
+          (StringUtils/replace "@@H2DBPATH@@" (str h2db "/" appId))
           (StringUtils/replace "@@APPDOMAIN@@" appDomain)) "utf-8")
 
       (var-set fp (File. appDir "build.xml"))
