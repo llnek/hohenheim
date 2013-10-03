@@ -60,6 +60,7 @@
 (defmodel!  "czc.hhh.auth" LoginAccount
   (with-db-fields
     { :acctid { :null false }
+      :salt { :null false :size 128 }
       :passwd { :null false :domain :Password }
      })
   (with-db-assocs

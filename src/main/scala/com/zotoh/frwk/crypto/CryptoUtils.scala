@@ -19,4 +19,7 @@
 package com.zotoh.frwk.crypto
 
 object CryptoUtils {
+   
+  def main(args:Array[String]) {
+  }
 }

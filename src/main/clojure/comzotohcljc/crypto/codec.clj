@@ -100,8 +100,10 @@
   (algo [_] ))
 
 ;; BCrypt.checkpw(candidate, hashed)
-(defprotocol ^:private PasswordAPI
+
+(defprotocol PasswordAPI
   ""
+  (validateHash [_ pwdTarget] )
   (toCharArray [_] )
   (encoded [_] )
   (stronglyHashed [_] )
@@ -341,9 +343,6 @@
                     (aget chArray n))) ]
       (String. rc))) )
 
-(def ^:private SALT_10 "$2a$10$uEcnXeVTn2cXm3U0T9.zie")
-(def ^:private SALT_12 "$2a$12$kzS97frID3HK.MJT59vdM.")
-
 (deftype Password [^String pwdStr ^String pkey]
 
   Object
@@ -353,16 +352,22 @@
 
   PasswordAPI
   (toCharArray [_] (if (nil? pwdStr) (char-array 0) (.toCharArray pwdStr)))
+
   (stronglyHashed [_]
     (if (nil? pwdStr)
-      ""
-      ;;(BCrypt/hashpw pwdStr (BCrypt/gensalt 12))))
-      (BCrypt/hashpw pwdStr SALT_12)))
+      [ ""  "" ]
+      (let [ s (BCrypt/gensalt 12) ]
+        [ (BCrypt/hashpw pwdStr s) s ] )))
+
   (hashed [_]
     (if (nil? pwdStr)
-      ""
-      ;;(BCrypt/hashpw pwdStr (BCrypt/gensalt 10))))
-      (BCrypt/hashpw pwdStr SALT_10)))
+      [ "" "" ]
+      (let [ s (BCrypt/gensalt 10) ]
+        [ (BCrypt/hashpw pwdStr s) s ] )))
+
+  (validateHash [this pwdTarget]
+    (BCrypt/checkpw (.text this) pwdTarget))
+
   (encoded [_]
     (if (StringUtils/isEmpty pwdStr)
       ""

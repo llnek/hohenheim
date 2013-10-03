@@ -67,9 +67,11 @@
 
 (defn create-loginAccount  ""
   [^SQLr sql user ^comzotohcljc.crypto.codec.Password pwdObj roleObjs]
-  (let [ acc (.insert sql (-> (dbio-create-obj :czc.hhh.auth/LoginAccount)
+  (let [ [p s] (.hashed pwdObj)
+         acc (.insert sql (-> (dbio-create-obj :czc.hhh.auth/LoginAccount)
                             (dbio-set-fld :acctid (SU/strim user))
-                            (dbio-set-fld :passwd (.hashed pwdObj)))) ]
+                            (dbio-set-fld :salt s)
+                            (dbio-set-fld :passwd  p))) ]
     (doseq [ r (seq roleObjs) ]
       (dbio-set-m2m { :as :roles :with sql } acc r))
     acc))
@@ -82,18 +84,27 @@
       (nil? acct)
       (throw (UnknownUser. user))
 
-      (= (.hashed pwdObj) (:passwd acct))
+      (.validateHash pwdObj (:passwd acct))
       acct
 
       :else
       (throw (AuthError. "Incorrect password"))) ))
 
-(defn update-loginAccount [^SQLr sql userObj
-                      ^comzotohcljc.crypto.codec.Password pwdObj details]
-  (with-local-vars [ u (-> userObj (dbio-set-fld :passwd (.hashed pwdObj))) ]
-    (doseq [ [f v] (seq details) ]
-      (var-set u (dbio-set-fld @u f v)))
-    (.update sql @u)))
+(defn change-loginAccount [^SQLr sql userObj
+                      ^comzotohcljc.crypto.codec.Password pwdObj ]
+  (let [ [p s] (.hashed pwdObj)
+         u (-> userObj
+              (dbio-set-fld :passwd p)
+              (dbio-set-fld :salt s)) ]
+    (.update sql u)))
+
+(defn update-loginAccount [^SQLr sql userObj details]
+  (if (empty? details)
+    userObj
+    (with-local-vars [ u userObj ]
+      (doseq [ [f v] (seq details) ]
+        (var-set u (dbio-set-fld @u f v)))
+      (.update sql @u)) ))
 
 (defn remove-loginAccount-role [^SQLr sql userObj roleObj]
   (dbio-clr-m2m {:as :roles :with sql } userObj roleObj))
