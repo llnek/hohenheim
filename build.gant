@@ -163,12 +163,13 @@ target (distroInit: '') {
   delete (dir: "${packDir}")
   mkdir (dir: "${packDir}")
   mkdir (dir: "${packDir}/conf")
-  mkdir (dir: "${packDir}/boot")
-  mkdir (dir: "${packDir}/dist")
+  //mkdir (dir: "${packDir}/boot")
+  mkdir (dir: "${packDir}/dist/boot")
+  mkdir (dir: "${packDir}/dist/exec")
   mkdir (dir: "${packDir}/bin")
   mkdir (dir: "${packDir}/etc/blocks")
   //mkdir (dir: "${packDir}/etc")
-  mkdir (dir: "${packDir}/patch")
+  //mkdir (dir: "${packDir}/patch")
   mkdir (dir: "${packDir}/lib")
   mkdir (dir: "${packDir}/logs")
   mkdir (dir: "${packDir}/docs/samples")
@@ -277,14 +278,14 @@ target (packLics: '') {
        ================================= */
 
 target (packDist: '') {
-  copy (todir: "${packDir}/dist") {
-    fileset (dir: "${distribDir}") {
-      exclude (name: '*-spec-*.jar')
+  copy (todir: "${packDir}/dist/exec") {
+    fileset (dir: "${distribDir}/exec") {
+      include (name: '*.jar')
     }
   }
-  copy (todir: "${packDir}/boot") {
-    fileset (dir: "${distribDir}") {
-      include (name: '*-spec-*.jar')
+  copy (todir: "${packDir}/dist/boot") {
+    fileset (dir: "${distribDir}/boot") {
+      include (name: '*.jar')
     }
   }
 }
@@ -349,7 +350,8 @@ target (checkTpcl: '') {
 }
 
 target (preBuild: '') {
-  mkdir (dir: "${distribDir}")
+  mkdir (dir: "${distribDir}/boot")
+  mkdir (dir: "${distribDir}/exec")
   mkdir (dir: "${libDir}")
   mkdir (dir: "${libDir}/libjar")
   mkdir (dir: "${qaDir}")
@@ -362,7 +364,10 @@ target (preBuild: '') {
 
 path (id: 'compilePathId') {
   fileset (dir: "${libDir}/libjar")
-  fileset (dir: "${distribDir}")
+  fileset (dir: "${distribDir}") {
+    include (name: 'boot/*.jar')
+    include (name: 'exec/*.jar')
+  }
   fileset (dir: "${scalaLibDir}")
   fileset (dir: "${clojureDir}")
   path (location: "${buildDir}")
@@ -380,7 +385,8 @@ path (id: 'testPathId') {
     include (name: '*.jar')
   }
   fileset (dir: "${distribDir}") {
-    include (name: '*.jar')
+    include (name: 'boot/*.jar')
+    include (name: 'exec/*.jar')
   }
   path (location: "${buildDir}")
   path (location: "${buildTestDir}")
@@ -619,7 +625,7 @@ def compileAndJar() {
     include (name: 'com/zotoh/hohenheim/loaders/**/*.scala')
   }
 
-  jar (destfile: "${distribDir}/${PID}-spec-${buildVersion}.jar") {
+  jar (destfile: "${distribDir}/boot/${PID}-spec-${buildVersion}.jar") {
     fileset (dir: "${buildDir}")
   }
 
@@ -657,7 +663,7 @@ def compileAndJar() {
 }
 
 def jarAll() {
-  jar (destfile: "${distribDir}/${PID}-${buildVersion}.jar") {
+  jar (destfile: "${distribDir}/exec/${PID}-${buildVersion}.jar") {
     fileset (dir: "${buildDir}") {
       exclude (name: '**/log4j.properties')
       exclude (name: '**/logback.xml')

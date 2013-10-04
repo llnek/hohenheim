@@ -20,7 +20,7 @@
   comzotohcljc.hhh.io.http )
 
 (use '[clojure.tools.logging :only (info warn error debug)])
-(import '(org.eclipse.jetty.server Server Connector))
+(import '(org.eclipse.jetty.server Server Connector ConnectionFactory))
 (import '(java.util.concurrent ConcurrentHashMap))
 (import '(java.net URL))
 (import '(java.util List Map HashMap ArrayList))
@@ -193,15 +193,15 @@
 
 (defn- cfgHTTPS ^ServerConnector [^Server server port ^URL keyfile ^String pwd conf]
   ;; SSL Context Factory for HTTPS and SPDY
-  (let[ sslxf (doto (SslContextFactory.)
+  (let [ sslxf (doto (SslContextFactory.)
                 (.setKeyStorePath (-> keyfile (.toURI)(.toURL)(.toString)))
                 (.setKeyStorePassword pwd)
                 (.setKeyManagerPassword pwd))
-        config (doto (HttpConfiguration. conf)
-                 (.addCustomizer (SecureRequestCustomizer.)))
-        https (ServerConnector. server
-            (SslConnectionFactory. sslxf "HTTP/1.1")
-            (HttpConnectionFactory. config)) ]
+         config (doto (HttpConfiguration. conf)
+                  (.addCustomizer (SecureRequestCustomizer.)))
+         https (doto (ServerConnector. server)
+                 (.addConnectionFactory (SslConnectionFactory. sslxf "HTTP/1.1"))
+                 (.addConnectionFactory (HttpConnectionFactory. config))) ]
     (doto https
       (.setPort port)
       (.setIdleTimeout (int 500000)))))

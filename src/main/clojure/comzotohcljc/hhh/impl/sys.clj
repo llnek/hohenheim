@@ -107,10 +107,10 @@
 (defmethod comp-initialize :czc.hhh.impl/Deployer
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
-         py (.getf ctx K_PLAYDIR)
-         pd (.getf ctx K_PODSDIR) ]
+         ^File py (.getf ctx K_PLAYDIR)
+         ^File pd (.getf ctx K_PODSDIR) ]
     (when (.isDirectory pd)
-      (doseq [ ^File f (seq (IOUtils/listFiles ^File pd "pod" false)) ]
+      (doseq [ ^File f (seq (IOUtils/listFiles pd "pod" false)) ]
         (.deploy ^comzotohcljc.hhh.impl.defaults.Deployer co f)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

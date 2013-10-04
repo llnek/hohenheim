@@ -78,7 +78,7 @@
       (.setFork true)
       (.setDestdir destDir))
 
-    (.setClassPath ct (Path. pj))
+    ;;(.setClassPath ct (Path. pj))
 
     (-> (.createSrc ct)
       (.addDirset (doto (DirSet.) (.setDir srcPath))))

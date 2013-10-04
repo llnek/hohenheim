@@ -7,8 +7,8 @@ for %%x in (%*) do set /A ARGC+=1
 set HOHENHEIM_HOME=%~dp0..
 set BINDIR=%~dp0
 set PATCHDIR=%HOHENHEIM_HOME%\patch\*
-set DISTRO=%HOHENHEIM_HOME%\dist\*
-set BOOT=%HOHENHEIM_HOME%\boot\*
+set DISTRO=%HOHENHEIM_HOME%\dist\exec\*
+set BOOT=%HOHENHEIM_HOME%\dist\boot\*
 set LIBDIR=%HOHENHEIM_HOME%\lib\*
 
 set BCP=%BOOT%;%LIBDIR%;%CLASSPATH%

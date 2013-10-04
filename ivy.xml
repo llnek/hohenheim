@@ -9,7 +9,10 @@
 
   <publications>
     <artifact name="hohenheim-distro" type="distro"  conf="libjar" ext="tar.gz"/>
+    <!--
+    <artifact name="hohenheim-spec" type="jar"  conf="libjar" ext="jar"/>
     <artifact name="hohenheim" type="jar"  conf="libjar" ext="jar"/>
+    -->
   </publications>
 
   <dependencies defaultconf="libjar">

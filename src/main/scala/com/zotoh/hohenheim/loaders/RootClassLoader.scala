@@ -40,8 +40,8 @@ class RootClassLoader(par:ClassLoader) extends AbstractClassLoader( par) {
   }
 
   private def load(baseDir:String) {
+    val d= new File(baseDir, "dist/exec")
     val p= new File(baseDir, "patch")
-    val d= new File(baseDir, "dist")
     val b= new File(baseDir, "lib")
 
     if (!_loaded) {
