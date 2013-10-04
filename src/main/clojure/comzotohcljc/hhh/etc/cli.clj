@@ -30,9 +30,10 @@
 (require '[comzotohcljc.util.files :as FS])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.ini :as WI])
+(require '[clojure.data.json :as json])
+
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.etc.task])
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -202,10 +203,14 @@
   (post-create-app hhhHome appId appDomain))
 
 (defn- create-web-common "" [^File hhhHome appId ^String appDomain]
-  (let [ hf (WI/parse-inifile (File. hhhHome (str DN_CONF "/" (name K_PROPS) )))
+  (let [ wfc (File. hhhHome (str DN_CFG "/app/weblibs.conf" ) )
+         wbs (json/read-str (FileUtils/readFileToString wfc "utf-8")
+                            :key-fn keyword)
          appDir (File. hhhHome (str "apps/" appId))
-         wlib (doto (File. appDir "weblibs") (.mkdirs))
+         wlib (doto (File. appDir "public/vendors") (.mkdirs))
+         hf (WI/parse-inifile (File. hhhHome (str DN_CONF "/" (name K_PROPS))))
          wlg (.optString hf "webdev" "lang" "coffee")
+         buf (StringBuilder.)
          appDomainPath (.replace appDomain "." "/") ]
 
     (doseq [ s ["js" "less"]]
@@ -223,15 +228,28 @@
                                    (File. appDir (str "src/main/clojure/" appDomainPath)))
 
     (-> (File. appDir (str "src/test/" wlg)) (.mkdirs))
-    (-> (File. appDir "public/vendors") (.mkdirs))
 
-    (doseq [ k (keys (.getSection hf "weblibs")) ]
-      (let [ dd (File. hhhHome (str "etc/weblibs/" (name k))) ]
+    (FileUtils/copyFile wfc (File. wlib ".list"))
+    (doseq [ df (:libs wbs) ]
+      (let [ dn (:dir df)
+             dd (File. hhhHome (str "etc/weblibs/" dn))
+             td (File. wlib ^String dn) ]
         (when (.isDirectory dd)
-          (when (or (= "jquery" (name k))
-                    (= "underscore" (name k)))
-            (FileUtils/copyDirectoryToDirectory dd (File. appDir "public/vendors")))
-          (FileUtils/copyDirectoryToDirectory dd wlib))))
+          (FileUtils/copyDirectoryToDirectory dd wlib)
+          (when-not (:skip df)
+            (doseq [ f (:js df) ]
+              (-> buf (.append (FileUtils/readFileToString (File. td ^String f) "utf-8"))
+                  (.append (str "\n\n/* @@@" f "@@@ */"))
+                  (.append "\n\n")))))))
+
+    (FileUtils/writeStringToFile (File. appDir "public/c/webcommon.js")
+                                 (.toString buf)
+                                 "utf-8")
+
+    (FileUtils/writeStringToFile (File. appDir "public/c/webcommon.css")
+                                 ""
+                                 "utf-8")
+
     ))
 
 (defn createJetty "" [^File hhhHome appId ^String appDomain]

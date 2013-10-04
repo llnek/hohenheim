@@ -59,12 +59,10 @@
   </target>
 
   <target name="finz-build">
-    <touch file="${basedir}/public/scripts/webcommon.js"/>
-      <!--
-    <concat destfile="${basedir}/public/scripts/webcommon.js" append="true">
-      <filelist dir="${basedir}/public/jquery" files="jquery.min.js" />
+    <!--
+    <concat destfile="${basedir}/public/c/webcommon.js" append="true">
     </concat>
-      -->
+    -->
   </target>
 
   <!-- target: test-build

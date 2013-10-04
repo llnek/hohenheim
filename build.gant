@@ -441,6 +441,12 @@ target (runTestCode: '') {
   //println 'No test to run.'
 }
 
+  /*
+       pack common web assets (css + js)
+       */
+target (packWebAssets: '') {
+}
+
 
   /*
        pack license files
