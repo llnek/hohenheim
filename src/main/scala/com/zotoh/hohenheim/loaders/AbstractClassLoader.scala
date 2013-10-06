@@ -34,10 +34,12 @@ abstract class AbstractClassLoader(par:ClassLoader) extends URLClassLoader( Arra
   protected var _loaded=false
 
   def findUrls(dir:File): this.type = {
-    val seq= if (! dir.exists) Array() else dir.listFiles( new FilenameFilter() {
-      def accept(f:File,n:String) = n.endsWith(".jar")
-    })
-    seq.foreach( addUrl _ )
+    if (dir.exists ) {
+      val seq = dir.listFiles( new FilenameFilter() {
+        def accept(f:File,n:String) = n.endsWith(".jar")
+      })
+      seq.foreach( addUrl _ )
+    }
     this
   }
 
