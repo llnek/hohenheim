@@ -158,7 +158,7 @@
                                (System/getProperty "user.name")))
         "utf-8")
 
-      (doseq [ s [ "scala" "java" (str "clojure/" appDomainPath) "resources" ]]
+      (doseq [ s [ "scala" "java" (str "clojure/" appDomainPath) ]]
         (-> (File. appDir (str "src/main/" s)) (.mkdirs))
         (-> (File. appDir (str "src/test/" s)) (.mkdirs)))
 
@@ -166,6 +166,8 @@
                                      (File. appDir (str "src/main/clojure/" appDomainPath)))
       (FileUtils/copyFileToDirectory (File. hhhHome "etc/app/pipe.clj")
                                      (File. appDir (str "src/main/clojure/" appDomainPath)))
+
+      (-> (File. appDir "src/main/resources") (.mkdirs))
 
       (doseq [ s ["build.xs" "ivy.config.xml" "ivy.xml" "pom.xml"]]
         (FileUtils/copyFileToDirectory (File. hhhHome (str "etc/app/" s))
@@ -287,7 +289,7 @@
                                      (File. appDir "public"))
 
       (FileUtils/copyFileToDirectory (File. hhhHome "etc/netty/main.less")
-                                     (File. appDir "src/main/resources/less"))
+                                     (File. appDir "src/main/less"))
 
       (var-set fp (File. appDir "conf/routes.conf"))
       (FileUtils/writeStringToFile ^File @fp

@@ -252,6 +252,7 @@
     </apply>
     <copy todir="${basedir}/public/styles">
       <fileset dir="${build.dir}/less"><include name="*.css"/></fileset>
+      <fileset dir="${src.dir}/less"><include name="*.css"/></fileset>
     </copy>
   </target>
 
