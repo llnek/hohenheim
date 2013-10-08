@@ -26,18 +26,19 @@
 
 (import '(com.zotoh.hohenheim.io HTTPEvent))
 (import '(javax.net.ssl SSLContext))
-(import '(org.jboss.netty.handler.codec.http
-  HttpRequest HttpResponse CookieDecoder CookieEncoder
+(import '(io.netty.handler.codec.http
+  HttpRequest HttpResponse CookieDecoder ServerCookieEncoder
   DefaultHttpResponse HttpVersion HttpHeaders
   HttpHeaders Cookie QueryStringDecoder))
-(import '(org.jboss.netty.channel Channel))
-(import '(org.jboss.netty.channel.group
+(import '(io.netty.channel Channel))
+(import '(io.netty.channel.group
   ChannelGroup))
-(import '(org.jboss.netty.bootstrap ServerBootstrap))
+(import '(io.netty.bootstrap ServerBootstrap))
+
 (import '(com.zotoh.frwk.core Hierarchial Identifiable))
 (import '(com.zotoh.hohenheim.io WebSockEvent WebSockResult))
 (import '(com.zotoh.frwk.io XData))
-(import '(org.jboss.netty.handler.codec.http.websocketx
+(import '(io.netty.handler.codec.http.websocketx
   WebSocketFrame
   WebSocketServerHandshaker
   WebSocketServerHandshakerFactory
@@ -103,8 +104,8 @@
 (defn- make-wsock-event
   [^comzotohcljc.hhh.io.core.EmitterAPI co ^Channel ch ^XData xdata]
   (let [ ^WebSockResult res (make-wsock-result)
-         ssl (CU/notnil? (.get (.getPipeline ch) "ssl"))
-         ^InetSocketAddress laddr (.getLocalAddress ch)
+         ssl (CU/notnil? (.get (.pipeline ch) "ssl"))
+         ^InetSocketAddress laddr (.localAddress ch)
          impl (CU/make-mmap)
          eeid (SN/next-long) ]
     (with-meta
@@ -144,8 +145,8 @@
          ^HttpRequest req (nth args 1)
          ^XData xdata (nth args 2)
          ^Channel ch (nth args 0)
-         ssl (CU/notnil? (.get (.getPipeline ch) "ssl"))
-         ^InetSocketAddress laddr (.getLocalAddress ch)
+         ssl (CU/notnil? (.get (.pipeline ch) "ssl"))
+         ^InetSocketAddress laddr (.localAddress ch)
          impl (CU/make-mmap)
          eeid (SN/next-long) ]
     (with-meta
@@ -168,18 +169,16 @@
         (getId [_] eeid)
         (emitter [_] co)
         (getCookies [_]
-          (let [ v (SU/nsb (.getHeader req "Cookie"))
+          (let [ v (SU/nsb (HttpHeaders/getHeader req "Cookie"))
                  rc (ArrayList.)
-                 cdc (CookieDecoder.)
-                 cks (if (SU/hgl? v) (.decode cdc v) []) ]
+                 cks (if (SU/hgl? v) (CookieDecoder/decode v) []) ]
             (doseq [ ^Cookie c (seq cks) ]
               (.add rc (cookieToJava c)))
             rc))
         (getCookie [_ nm]
-          (let [ v (SU/nsb (.getHeader req "Cookie"))
+          (let [ v (SU/nsb (HttpHeaders/getHeader req "Cookie"))
                  lnm (.toLowerCase nm)
-                 cdc (CookieDecoder.)
-                 cks (if (SU/hgl? v) (.decode cdc v) []) ]
+                 cks (if (SU/hgl? v) (CookieDecoder/decode v) []) ]
             (some (fn [^Cookie c]
                     (if (= (.toLowerCase (.getName c)) lnm)
                       (cookieToJava c)
@@ -192,25 +191,25 @@
         (hasData [_] (CU/notnil? xdata))
 
         (contentLength [_] (HttpHeaders/getContentLength req))
-        (contentType [_] (.getHeader req "content-type"))
+        (contentType [_] (HttpHeaders/getHeader req "content-type"))
 
         (encoding [this]  (MM/get-charset (.contentType this)))
         (contextPath [_] "")
 
-        (getHeaderValues [_ nm] (.getHeaders req nm))
-        (getHeaders [_] (.getHeaderNames req))
-        (getHeaderValue [_ nm] (.getHeader req nm))
+        (getHeaderValues [_ nm] (-> (.headers req) (.getAll nm)))
+        (getHeaders [_] (-> (.headers req) (.names)))
+        (getHeaderValue [_ nm] (HttpHeaders/getHeader req nm))
         (getParameterValues [_ nm]
           (let [ dc (QueryStringDecoder. (.getUri req))
-                 rc (.get (.getParameters dc) nm) ]
+                 rc (.get (.parameters dc) nm) ]
             (if (nil? rc) (ArrayList.) rc)))
         (getParameters [_]
           (let [ dc (QueryStringDecoder. (.getUri req))
-                 m (.getParameters dc) ]
+                 m (.parameters dc) ]
             (.keySet m)))
         (getParameterValue [_ nm]
           (let [ dc (QueryStringDecoder. (.getUri req))
-                 ^List rc (.get (.getParameters dc) nm) ]
+                 ^List rc (.get (.parameters dc) nm) ]
             (if (and (CU/notnil? rc) (> (.size rc) 0))
               (.get rc 0)
               nil)))
@@ -231,20 +230,20 @@
               (.substring s pos)
               "")))
 
-        (remoteAddr [_] (SU/nsb (.getHeader req "REMOTE_ADDR")))
-        (remoteHost [_] (SU/nsb (.getHeader req "")))
-        (remotePort [_] (CU/conv-long (.getHeader req "REMOTE_PORT") 0))
+        (remoteAddr [_] (SU/nsb (HttpHeaders/getHeader req "REMOTE_ADDR")))
+        (remoteHost [_] (SU/nsb (HttpHeaders/getHeader req "")))
+        (remotePort [_] (CU/conv-long (HttpHeaders/getHeader req "REMOTE_PORT") 0))
 
         (scheme [_] (if ssl "https" "http"))
 
-        (serverName [_] (SU/nsb (.getHeader req "SERVER_NAME")))
-        (serverPort [_] (CU/conv-long (.getHeader req "SERVER_PORT") 0))
+        (serverName [_] (SU/nsb (HttpHeaders/getHeader req "SERVER_NAME")))
+        (serverPort [_] (CU/conv-long (HttpHeaders/getHeader req "SERVER_PORT") 0))
 
         (isSSL [_] ssl)
 
         (getUri [_]
           (let [ dc (QueryStringDecoder. (.getUri req)) ]
-            (.getPath dc)))
+            (.path dc)))
 
         (getRequestURL [_] (throw (IOException. "not implemented")))
 
@@ -293,7 +292,7 @@
 
 (defn- init-netty
   [^comzotohcljc.hhh.core.sys.Element co reqcb]
-  (let [ [^ServerBootstrap bs opts] (NE/server-bootstrap)
+  (let [ ^ServerBootstrap bs (NE/server-bootstrap)
          file (.getAttr co :serverKey)
          ssl (CU/notnil? file)
          pwd (.getAttr co :pwd)
@@ -302,12 +301,12 @@
          routes (.getAttr ctr :routes)
          ctx (if ssl (SS/make-sslContext file pwd)) ]
     (doto bs
-      (.setPipelineFactory
+      (.childHandler
         (NE/make-pipeServer ctx
                             (make-service-io co reqcb)
                             (NE/make-routeCracker routes) )))
     (.setAttr! co :netty
-      (comzotohcljc.netty.comms.NettyServer. bs nil opts))
+      (comzotohcljc.netty.comms.NettyServer. bs nil))
     co))
 
 (defmethod ioes-start :czc.hhh.io/NettyIO
@@ -325,9 +324,7 @@
 ;;    c.getConfig().setConnectTimeoutMillis(millis)
     (.add cg c)
     (.setAttr! co :netty
-      (comzotohcljc.netty.comms.NettyServer. (.server nes)
-                                           cg
-                                           (.options nes)) )
+      (comzotohcljc.netty.comms.NettyServer. (.server nes) cg))
     (debug "netty-io running on port: " port ", host: " host ", ip: " ip)
     (ioes-started co)))
 

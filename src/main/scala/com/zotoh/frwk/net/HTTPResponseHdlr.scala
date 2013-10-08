@@ -18,14 +18,17 @@
 
 package com.zotoh.frwk.net
 
-import org.jboss.netty.channel.group.ChannelGroup
+import io.netty.handler.codec.http.{HttpObject,HttpContent,LastHttpContent}
+import io.netty.channel.SimpleChannelInboundHandler
+import io.netty.channel.group.ChannelGroup
 import com.zotoh.frwk.io.XData
-
+import io.netty.channel.Channel
+import io.netty.channel.ChannelHandlerContext
 /**
  * @author kenl
  *
  */
-class HTTPResponseHdlr(g:ChannelGroup) extends BasicChannelHandler(g) {
+class HTTPResponseHdlr(g:ChannelGroup) extends SimpleChannelInboundHandler[HttpObject] {
 
 //  private var _cb:HTTPMsgIO = null
 //  def bind(cb:HTTPMsgIO): this.type = {
@@ -41,5 +44,8 @@ class HTTPResponseHdlr(g:ChannelGroup) extends BasicChannelHandler(g) {
 //      _cb.onError(code, reason)
 //    }
 //  }
+  
+    override def channelRead0(ctx:ChannelHandlerContext, msg:HttpObject) {
+    }  
 }
 

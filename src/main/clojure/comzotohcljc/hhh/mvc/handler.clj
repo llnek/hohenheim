@@ -27,9 +27,9 @@
 (import '(com.zotoh.hohenheim.mvc
   HTTPErrorHandler MVCUtils WebAsset WebContent ))
 (import '(com.zotoh.hohenheim.io HTTPEvent Emitter))
-(import '(org.jboss.netty.channel Channel))
-(import '(org.jboss.netty.buffer ChannelBuffers))
-(import '(org.jboss.netty.handler.codec.http
+(import '(io.netty.channel Channel))
+(import '(io.netty.buffer ByteBuf Unpooled))
+(import '(io.netty.handler.codec.http
   HttpHeaders$Values HttpHeaders$Names
   DefaultHttpRequest
   HttpContentCompressor HttpHeaders HttpVersion
@@ -57,11 +57,11 @@
 (defn- isModified [^String eTag lastTm ^HttpRequest req]
   (with-local-vars [ modd true ]
     (cond
-      (.containsHeader req HttpHeaders$Names/IF_NONE_MATCH)
+      (-> (.headers req) (.contains HttpHeaders$Names/IF_NONE_MATCH))
       (var-set modd (not= eTag (.getHeader req HttpHeaders$Names/IF_NONE_MATCH)))
 
-      (.containsHeader req HttpHeaders$Names/IF_UNMODIFIED_SINCE)
-      (let [ s (.getHeader req HttpHeaders$Names/IF_UNMODIFIED_SINCE) ]
+      (-> (.headers req) (.contains HttpHeaders$Names/IF_UNMODIFIED_SINCE))
+      (let [ s (HttpHeaders/getHeader req HttpHeaders$Names/IF_UNMODIFIED_SINCE) ]
         (when (SU/hgl? s)
           (CU/Try! (when (>= (.getTime (.parse (MVCUtils/getSDF) s)) lastTm)
                      (var-set modd false)))))

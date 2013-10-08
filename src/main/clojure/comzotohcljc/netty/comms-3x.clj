@@ -25,38 +25,34 @@
 (import '(org.apache.commons.io IOUtils FileUtils))
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.io IOException ByteArrayOutputStream File OutputStream InputStream))
+(import '(java.nio ByteBuffer))
 (import '(java.util HashMap))
 (import '(java.net URI URL InetSocketAddress))
 (import '(java.util.concurrent Executors))
 (import '(javax.net.ssl SSLEngine SSLContext))
 (import '(javax.net.ssl X509TrustManager TrustManager))
-
-(import '(io.netty.bootstrap Bootstrap ServerBootstrap))
-(import '(io.netty.util AttributeKey Attribute))
-(import '(io.netty.util.concurrent GlobalEventExecutor))
-(import '(io.netty.channel.nio NioEventLoopGroup))
-(import '(io.netty.buffer ByteBuf ByteBufHolder Unpooled))
-
-(import '(io.netty.handler.stream ChunkedWriteHandler ChunkedStream))
-(import '(io.netty.channel.socket.nio
-  NioServerSocketChannel NioSocketChannel))
-(import '(io.netty.channel
-  ChannelHandlerContext Channel SimpleChannelInboundHandler
-  ChannelFutureListener ChannelFuture ChannelInitializer
-  ChannelPipeline ChannelOption))
-(import '(io.netty.channel.socket SocketChannel))
-(import '(io.netty.channel.group
+(import '(org.jboss.netty.bootstrap Bootstrap ClientBootstrap ServerBootstrap))
+(import '(org.jboss.netty.buffer ChannelBufferInputStream ChannelBuffer))
+(import '(org.jboss.netty.channel
+  ChannelHandlerContext Channel ExceptionEvent MessageEvent
+  ChannelFutureListener Channels SimpleChannelHandler ChannelFuture
+  ChannelPipelineFactory ChannelPipeline))
+(import '(org.jboss.netty.buffer ByteBufferBackedChannelBuffer))
+(import '(org.jboss.netty.channel.group
   ChannelGroupFuture ChannelGroup ChannelGroupFutureListener
   DefaultChannelGroup))
-(import '(io.netty.handler.codec.http 
-  HttpHeaders HttpVersion HttpContent LastHttpContent
+(import '(org.jboss.netty.channel.socket.nio
+  NioClientSocketChannelFactory NioServerSocketChannelFactory))
+(import '(org.jboss.netty.handler.codec.http HttpChunkAggregator DefaultHttpRequest
+  HttpContentCompressor HttpHeaders HttpVersion HttpChunk
   HttpHeaders$Values HttpHeaders$Names
   HttpMessage HttpRequest HttpResponse HttpResponseStatus
   DefaultHttpResponse QueryStringDecoder HttpMethod
-  DefaultHttpRequest HttpServerCodec HttpClientCodec
+  HttpRequestDecoder HttpServerCodec HttpClientCodec
   HttpResponseEncoder))
-(import '(io.netty.handler.ssl SslHandler))
-(import '(io.netty.handler.codec.http.websocketx
+(import '(org.jboss.netty.handler.ssl SslHandler))
+(import '(org.jboss.netty.handler.stream ChunkedStream ChunkedWriteHandler))
+(import '(org.jboss.netty.handler.codec.http.websocketx
   WebSocketFrame
   WebSocketServerHandshaker
   WebSocketServerHandshakerFactory
@@ -74,13 +70,13 @@
 (require '[comzotohcljc.crypto.core :as CY])
 (require '[comzotohcljc.crypto.ssl :as CS])
 (require '[comzotohcljc.net.comms :as NU])
-
 (use '[comzotohcljc.net.rts])
-
 (require '[comzotohcljc.util.files :as FU])
 (require '[comzotohcljc.util.str :as SU])
 (require '[comzotohcljc.util.io :as IO])
 (require '[comzotohcljc.util.core :as CU])
+
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -90,7 +86,7 @@
 (comment
 (def HTTP-CODES
   (let [fields (:fields (bean HttpResponseStatus))
-        to-key (comp int (fn [^Field f] (.code ^HttpResponseStatus (.get f nil))))
+        to-key (comp int (fn [^Field f] (.getCode ^HttpResponseStatus (.get f nil))))
         kkeys (map to-key fields)
         vvals (map (comp str (fn [^Field f] (.get f nil))) fields) ]
     (into {} (map vec (partition 2 (interleave kkeys vvals))))))
@@ -100,7 +96,7 @@
 ;; map of { int (code) -> HttpResponseStatus }
 (def HTTP-CODES
   (let [fields (:fields (bean HttpResponseStatus))
-        to-key (fn [^Field f] (.code ^HttpResponseStatus (.get f nil)))
+        to-key (fn [^Field f] (.getCode ^HttpResponseStatus (.get f nil)))
         kkeys (map to-key fields)
         vvals (map (fn [^Field f] (.get f nil)) fields) ]
     (into {} (map vec (partition 2 (interleave kkeys vvals))))))
@@ -114,7 +110,7 @@
 (defprotocol NettyServiceIO
   ""
   (before-send [_ ^Channel ch msg] )
-  (onerror [_ ^Channel ch msginfo ^Throwable err] )
+  (onerror [_ ^Channel ch msginfo ^MessageEvent evt] )
   (onreq [_ ^Channel ch req msginfo ^XData xdata] )
   (onres [_ ^Channel ch rsp msginfo ^XData xdata] ))
 
@@ -134,20 +130,21 @@
     (DefaultHttpResponse. HttpVersion/HTTP_1_1
                           (get HTTP-CODES status))))
 
+(defn chKeepAlive?  "True if keep connection alive." [^HttpMessage msg]
+  (HttpHeaders/isKeepAlive msg))
+
+(defn msgSize "Get message's content-length." [^HttpMessage msg]
+  (HttpHeaders/getContentLength msg))
+
 (defn closeCF "Maybe close the channel." [doit ^ChannelFuture cf]
   (if (and doit (CU/notnil? cf))
     (.addListener cf ChannelFutureListener/CLOSE)))
 
-(defn- wflush [^Channel ch obj]
-  (let [ rc (.write ch obj) ]
-    (.flush ch)
-    rc))
-
 (defn sendRedirect "" [ ^Channel ch perm ^String targetUrl]
   (let [ rsp (make-resp-status (if perm 301 307)) ]
     (debug "redirecting to " targetUrl)
-    (HttpHeaders/setHeader rsp  "location" targetUrl)
-    (closeCF true (wflush ch rsp))))
+    (.setHeader rsp "location" targetUrl)
+    (closeCF true (.write ch rsp))))
 
 (defn make-nilServiceIO "Reify a no-op service-io object."
 
@@ -163,48 +160,43 @@
 (defn server-bootstrap "Make a netty server bootstrap."
 
   ([] (server-bootstrap {} ))
+
   ([options]
-    (let [ gp (NioEventLoopGroup.) gc (NioEventLoopGroup.)
-           bs (doto (ServerBootstrap.)
-                (.group gp gc)
-                (.channel (class NioServerSocketChannel))
-                (.option ChannelOption/SO_REUSEADDR true)
-                (.childOption ChannelOption/SO_RCVBUF (int (* 2 1024 1024)))
-                (.childOption ChannelOption/TCP_NODELAY true)) ]
-      (doseq [ [k v] (seq options) ]
-        (if (= :child k)
-          (doseq [ [x y] (seq v) ]
-            (.childOption bs x y))
-          (.option bs k v)))
-      bs)))
+    (let [ bs (ServerBootstrap. (NioServerSocketChannelFactory.
+                (Executors/newCachedThreadPool)
+                (Executors/newCachedThreadPool)))
+           dft { :child.receiveBufferSize (int (* 2 1024 1024))
+                 :child.tcpNoDelay true
+                 :reuseAddress true }
+           opts (merge dft options) ]
+      (doseq [ [k v] (seq opts) ]
+        (.setOption bs (name k) v))
+      [bs opts])) )
 
 (defn client-bootstrap "Make a netty client bootstrap."
 
   ([] (client-bootstrap {} ))
+
   ([options]
-   (let [ g (NioEventLoopGroup.)
-          bs (doto (Bootstrap.)
-               (.group g)
-               (.channel (class NioSocketChannel))
-               (.option ChannelOption/TCP_NODELAY true)
-               (.option ChannelOption/SO_KEEPALIVE true)) ]
-     (doseq [ [ k v] (seq options) ]
-       (.option bs k v))
-     bs)))
+    (let [ bs (ClientBootstrap. (NioClientSocketChannelFactory.
+                (Executors/newCachedThreadPool)
+                (Executors/newCachedThreadPool)))
+           dft { :tcpNoDelay true
+                 :keepAlive true }
+           opts (merge dft options) ]
+      (doseq [ [ k v] (seq opts) ]
+        (.setOption bs (name k) v))
+      [bs opts])) )
+
 
 (defn channel-group "Make a channel group."
 
   ^ChannelGroup
   []
-  (DefaultChannelGroup. (CU/uid) GlobalEventExecutor/INSTANCE))
+  (DefaultChannelGroup. (CU/uid)))
 
 (defn kill-9 "Clean up resources used by a netty server." [^ServerBootstrap bs]
-  (let [ gc (.childGroup bs)
-         gp (.group bs) ]
-    (when-not (nil? gp) 
-      (CU/Try! (.shutdownGracefully gp)))
-    (when-not (nil? gc) 
-      (CU/Try! (.shutdownGracefully gc))) ))
+    (CU/Try! (.releaseExternalResources bs)))
 
 (defn finz-server "Bring down a netty server."
 
@@ -214,11 +206,11 @@
     (-> (.close cg) (add-listener { :done (fn [_] (kill-9 server)) }))))
 
 (defn send-100-cont "" [^ChannelHandlerContext ctx]
-  (let [ ch (.channel ctx) ]
-    (wflush ch (make-resp-status 100))))
+  (let [ ch (.getChannel ctx) ]
+    (.write ch (make-resp-status 100))))
 
-(defrecord NettyServer [^ServerBootstrap server ^ChannelGroup cgroup ] )
-(defrecord NettyClient [^Bootstrap client ^ChannelGroup cgroup ] )
+(defrecord NettyServer [^ServerBootstrap server ^ChannelGroup cgroup options] )
+(defrecord NettyClient [^ClientBootstrap client ^ChannelGroup cgroup options] )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; private helpers
@@ -240,24 +232,24 @@
 
 (defmethod ^:private add-listener ChannelGroupFuture
   [^ChannelGroupFuture cf options]
-  (let [ cg (.group cf) ]
+  (let [ cg (.getGroup cf) ]
     (-> cf (.addListener
               (reify ChannelGroupFutureListener
                 (operationComplete [_ cff]
                   (opComplete cg
-                               (.isSuccess ^ChannelGroupFuture cff)
+                               (.isCompleteSuccess ^ChannelGroupFuture cff)
                                nil
                                options )))))) )
 
 (defmethod ^:private add-listener ChannelFuture
   [^ChannelFuture cf options]
-  (let [ ch (.channel cf) ]
+  (let [ ch (.getChannel cf) ]
     (-> cf (.addListener
               (reify ChannelFutureListener
                 (operationComplete [_ cff]
                   (opComplete ch
                                (.isSuccess ^ChannelFuture cff)
-                               (.cause ^ChannelFuture cff)
+                               (.getCause ^ChannelFuture cff)
                                options )))))) )
 
 (defn- maybe-keepAlive "make channel-future listener to close the channel"
@@ -265,43 +257,43 @@
   (when-not keepAlive
     (add-listener cf
                   { :done
-                    (fn [^ChannelFuture cff] (.close ^Channel (.channel cff))) } )))
+                    (fn [^ChannelFuture cff] (.close (.getChannel cff))) } )))
 
 (defn- reply-xxx [^Channel ch status]
-  (let [ info (.attr ch (AttributeKey. "info"))
-         res (make-resp-status status)
-         m (.get info)
-         kalive (if (nil? m) false (:keep-alive m)) ]
-    (HttpHeaders/setTransferEncodingChunked res)
-    (HttpHeaders/setContentLength res 0)
-    (-> (wflush ch res) (maybe-keepAlive kalive))))
+  (let [ res (make-resp-status status)
+         attObj (.getAttachment ch)
+         info (if (nil? attObj) nil (:info attObj))
+         kalive (if (nil? info) false (:keep-alive info)) ]
+    (doto res
+      (.setChunked false)
+      (.setHeader "content-length", "0"))
+    (-> (.write ch res) (maybe-keepAlive kalive))))
 
 (defn- nioMapHeaders "turn headers into a clj-map"
   [^HttpMessage msg]
-  (let [ hds (.headers msg) ]
-    (persistent! (reduce (fn [sum ^String n]
-              (assoc! sum (.toLowerCase n) (vec (.getAll hds n))))
-      (transient {}) (seq (.names hds)))) ))
+  (persistent! (reduce (fn [sum ^String n]
+            (assoc! sum (.toLowerCase n) (vec (.getHeaders msg n))))
+    (transient {}) (seq (.getHeaderNames msg)))) )
 
 (defn- nioExtractMsg "get info from http message"
   [^HttpMessage msg]
     { :protocol (-> msg (.getProtocolVersion) (.toString))
-      :is-chunked (HttpHeaders/isTransferEncodingChunked msg)
-      :keep-alive (HttpHeaders/isKeepAlive msg)
-      :clen (HttpHeaders/getContentLength msg)
+      :is-chunked (.isChunked msg)
+      :keep-alive (chKeepAlive? msg)
+      :clen (msgSize msg)
       :headers (nioMapHeaders msg) } )
 
 (defn- nioExtractReq "extract info from request"
   ^comzotohcljc.net.comms.HTTPMsgInfo
   [^HttpRequest req]
-  (let [ ws (.toLowerCase (SU/strim (HttpHeaders/getHeader req "upgrade")))
+  (let [ ws (.toLowerCase (SU/strim (.getHeader req "upgrade")))
          decr (QueryStringDecoder. (.getUri req))
-         md (.toUpperCase (-> req (.getMethod) (.name)))
-         uri (.path decr)
+         md (.toUpperCase (-> req (.getMethod) (.getName)))
+         uri (.getPath decr)
          m1 (nioExtractMsg req)
          params (persistent! (reduce (fn [sum en]
                           (assoc! sum (.toLowerCase (SU/nsb (first en))) (vec (nth en 1))))
-                      (transient {}) (seq (.parameters decr)))) ]
+                      (transient {}) (seq (.getParameters decr)))) ]
 
     (comzotohcljc.net.comms.HTTPMsgInfo.
       (:protocol m1)
@@ -319,17 +311,17 @@
       (:keep-alive m1) (:clen m1) (:headers m1) {})))
 
 (defn- nioComplete "" [^ChannelHandlerContext ctx msg]
-  (let [ ch (.channel ctx)
-         ^XData xdata (-> (.attr ch (AttributeKey. "xs")) (.get))
-         info (-> (.attr ch (AttributeKey. "info")) (.get))
-         dir (-> (.attr ch (AttributeKey. "dir")) (.get))
+  (let [ ch (.getChannel ctx)
+         attObj (.getAttachment ch)
+         ^XData xdata (:xs attObj)
+         info (:info attObj)
+         dir (:dir attObj)
 
          ^comzotohcljc.netty.comms.NettyServiceIO
-         usercb (-> (.attr ch (AttributeKey. "cb")) (.get))
+         usercb (:cb attObj)
 
-         os (-> (.attr ch (AttributeKey. "os")) (.get))
-         clen (-> (.attr ch (AttributeKey. "clen")) (.get)) ]
-
+         os (:os attObj)
+         clen (:clen attObj) ]
     (when (and (> clen 0) (instance? ByteArrayOutputStream os))
       (.resetContent xdata os))
     (cond
@@ -345,71 +337,71 @@
 
 (defn- nioSockitDown
 
-  [^ChannelHandlerContext ctx ^ByteBuf cbuf]
-  (let [ ch (.channel ctx)
-         ^XData xdata (-> (.attr ch (AttributeKey. "xs")) (.get))
-         ^OutputStream cout (-> (.attr ch (AttributeKey. "os")) (.get))
-         csum (-> (.attr ch (AttributeKey. "clen")) (.get))
+  [^ChannelHandlerContext ctx ^ChannelBuffer cbuf]
+  (let [ ch (.getChannel ctx)
+         attObj (.getAttachment ch)
+         ^XData xdata (:xs attObj)
+         ^OutputStream cout (:os attObj)
+         csum (:clen attObj)
          nsum (NetUtils/sockItDown cbuf cout csum)
          nout (if (.isDiskFile xdata)
                   cout
                   (NetUtils/swapFileBacked xdata cout nsum)) ]
-    (-> (.attr ch (AttributeKey. "clen")) (.set nsum))
-    (-> (.attr ch (AttributeKey. "os")) (.set nout)) ))
+    (.setAttachment ch (merge attObj { :os nout :clen nsum } ))))
 
-(defn- nioCfgCtx [^ChannelHandlerContext ctx usercb]
-  (let [ ch (.channel ctx) ]
-    (-> (.attr ch (AttributeKey. "os")) (.set (IO/make-baos)))
-    (-> (.attr ch (AttributeKey. "xs")) (.set (XData.)))
-    (-> (.attr ch (AttributeKey. "clen")) (.set 0))
-    (-> (.attr ch (AttributeKey. "cb")) (.set usercb)) ))
+(defn- nioCfgCtx [^ChannelHandlerContext ctx atts usercb]
+  (let [ os (IO/make-baos)
+         x (XData.)
+         clen 0
+         m (merge { :xs x :os os :clen clen :cb usercb :rts true } atts) ]
+    (.setAttachment (.getChannel ctx) m)
+    m))
 
-(defn- nioPError [^ChannelHandlerContext ctx err]
-  (let [ ch (.channel ctx)
-         info (-> (.attr ch (AttributeKey. "info")) (.get))
+(defn- nioPError [^ChannelHandlerContext ctx ^MessageEvent ev]
+  (let [ ch (.getChannel ctx)
+         attObj (.getAttachment ch)
          ^comzotohcljc.netty.comms.NettyServiceIO
-         usercb (-> (.attr ch (AttributeKey. "cb")) (.get)) ]
-    (.onerror usercb ch info err) ))
+         usercb (:cb attObj) ]
+    (.onerror usercb ch (:info attObj) ev) ))
 
 (defn- nioFinz "close any output stream created during the message handling"
   [^ChannelHandlerContext ctx]
-  (let [ ch (.channel ctx)
-         ^OutputStream
-         os (-> (.attr ch (AttributeKey. "os")) (.get)) ]
+  (let [ ch (.getChannel ctx)
+         att (.getAttachment ch)
+         ^OutputStream os (:os att) ]
     (IOUtils/closeQuietly os)))
 
 (defn- nioFrameChunk [^ChannelHandlerContext ctx ^ContinuationWebSocketFrame frame]
-  (let [ cbuf (.content frame) ]
+  (let [ cbuf (.getBinaryData frame) ]
     (when-not (nil? cbuf) (nioSockitDown ctx cbuf))
     (when (.isFinalFragment frame)
       (do
         (nioFinz ctx)
         (when (nil? cbuf)
-          (let [s (SU/nsb (.aggregatedText frame))
-                ch (.channel ctx)
-                ^XData
-                xs (-> (.attr ch (AttributeKey. "xs")) (.get)) ]
-            (-> (.attr ch (AttributeKey. "clen")) (.set (.length s)))
+          (let [s (SU/nsb (.getAggregatedText frame))
+                ch (.getChannel ctx)
+                attObj (.getAttachment ch)
+                ^XData xs (:xs attObj) ]
+            (.setAttachment ch (merge attObj { :clen (.length s) } ))
             (.resetContent xs s)))
         (nioComplete ctx frame) )) ))
 
 (defn- getBits [^ChannelHandlerContext ctx ^WebSocketFrame frame]
-  (when-let [ buf (.content frame) ]
+  (when-let [ buf (.getBinaryData frame) ]
     (nioSockitDown ctx buf)))
 
 (defn- nioWSFrame [^ChannelHandlerContext ctx ^WebSocketFrame frame ]
-  (let [ ch (.channel ctx)
-         ^XData
-         xs (-> (.attr ch (AttributeKey. "xs")) (.get))
-         ^WebSocketServerHandshaker 
-         hs (-> (.attr ch (AttributeKey. "hs")) (.get)) ]
+  (let [ ch (.getChannel ctx)
+         attObj (.getAttachment ch)
+         ^XData xs (:xs attObj)
+         ^WebSocketServerHandshaker hs (:hs attObj) ]
     (debug "nio-wsframe: received a " (class frame) )
     (cond
       (instance? CloseWebSocketFrame frame)
       (.close hs ch ^CloseWebSocketFrame frame)
 
       (instance? PingWebSocketFrame frame)
-      (wflush ch (PongWebSocketFrame. (.content frame)))
+      (.write ch (PongWebSocketFrame. (.getBinaryData frame)))
 
       (instance? BinaryWebSocketFrame frame)
       (do
@@ -417,9 +409,9 @@
         (nioComplete ctx frame))
 
       (instance? TextWebSocketFrame frame)
-      (let [ s (SU/nsb (.text ^TextWebSocketFrame frame)) ]
+      (let [ s (SU/nsb (.getText ^TextWebSocketFrame frame)) ]
         (.resetContent xs s)
-        (-> (.attr ch (AttributeKey. "clen")) (.set (.length s)))
+        (.setAttachment ch (merge attObj { :clen (.length s) }))
         (nioComplete ctx frame))
 
       (instance? ContinuationWebSocketFrame frame)
@@ -430,19 +422,19 @@
 
 
 (defn- maybeSSL "" [^ChannelHandlerContext ctx]
-  (let [ ssl (-> (.channel ctx)(.pipeline ) (.get (class SslHandler))) ]
+  (let [ ssl (-> ctx (.getPipeline) (.get (class SslHandler))) ]
     (when-not (nil? ssl)
       (let [ cf (.handshake ^SslHandler ssl) ]
         (add-listener cf { :nok (fn [^Channel c] (.close c)) } )))))
 
 (defn- nioWSock "" [^ChannelHandlerContext ctx ^HttpRequest req]
-  (let [ ch (.channel ctx)
-         rts (-> (.attr ch (AttributeKey. "rts")) (.get)) ]
-    (if (false? rts)
+  (let [ ch (.getChannel ctx)
+         attObj (.getAttachment ch) ]
+    (if (false? (:rts attObj))
       (reply-xxx ch 404)
       (let [ wf (WebSocketServerHandshakerFactory.
                   (str "ws://"
-                       (HttpHeaders/getHeader req "host")
+                       (.getHeader req "host")
                        (.getUri req)) nil false)
              hs (.newHandshaker wf req) ]
         (if (nil? hs)
@@ -450,16 +442,16 @@
             (.sendUnsupportedWebSocketVersionResponse wf ch)
             (CU/Try! (.close ch)))
           (do
-            (-> (.attr ch (AttributeKey. "hs")) (.set hs))
+            (.setAttachment ch (merge attObj { :hs hs }))
             (add-listener (.handshake hs ch req)
                           { :nok (fn [^Channel c ^Throwable e]
-                                   (-> (.pipeline c) (.fireExceptionCaught e)))
+                                   (Channels/fireExceptionCaught c e))
                             :ok (fn [c] (maybeSSL ctx)) } ))))) ))
 
 (defn- nioWReq [^ChannelHandlerContext ctx ^HttpRequest req]
-  (let [ ch (.channel ctx)
-         msginfo (-> (.attr ch (AttributeKey. "info")) (.get))
-         rts (-> (.attr ch (AttributeKey. "rts")) (.get)) ]
+  (let [ attObj (.getAttachment (.getChannel ctx))
+         rts (:rts attObj)
+         msginfo (:info attObj) ]
     (debug "nioWReq: received a " (:method msginfo ) " request from " (:uri msginfo))
     ;; if it's a valid route, continue as usual
     (if (true? rts)
@@ -470,7 +462,7 @@
           ;; msg not chunked, suck all data from the request
           (do
             (try
-                (nioSockitDown ctx (.content ^ByteBufHolder req))
+                (nioSockitDown ctx (.getContent req))
               (finally (nioFinz ctx)))
             (nioComplete ctx req))))
       ;; bad route, so just pass it down and let it handle the error.
@@ -480,52 +472,44 @@
   [^ChannelHandlerContext ctx ^HttpRequest req usercb
    ^comzotohcljc.netty.comms.RouteCracker rtcObj]
   (let [ msginfo (nioExtractReq req)
-         ch (.channel ctx)
          rts (if (and (not (nil? rtcObj))
                       (.hasRoutes? rtcObj))
                 (.routable? rtcObj msginfo)
-                true) ]
-    (-> (.attr ch (AttributeKey. "info")) (.set msginfo))
-    (-> (.attr ch (AttributeKey. "rts")) (.set rts))
-    (-> (.attr ch (AttributeKey. "dir")) (.set req))
-    (nioCfgCtx ctx usercb)
+                true)
+         attObj (nioCfgCtx ctx { :rts rts :dir req :info msginfo } usercb) ]
     (if (= "WS" (:method msginfo))
         (nioWSock ctx req)
         (nioWReq ctx req))))
 
-(defn- nioRedirect "" [^ChannelHandlerContext ctx msg]
+(defn- nioRedirect "" [^ChannelHandlerContext ctx ^MessageEvent ev]
   ;; TODO: handle redirect properly, for now, same as error
-  (nioPError ctx (IOException. "Unsupported redirect.")))
+  (nioPError ctx ev))
 
 (defn- nioPResBody "" [^ChannelHandlerContext ctx ^HttpResponse res]
-  (if (HttpHeaders/isTransferEncodingChunked res)
+  (if (.isChunked res)
     (debug "nioPResBody: response is chunked.")
     (try
-        (nioSockitDown ctx (.content ^ByteBufHolder res))
+        (nioSockitDown ctx (.getContent res))
       (finally (nioFinz ctx)))))
 
 (defn- nioPRes "handle a response"
-  [^ChannelHandlerContext ctx ^HttpResponse res usercb]
+  [^ChannelHandlerContext ctx ^MessageEvent ev ^HttpResponse res usercb]
   (let [ msginfo (nioExtractRes res)
-         ch (.channel ctx)
          s (.getStatus res)
-         r (.reasonPhrase s)
-         c (.code s) ]
+         r (.getReasonPhrase s)
+         c (.getCode s) ]
     (debug "nioPRes: got a response: code " c " reason: " r)
-    (-> (.attr ch (AttributeKey. "info")) (.set msginfo))
-    (-> (.attr ch (AttributeKey. "dir")) (.set res))
-    (-> (.attr ch (AttributeKey. "rts")) (.set false))
-    (nioCfgCtx ctx usercb)
+    (nioCfgCtx ctx { :dir res :info msginfo } usercb)
     (cond
       (and (>= c 200) (< c 300)) (nioPResBody ctx res)
-      (and (>= c 300) (< c 400)) (nioRedirect ctx)
-      :else (nioPError ctx (IOException. (str "error code: " c))))))
+      (and (>= c 300) (< c 400)) (nioRedirect ctx ev)
+      :else (nioPError ctx ev))))
 
 (defn- nioChunk "handle a chunk - part of a message"
-  [^ChannelHandlerContext ctx ^HttpContent msg]
+  [^ChannelHandlerContext ctx ^HttpChunk msg]
   (let [ done (try
-                  (nioSockitDown ctx (.content msg))
-                  (instance? LastHttpContent msg)
+                  (nioSockitDown ctx (.getContent msg))
+                  (.isLast msg)
                 (catch Throwable e#
                     (do (nioFinz ctx) (throw e#)))) ]
     (if done (nioComplete ctx msg) nil)))
@@ -534,37 +518,35 @@
 ;; make our channel handler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn netty-pipe-handler "Make a generic Netty 4.x Pipeline Handler."
+(defn netty-pipe-handler "Make a generic Netty 3.x Pipeline Handler."
   [^comzotohcljc.netty.comms.NettyServiceIO usercb
    ^comzotohcljc.netty.comms.RouteCracker rtcObj ]
-  (proxy [SimpleChannelInboundHandler] []
+  (proxy [SimpleChannelHandler] []
 
-    (exceptionCaught [ctx err]
-      (let [ ch (.channel ^ChannelHandlerContext ctx)
-             msginfo (-> (.attr ch (AttributeKey. "info")) (.get))
+    (exceptionCaught [ctx ev]
+      (let [ ch (.getChannel ^ChannelHandlerContext ctx)
+             attObj (.getAttachment ch)
+             msginfo (:info attObj)
              keepAlive (if (nil? msginfo) false (:keep-alive msginfo)) ]
-        (error err "")
-        (.onerror usercb ch msginfo err)
+        (error (.getCause ^ExceptionEvent ev) "")
+        (.onerror usercb ch msginfo ev)
         (when-not keepAlive (CU/Try! (.close ch)))))
 
-    (channelReadComplete [ctx]
-      (.flush ctx))
-
-    (channelRead0 [ctx msg]
-      (let []
+    (messageReceived [ctx ev]
+      (let [ msg (.getMessage ^MessageEvent ev) ]
         (cond
           (instance? HttpRequest msg) (nioPRequest ctx msg usercb rtcObj)
           (instance? WebSocketFrame msg) (nioWSFrame ctx msg)
-          (instance? HttpResponse msg) (nioPRes ctx msg usercb)
-          (instance? HttpContent msg) (nioChunk ctx msg)
+          (instance? HttpResponse msg) (nioPRes ctx ev msg usercb)
+          (instance? HttpChunk msg) (nioChunk ctx msg)
           :else (throw (IOException. "Received some unknown object." ) ))))
 
     ))
 
-(defn make-pipeServer "Make a Serverside PipelineFactory." ^ChannelInitializer [^SSLContext sslctx usercb rtcObj]
-  (proxy [ChannelInitializer][]
-    (initChannel [^SocketChannel ch]
-      (let [ ^ChannelPipeline pl (.pipeline ^Channel ch)
+(defn make-pipeServer "Make a Serverside PipelineFactory." ^ChannelPipelineFactory [^SSLContext sslctx usercb rtcObj]
+  (reify ChannelPipelineFactory
+    (getPipeline [_]
+      (let [ pl (org.jboss.netty.channel.Channels/pipeline)
              eg (if (nil? sslctx)
                     nil
                     (doto (.createSSLEngine sslctx)(.setUseClientMode false))) ]
@@ -576,10 +558,10 @@
           (.addLast "chunker" (ChunkedWriteHandler.))
           (.addLast "handler" (netty-pipe-handler usercb rtcObj))) ))))
 
-(defn make-pipeClient "Make a Clientside PipelineFactory" ^ChannelInitializer [^SSLContext sslctx usercb]
-  (proxy [ChannelInitializer][]
-    (initChannel [^SocketChannel ch]
-      (let [ ^ChannelPipeline pl (.pipeline ^Channel ch)
+(defn make-pipeClient "Make a Clientside PipelineFactory" ^ChannelPipelineFactory [^SSLContext sslctx usercb]
+  (reify ChannelPipelineFactory
+    (getPipeline [_]
+      (let [ pl (org.jboss.netty.channel.Channels/pipeline)
              eg (if (nil? sslctx)
                     nil
                     (doto (.createSSLEngine sslctx)(.setUseClientMode true))) ]
@@ -602,16 +584,14 @@
   (let [ ^URL keyUrl (:serverkey options)
          pwdObj (:passwd options)
          ssl (if (nil? keyUrl) nil (CS/make-sslContext keyUrl pwdObj))
-         ^ServerBootstrap bs (server-bootstrap options)
+         rc (server-bootstrap options)
+         ^ServerBootstrap bs (first rc)
          cg (channel-group)
          pf (make-pipeServer ssl usercb nil) ]
-     (.childHandler bs pf)
-     (.add cg (-> bs 
-                (.bind (InetSocketAddress. host (int port)))
-                (.sync)
-                (.channel)))
+     (.setPipelineFactory bs pf)
+     (.add cg (.bind bs (InetSocketAddress. host (int port))))
      (debug "netty-xxx-server: running on host " host ", port " port)
-     (NettyServer. bs cg) ))
+     (NettyServer. bs cg (last rc)) ))
 
 (defn make-mem-httpd "Make an in-memory http server."
 
@@ -626,13 +606,14 @@
 (defn- reply-get-vfile [^Channel ch ^XData xdata]
   (let [ res (make-resp-status)
          clen (.size xdata)
-         info (-> (.attr ch (AttributeKey. "info")) (.get))
+         attObj (.getAttachment ch)
+         info (if (nil? attObj) nil (:info attObj))
          kalive (if (nil? info) false (:keep-alive info)) ]
-    (HttpHeaders/setHeader res "content-type" "application/octet-stream")
-    (HttpHeaders/setContentLength res clen)
-    (HttpHeaders/setTransferEncodingChunked res)
-    (wflush ch res)
-    (-> (wflush ch (ChunkedStream. (.stream xdata)))
+    (doto res
+      (.setHeader "content-type" "application/octet-stream")
+      (.setHeader "content-length" (SU/nsb clen)))
+    (.write ch res)
+    (-> (.write ch (ChunkedStream. (.stream xdata)))
       (maybe-keepAlive kalive))))
 
 (defn- filer-handler [^File vdir]
@@ -649,9 +630,9 @@
                       (reply-xxx ch 204)))) ]
     (reify NettyServiceIO
       (before-send [_ ch msg] nil)
-      (onerror [_ ch msginfo err]
+      (onerror [_ ch msginfo evt]
         (do
-          (when-not (nil? err) (error err ""))
+          (if (instance? ExceptionEvent evt) (error (.getCause ^ExceptionEvent evt) ""))
           (reply-xxx ch 500)))
       (onres [_ ch rsp msginfo xdata] nil)
       (onreq [_ ch req msginfo xdata]
@@ -679,9 +660,9 @@
   (^NettyClient [] (make-httpClient {} ))
 
   (^NettyClient [options]
-    (let [ bs (client-bootstrap options)
+    (let [ rc (client-bootstrap options)
            cg (channel-group) ]
-      (NettyClient. bs cg ))))
+      (NettyClient. (first rc) cg (last rc)))) )
 
 (defn- iniz-httpClient
 
@@ -694,20 +675,20 @@
            pnum (.getPort targetUrl)
            ^long port (if (< pnum 0) (if (nil? ctx) 80 443) pnum)
            pl (make-pipeClient ctx serviceIO)
-           ^Bootstrap cli (:client clientr)
+           ^ClientBootstrap cli (:client clientr)
            ^ChannelGroup cg (:cgroup clientr) ]
       (debug "Netty client connecting to " host ":" port)
-      (.handler cli pl)
+      (.setPipelineFactory cli pl)
       (let [ ^ChannelFuture cf (doto (.connect cli
                                                (InetSocketAddress. host port))
                   (.awaitUninterruptibly))
              ok (.isSuccess cf)
-             e (if (not ok) (.cause cf) nil) ]
+             e (if (not ok) (.getCause cf) nil) ]
         (when-not ok
           (if (nil? e)
             (throw (IOException. "Failed to connect to URL: " targetUrl))
             (throw e)))
-        (let [ ch (.channel cf) ]
+        (let [ ch (.getChannel cf) ]
           (.add cg ch)
           (debug "Netty client connected to " host ":" port " - OK.")
           ch)))))
@@ -723,24 +704,26 @@
          before-send (:before-send options)
          ka (:keepAlive (:options clientr))
          uri (.getUri req) ]
-    (HttpHeaders/setHeader req "Connection" (if ka "keep-alive" "close"))
-    (HttpHeaders/setHeader req "host" (.getHost (URL. uri)))
+    (doto req
+      (.setHeader "Connection" (if ka "keep-alive" "close"))
+      (.setHeader "host" (.getHost (URL. uri))))
     (when (fn? before-send) (before-send req))
-    (let [ ct (HttpHeaders/getHeader req "content-type") ]
+    (let [ ct (.getHeader req "content-type") ]
       (when (and (StringUtils/isEmpty ct) (not (nil? xdata)))
-        (HttpHeaders/setHeader req "content-type" "application/octet-stream")) )
+        (.setHeader req "content-type" "application/octet-stream")) )
     (when (> clen 0)
       (do
         (debug "Netty client: content has length " clen)
-        (HttpHeaders/setHeader req "content-length" (str "" clen))))
+        (.setHeader req "content-length" (str "" clen))))
     (debug "Netty client: about to flush out request (headers)")
-    (let [ ^ChannelFuture cf (doto (wflush ch req)
+    (let [ ^ChannelFuture cf (doto (.write ch req)
                 (add-listener { :ok #(do (debug "Netty client: headers flushed")) })) ]
       (when (> clen 0)
         (doto
           (if (> clen (com.zotoh.frwk.io.IOUtils/streamLimit))
-            (wflush ch (ChunkedStream. (.stream xdata)))
-            (wflush ch (Unpooled/copiedBuffer (.javaBytes xdata))))
+            (.write ch (ChunkedStream. (.stream xdata)))
+            (.write ch (ByteBufferBackedChannelBuffer.
+                         (ByteBuffer/wrap (.javaBytes xdata)))))
           (add-listener { :ok #(do (debug "Netty client: payload flushed")) }))))
     ))
 

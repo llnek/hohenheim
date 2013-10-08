@@ -21,19 +21,19 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(import '(org.jboss.netty.handler.codec.http HttpResponseStatus))
+(import '(io.netty.handler.codec.http HttpResponseStatus))
 (import '(org.eclipse.jetty.continuation ContinuationSupport))
 (import '(org.eclipse.jetty.continuation Continuation))
-(import '(org.jboss.netty.channel Channel ChannelFuture ChannelFutureListener))
-(import '(org.jboss.netty.handler.codec.http
-  HttpHeaders HttpHeaders$Names HttpVersion CookieEncoder DefaultHttpResponse))
+(import '(io.netty.channel Channel ChannelFuture ChannelFutureListener))
+(import '(io.netty.handler.codec.http
+  HttpHeaders HttpHeaders$Names HttpVersion ServerCookieEncoder DefaultHttpResponse))
 (import '(java.nio.channels ClosedChannelException))
 (import '(java.io OutputStream IOException))
-(import '(org.jboss.netty.handler.stream ChunkedStream))
+(import '(io.netty.handler.stream ChunkedStream))
 (import '(java.util List Timer TimerTask))
 (import '(java.net HttpCookie))
 (import '(javax.servlet.http Cookie HttpServletRequest HttpServletResponse))
-(import '(org.jboss.netty.buffer ByteBufferBackedChannelBuffer))
+(import '(io.netty.buffer ByteBuf Unpooled ByteBufHolder))
 (import '(java.nio ByteBuffer))
 
 (import '(org.apache.commons.io IOUtils))
@@ -41,7 +41,7 @@
 (import '(com.zotoh.frwk.io XData))
 (import '(com.zotoh.frwk.core Identifiable))
 (import '(com.zotoh.hohenheim.io WebSockEvent WebSockResult HTTPEvent))
-(import '(org.jboss.netty.handler.codec.http.websocketx
+(import '(io.netty.handler.codec.http.websocketx
   WebSocketFrame
   BinaryWebSocketFrame
   TextWebSocketFrame))
@@ -141,10 +141,11 @@
       (.addListener cf ChannelFutureListener/CLOSE ))))
 
 (defn- cookiesToNetty ^String [^List cookies]
-  (let [ cke (CookieEncoder. true) ]
-    (doseq [ ^HttpCookie c (seq cookies) ]
-      (.addCookie cke (.getName c)(.getValue c)))
-    (.encode cke)))
+  (persistent! (reduce (fn [sum ^HttpCookie c]
+                         (conj! sum
+                                (ServerCookieEncoder/encode
+                                  (.getName c)(.getValue c))))
+          (transient []) (seq cookies)) ))
 
 (defn- netty-ws-reply [^WebSockResult res ^Channel ch ^WebSockEvent evt src]
   (let [ ^XData xs (.getData res)
@@ -152,13 +153,11 @@
          ^WebSocketFrame 
          f (cond
               (.isBinary res)
-              (BinaryWebSocketFrame.
-                (ByteBufferBackedChannelBuffer. 
-                  (ByteBuffer/wrap bits)))
+              (BinaryWebSocketFrame. (Unpooled/copiedBuffer bits))
 
               :else
               (TextWebSocketFrame. (SU/nsb (CU/stringify bits)))) ]
-    (.write ch f)))
+    (.writeAndFlush ch f)))
 
 (defn- netty-reply [^comzotohcljc.util.core.MuObj res
                     ^Channel ch
@@ -174,12 +173,12 @@
       (doseq [[^String nm vs] (seq hdrs)]
         (when-not (= "content-length" (.toLowerCase nm))
           (doseq [vv (seq vs)]
-            (.addHeader rsp nm vv))))
-      (when (SU/hgl? cks)
-        (.addHeader rsp HttpHeaders$Names/SET_COOKIE2 cks) )
+            (HttpHeaders/addHeader rsp nm vv))))
+      (doseq [s cks]
+        (HttpHeaders/addHeader rsp HttpHeaders$Names/SET_COOKIE cks) )
       (cond
         (and (>= code 300)(< code 400))
-        (.setHeader rsp "Location" (SU/nsb (.getf res :redirect)))
+        (HttpHeaders/setHeader rsp "Location" (SU/nsb (.getf res :redirect)))
         :else
         (let [ ^XData dd (if (nil? data)
                             (XData.)
@@ -188,16 +187,16 @@
                               :else (XData. data))) ]
           (var-set clen (if (.hasContent dd) (.size dd) 0))
           (var-set xd dd)
-          (.setHeader rsp "content-length" (str "" @clen)) ) )
+          (HttpHeaders/setContentLength rsp @clen)) )
       (try
-          (let [ cf (.write ch rsp) ]
+          (let [ cf (.writeAndFlush ch rsp) ]
             (when (= @clen 0) (maybeClose evt cf)))
         (catch ClosedChannelException e#
           (warn "ClosedChannelException thrown while flushing headers"))
         (catch Throwable t# (error t# "") ))
       (when (> @clen 0)
         (try
-          (maybeClose evt (.write ch (ChunkedStream. (.stream ^XData @xd))))
+          (maybeClose evt (.writeAndFlush ch (ChunkedStream. (.stream ^XData @xd))))
           (catch ClosedChannelException e#
             (warn "ClosedChannelException thrown while flushing body"))
           (catch Throwable t# (error t# "") )))
@@ -218,7 +217,7 @@
       (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1
                                    (HttpResponseStatus/valueOf 500)) ]
         (try
-          (maybeClose evt (.write ch rsp))
+          (maybeClose evt (.writeAndFlush ch rsp))
           (catch ClosedChannelException e#
             (warn "ClosedChannelException thrown while flushing headers"))
           (catch Throwable t# (error t# "") )) ))

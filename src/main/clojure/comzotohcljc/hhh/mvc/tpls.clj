@@ -18,12 +18,12 @@
        :author "kenl" }
   comzotohcljc.hhh.mvc.tpls)
 
-(import '(org.jboss.netty.handler.codec.http 
+(import '(io.netty.handler.codec.http 
   HttpMethod HttpHeaders HttpResponseStatus
   HttpRequest HttpResponse))
-(import '(org.jboss.netty.handler.stream
+(import '(io.netty.handler.stream
   ChunkedFile ChunkedStream ChunkedInput ))
-(import '(org.jboss.netty.channel Channel))
+(import '(io.netty.channel Channel))
 
 (import '(org.apache.commons.io FileUtils))
 (import '(com.zotoh.hohenheim.mvc 
@@ -135,20 +135,20 @@
              ", ctype= " @ct)
       (try
         (when (not= (.getStatus rsp) HttpResponseStatus/NOT_MODIFIED)
-          (.setHeader rsp "Content-Length" (str "" @clen)))
-        (.addHeader rsp "Accept-Ranges" "bytes")
-        (.setHeader rsp "Content-Type" @ct)
+          (HttpHeaders/setContentLength rsp @clen))
+        (HttpHeaders/addHeader rsp "Accept-Ranges" "bytes")
+        (HttpHeaders/setHeader rsp "Content-Type" @ct)
         (if (= (.getMethod req) HttpMethod/HEAD)
           (try
-            (.write ch rsp)
+            (.writeAndFlush ch rsp)
             (finally
               (CU/Try! (when (CU/notnil? @raf)(.close ^RandomAccessFile @raf)))
               (var-set raf nil)))
           (NE/closeCF
             (not (HttpHeaders/isKeepAlive req))
             (do
-              (.write ch rsp)
-              (.write ch @inp))) )
+              (.writeAndFlush ch rsp)
+              (.writeAndFlush ch @inp))) )
         (catch Throwable e#
           (error e# "")
           (CU/Try! (when (CU/notnil? @raf)(.close ^RandomAccessFile @raf)))

@@ -19,9 +19,9 @@
 
 package com.zotoh.frwk.net
 
-import org.jboss.netty.channel.ChannelFutureListener
-import org.jboss.netty.channel.{ChannelFuture,Channel}
-import org.jboss.netty.buffer.ChannelBuffer
+import io.netty.channel.ChannelFutureListener
+import io.netty.channel.{ChannelFuture,Channel}
+import io.netty.buffer.ByteBuf
 import java.io.{OutputStream}
 import org.slf4j._
 import com.zotoh.frwk.io.{IOUtils,XData}
@@ -64,7 +64,7 @@ object NetUtils {
       }
   }
 
-  def sockItDown(cbuf:ChannelBuffer, out:OutputStream, lastSum:Long ) = {
+  def sockItDown(cbuf:ByteBuf, out:OutputStream, lastSum:Long ) = {
     val cnt= if (cbuf==null) 0 else cbuf.readableBytes()
     if (cnt > 0) {
       val bits= new Array[Byte](4096)
