@@ -113,6 +113,7 @@ LOGREF="-Dlogback.configurationFile=$LOGCFG"
 BASEDIR="-Dhohenheim.home=$HOHENHEIM_HOME"
 KPORT=4444
 KILLPORT="-Dhohenheim.kill.port=$KPORT"
+NETTY=-Dio.netty.eventLoopThreads=16
 
 show_proc() {
     pid=$( ps -ef | grep comzotohcljc.hhh.etc.core | grep -v grep | awk '{print $2}' )
@@ -168,10 +169,10 @@ fi
 #CMDLINE="$JAVA_CMD -cp $BCP $DBGOPTS $LOGREF $BASEDIR $CLDR $MAINCZ $HOHENHEIM_HOME $@ "
 cd $HOHENHEIM_BIN
 if [ "$BG" = "true" ]; then
-  nohup $JAVA_CMD $VMARGS -cp $BCP $LIBP $DBGOPTS $LOGREF $KILLPORT $BASEDIR $CLDR $MAINCZ $HOHENHEIM_HOME $@ &
+  nohup $JAVA_CMD $VMARGS -cp $BCP $LIBP $DBGOPTS $LOGREF $NETTY $KILLPORT $BASEDIR $CLDR $MAINCZ $HOHENHEIM_HOME $@ &
 else
   splash
-  $JAVA_CMD $VMARGS -cp $BCP $LIBP $DBGOPTS $LOGREF $KILLPORT $BASEDIR $CLDR $MAINCZ $HOHENHEIM_HOME $@
+  $JAVA_CMD $VMARGS -cp $BCP $LIBP $DBGOPTS $LOGREF $NETTY $KILLPORT $BASEDIR $CLDR $MAINCZ $HOHENHEIM_HOME $@
 fi
 cd $CWD
 exit 0

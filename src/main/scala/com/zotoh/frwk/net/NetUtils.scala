@@ -19,8 +19,8 @@
 
 package com.zotoh.frwk.net
 
-import io.netty.channel.ChannelFutureListener
-import io.netty.channel.{ChannelFuture,Channel}
+import io.netty.channel.{ChannelFutureListener,ChannelPipeline}
+import io.netty.channel.{ChannelHandlerContext,ChannelFuture,Channel}
 import io.netty.buffer.ByteBuf
 import java.io.{OutputStream}
 import org.slf4j._
@@ -64,6 +64,13 @@ object NetUtils {
       }
   }
 
+  def getPipeline(ctx:ChannelHandlerContext) : ChannelPipeline = ctx.pipeline()
+  def getPipeline(ch:Channel) : ChannelPipeline = ch.pipeline()
+  def wrtFlush(ch:Channel, obj:Any) = ch.writeAndFlush(obj)
+  def closeChannel(ch:Channel) {
+    ch.close()
+  }
+  
   def sockItDown(cbuf:ByteBuf, out:OutputStream, lastSum:Long ) = {
     val cnt= if (cbuf==null) 0 else cbuf.readableBytes()
     if (cnt > 0) {

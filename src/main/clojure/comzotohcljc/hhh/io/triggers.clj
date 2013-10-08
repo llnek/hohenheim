@@ -46,7 +46,7 @@
   BinaryWebSocketFrame
   TextWebSocketFrame))
 
-(use '[comzotohcljc.netty.comms :only (HTTP-CODES) ])
+(use '[comzotohcljc.netty.comms :only (HTTP-CODES wflush) ])
 (require '[comzotohcljc.net.comms :as NU])
 (require '[comzotohcljc.util.core :as CU])
 (require '[comzotohcljc.util.str :as SU])
@@ -157,7 +157,7 @@
 
               :else
               (TextWebSocketFrame. (SU/nsb (CU/stringify bits)))) ]
-    (.writeAndFlush ch f)))
+    (wflush ch f)))
 
 (defn- netty-reply [^comzotohcljc.util.core.MuObj res
                     ^Channel ch
@@ -189,14 +189,14 @@
           (var-set xd dd)
           (HttpHeaders/setContentLength rsp @clen)) )
       (try
-          (let [ cf (.writeAndFlush ch rsp) ]
+          (let [ cf (wflush ch rsp) ]
             (when (= @clen 0) (maybeClose evt cf)))
         (catch ClosedChannelException e#
           (warn "ClosedChannelException thrown while flushing headers"))
         (catch Throwable t# (error t# "") ))
       (when (> @clen 0)
         (try
-          (maybeClose evt (.writeAndFlush ch (ChunkedStream. (.stream ^XData @xd))))
+          (maybeClose evt (wflush ch (ChunkedStream. (.stream ^XData @xd))))
           (catch ClosedChannelException e#
             (warn "ClosedChannelException thrown while flushing body"))
           (catch Throwable t# (error t# "") )))
@@ -217,7 +217,7 @@
       (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1
                                    (HttpResponseStatus/valueOf 500)) ]
         (try
-          (maybeClose evt (.writeAndFlush ch rsp))
+          (maybeClose evt (wflush ch rsp))
           (catch ClosedChannelException e#
             (warn "ClosedChannelException thrown while flushing headers"))
           (catch Throwable t# (error t# "") )) ))

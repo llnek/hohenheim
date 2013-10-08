@@ -356,6 +356,8 @@ target (preBuild: '') {
   mkdir (dir: "${libDir}/libjar")
   mkdir (dir: "${qaDir}")
   mkdir (dir: "${buildDir}")
+  // get rid of debug logging during build!
+  copy (todir: "${buildDir}", file: "${basedir}/logback.xml")
 }
 
   /*

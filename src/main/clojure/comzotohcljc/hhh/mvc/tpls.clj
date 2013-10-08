@@ -31,6 +31,7 @@
   HTTPRangeInput AssetCache))
 (import '(java.io RandomAccessFile File))
 (import '(java.util HashMap))
+(import '(com.zotoh.frwk.net NetUtils))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (require '[comzotohcljc.netty.comms :as NE])
@@ -140,19 +141,19 @@
         (HttpHeaders/setHeader rsp "Content-Type" @ct)
         (if (= (.getMethod req) HttpMethod/HEAD)
           (try
-            (.writeAndFlush ch rsp)
+            (NE/wflush ch rsp)
             (finally
               (CU/Try! (when (CU/notnil? @raf)(.close ^RandomAccessFile @raf)))
               (var-set raf nil)))
           (NE/closeCF
             (not (HttpHeaders/isKeepAlive req))
             (do
-              (.writeAndFlush ch rsp)
-              (.writeAndFlush ch @inp))) )
+              (NE/wflush ch rsp)
+              (NE/wflush ch @inp))) )
         (catch Throwable e#
           (error e# "")
           (CU/Try! (when (CU/notnil? @raf)(.close ^RandomAccessFile @raf)))
-          (CU/Try! (.close ch))) ) )) )
+          (CU/Try! (NetUtils/closeChannel ch))) ) )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

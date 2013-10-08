@@ -36,6 +36,7 @@
   HttpMessage HttpRequest HttpResponse HttpResponseStatus
   DefaultHttpResponse HttpMethod))
 (import '(jregex Matcher Pattern))
+(import '(com.zotoh.frwk.net NetUtils))
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 (use '[comzotohcljc.util.core :only (MuObj) ])
@@ -58,7 +59,7 @@
   (with-local-vars [ modd true ]
     (cond
       (-> (.headers req) (.contains HttpHeaders$Names/IF_NONE_MATCH))
-      (var-set modd (not= eTag (.getHeader req HttpHeaders$Names/IF_NONE_MATCH)))
+      (var-set modd (not= eTag (HttpHeaders/getHeader req HttpHeaders$Names/IF_NONE_MATCH)))
 
       (-> (.headers req) (.contains HttpHeaders$Names/IF_UNMODIFIED_SINCE))
       (let [ s (HttpHeaders/getHeader req HttpHeaders$Names/IF_UNMODIFIED_SINCE) ]
@@ -76,14 +77,14 @@
            lastTm (.lastModified file)
            eTag  (str "\""  lastTm  "-"  (.hashCode file)  "\"") ]
       (if (isModified eTag lastTm req)
-        (.setHeader rsp HttpHeaders$Names/LAST_MODIFIED
+        (HttpHeaders/setHeader rsp HttpHeaders$Names/LAST_MODIFIED
                     (.format (MVCUtils/getSDF) (Date. lastTm)))
         (if (= (.getMethod req) HttpMethod/GET)
           (.setStatus rsp HttpResponseStatus/NOT_MODIFIED)))
-      (.setHeader rsp HttpHeaders$Names/CACHE_CONTROL
+      (HttpHeaders/setHeader rsp HttpHeaders$Names/CACHE_CONTROL
                   (if (= maxAge 0) "no-cache" (str "max-age=" maxAge)))
       (when (.getAttr src :useETag)
-        (.setHeader rsp HttpHeaders$Names/ETAG eTag)) ))
+        (HttpHeaders/setHeader rsp HttpHeaders$Names/ETAG eTag)) ))
 
 (defn- reply-error [^Emitter src code]
   (let [ ctr (.container src)
@@ -94,7 +95,7 @@
   [^comzotohcljc.hhh.core.sys.Element src
    ^Channel ch
    code]
-  (let [ rsp (NE/make-resp-status code) ]
+  (with-local-vars [ rsp (NE/make-resp-status code) ]
     (try
       (let [ h (.getAttr src :errorHandler)
              ^HTTPErrorHandler
@@ -104,14 +105,17 @@
                   (reply-error src code)
                   (.getErrorResponse cb code)) ]
         (when-not (nil? rc)
-          (.setHeader rsp "content-type" (.contentType rc))
+          (HttpHeaders/setHeader ^HttpMessage @rsp "content-type" (.contentType rc))
           (let [ bits (.body rc) ]
-            (HttpHeaders/setContentLength rsp (alength bits))
-            (.setContent rsp (ChannelBuffers/copiedBuffer bits)))))
-      (NE/closeCF true (.write ch rsp))
+            (HttpHeaders/setContentLength @rsp (alength bits))
+            (NE/wflush ch @rsp)
+            (var-set rsp nil)
+            (NE/wflush ch (Unpooled/copiedBuffer bits)))))
+      (when-not (nil? @rsp)
+        (NE/closeCF true (NE/wflush ch @rsp)))
       (catch Throwable e#
         (warn e# "")
-        (.close ch)))))
+        (NetUtils/closeChannel ch)))))
 
 (defn- handleStatic [src ^Channel ch req ^HTTPEvent evt ^File file]
   (let [ rsp (NE/make-resp-status) ]
@@ -123,8 +127,8 @@
           (debug "serving static file: " (CU/nice-fpath file))
           (addETag src evt req rsp file)
           ;; 304 not-modified
-          (if (= (-> rsp (.getStatus)(.getCode)) 304)
-            (NE/closeCF (not (.isKeepAlive evt)) (.write ch rsp))
+          (if (= (-> rsp (.getStatus)(.code)) 304)
+            (NE/closeCF (not (.isKeepAlive evt)) (NE/wflush ch rsp))
             (WP/replyFileAsset src ch req rsp file))))
       (catch Throwable e#
         (error "failed to get static resource " (.getUri evt) e#)

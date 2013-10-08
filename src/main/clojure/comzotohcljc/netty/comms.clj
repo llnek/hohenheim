@@ -43,7 +43,7 @@
 (import '(io.netty.channel
   ChannelHandlerContext Channel SimpleChannelInboundHandler
   ChannelFutureListener ChannelFuture ChannelInitializer
-  ChannelPipeline ChannelOption))
+  ChannelPipeline ChannelHandler ChannelOption))
 (import '(io.netty.channel.socket SocketChannel))
 (import '(io.netty.channel.group
   ChannelGroupFuture ChannelGroup ChannelGroupFutureListener
@@ -138,10 +138,8 @@
   (if (and doit (CU/notnil? cf))
     (.addListener cf ChannelFutureListener/CLOSE)))
 
-(defn- wflush [^Channel ch obj]
-  (let [ rc (.write ch obj) ]
-    (.flush ch)
-    rc))
+(defn wflush [^Channel ch obj]
+  (NetUtils/wrtFlush ch obj))
 
 (defn sendRedirect "" [ ^Channel ch perm ^String targetUrl]
   (let [ rsp (make-resp-status (if perm 301 307)) ]
@@ -265,7 +263,7 @@
   (when-not keepAlive
     (add-listener cf
                   { :done
-                    (fn [^ChannelFuture cff] (.close ^Channel (.channel cff))) } )))
+                    (fn [^ChannelFuture cff] (NetUtils/closeChannel (.channel cff))) } )))
 
 (defn- reply-xxx [^Channel ch status]
   (let [ info (.attr ch (AttributeKey. "info"))
@@ -334,7 +332,7 @@
       (.resetContent xdata os))
     (cond
       (instance? HttpResponse dir) (do
-                   (CU/TryC (.close ch))
+                   (CU/TryC (NetUtils/closeChannel ch))
                    (.onres usercb ch dir info xdata))
       (instance? HttpRequest dir) (do
                   (.onreq usercb ch dir info xdata))
@@ -430,10 +428,10 @@
 
 
 (defn- maybeSSL "" [^ChannelHandlerContext ctx]
-  (let [ ssl (-> (.channel ctx)(.pipeline ) (.get (class SslHandler))) ]
+  (let [ ssl (-> (NetUtils/getPipeline ctx) (.get (class SslHandler))) ]
     (when-not (nil? ssl)
-      (let [ cf (.handshake ^SslHandler ssl) ]
-        (add-listener cf { :nok (fn [^Channel c] (.close c)) } )))))
+      (let [ cf (.handshakeFuture ^SslHandler ssl) ]
+        (add-listener cf { :nok (fn [^Channel c] (NetUtils/closeChannel c)) } )))))
 
 (defn- nioWSock "" [^ChannelHandlerContext ctx ^HttpRequest req]
   (let [ ch (.channel ctx)
@@ -447,13 +445,13 @@
              hs (.newHandshaker wf req) ]
         (if (nil? hs)
           (do
-            (.sendUnsupportedWebSocketVersionResponse wf ch)
-            (CU/Try! (.close ch)))
+            (WebSocketServerHandshakerFactory/sendUnsupportedWebSocketVersionResponse ch)
+            (CU/Try! (NetUtils/closeChannel ch)))
           (do
             (-> (.attr ch (AttributeKey. "hs")) (.set hs))
             (add-listener (.handshake hs ch req)
                           { :nok (fn [^Channel c ^Throwable e]
-                                   (-> (.pipeline c) (.fireExceptionCaught e)))
+                                   (-> (NetUtils/getPipeline c) (.fireExceptionCaught e)))
                             :ok (fn [c] (maybeSSL ctx)) } ))))) ))
 
 (defn- nioWReq [^ChannelHandlerContext ctx ^HttpRequest req]
@@ -535,6 +533,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn netty-pipe-handler "Make a generic Netty 4.x Pipeline Handler."
+  ^ChannelHandler
   [^comzotohcljc.netty.comms.NettyServiceIO usercb
    ^comzotohcljc.netty.comms.RouteCracker rtcObj ]
   (proxy [SimpleChannelInboundHandler] []
@@ -545,10 +544,10 @@
              keepAlive (if (nil? msginfo) false (:keep-alive msginfo)) ]
         (error err "")
         (.onerror usercb ch msginfo err)
-        (when-not keepAlive (CU/Try! (.close ch)))))
+        (when-not keepAlive (CU/Try! (NetUtils/closeChannel ch)))))
 
     (channelReadComplete [ctx]
-      (.flush ctx))
+      (.flush ^ChannelHandlerContext ctx))
 
     (channelRead0 [ctx msg]
       (let []
@@ -564,32 +563,32 @@
 (defn make-pipeServer "Make a Serverside PipelineFactory." ^ChannelInitializer [^SSLContext sslctx usercb rtcObj]
   (proxy [ChannelInitializer][]
     (initChannel [^SocketChannel ch]
-      (let [ ^ChannelPipeline pl (.pipeline ^Channel ch)
+      (let [ ^ChannelPipeline pl (NetUtils/getPipeline ch)
              eg (if (nil? sslctx)
                     nil
                     (doto (.createSSLEngine sslctx)(.setUseClientMode false))) ]
         (when-not (nil? eg) (.addLast pl "ssl" (SslHandler. eg)))
-        (doto pl
           ;;(.addLast "decoder" (HttpRequestDecoder.))
           ;;(.addLast "encoder" (HttpResponseEncoder.))
-          (.addLast "codec" (HttpServerCodec.))
-          (.addLast "chunker" (ChunkedWriteHandler.))
-          (.addLast "handler" (netty-pipe-handler usercb rtcObj))) ))))
+        (.addLast pl "codec" (HttpServerCodec.))
+        (.addLast pl "chunker" (ChunkedWriteHandler.))
+        (.addLast pl "handler" (netty-pipe-handler usercb rtcObj))
+        pl))))
 
 (defn make-pipeClient "Make a Clientside PipelineFactory" ^ChannelInitializer [^SSLContext sslctx usercb]
   (proxy [ChannelInitializer][]
     (initChannel [^SocketChannel ch]
-      (let [ ^ChannelPipeline pl (.pipeline ^Channel ch)
+      (let [ ^ChannelPipeline pl (NetUtils/getPipeline ch)
              eg (if (nil? sslctx)
                     nil
                     (doto (.createSSLEngine sslctx)(.setUseClientMode true))) ]
         (when-not (nil? eg) (.addLast pl "ssl" (SslHandler. eg)))
-        (doto pl
           ;;(.addLast "decoder" (HttpRequestDecoder.))
           ;;(.addLast "encoder" (HttpResponseEncoder.))
-          (.addLast "codec" (HttpClientCodec.))
-          (.addLast "chunker" (ChunkedWriteHandler.))
-          (.addLast "handler" (netty-pipe-handler usercb nil))) ))))
+        (.addLast pl "codec" (HttpClientCodec.))
+        (.addLast pl "chunker" (ChunkedWriteHandler.))
+        (.addLast pl "handler" (netty-pipe-handler usercb nil))
+        pl))))
 
 (defn netty-xxx-server "Make a Netty server."
   ^NettyServer

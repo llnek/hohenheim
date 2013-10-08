@@ -34,6 +34,7 @@
 (import '(io.netty.channel.group
   ChannelGroup))
 (import '(io.netty.bootstrap ServerBootstrap))
+(import '(com.zotoh.frwk.net NetUtils))
 
 (import '(com.zotoh.frwk.core Hierarchial Identifiable))
 (import '(com.zotoh.hohenheim.io WebSockEvent WebSockResult))
@@ -104,7 +105,7 @@
 (defn- make-wsock-event
   [^comzotohcljc.hhh.io.core.EmitterAPI co ^Channel ch ^XData xdata]
   (let [ ^WebSockResult res (make-wsock-result)
-         ssl (CU/notnil? (.get (.pipeline ch) "ssl"))
+         ssl (CU/notnil? (.get (NetUtils/getPipeline ch) "ssl"))
          ^InetSocketAddress laddr (.localAddress ch)
          impl (CU/make-mmap)
          eeid (SN/next-long) ]
@@ -145,7 +146,7 @@
          ^HttpRequest req (nth args 1)
          ^XData xdata (nth args 2)
          ^Channel ch (nth args 0)
-         ssl (CU/notnil? (.get (.pipeline ch) "ssl"))
+         ssl (CU/notnil? (.get (NetUtils/getPipeline ch) "ssl"))
          ^InetSocketAddress laddr (.localAddress ch)
          impl (CU/make-mmap)
          eeid (SN/next-long) ]

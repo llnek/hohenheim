@@ -24,7 +24,7 @@ set ECODE=0
 set KPORT=4444
 set KILLPORT=-Dhohenheim.kill.port=%KPORT%
 set LIBP=-Djava.library.path=$HOHENHEIM_HOME/bin
-
+set NETTY=-Dio.netty.eventLoopThreads=16
 
 set JPROF=-agentpath:/Applications/jprofiler7/bin/macos/libjprofilerti.jnilib=port=8849
 set VMXRGS=-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m
@@ -56,11 +56,11 @@ REM run in foreground
 REM ********************************************************
 cd %BINDIR%
 :appfg
-REM CMDLINE="%JAVA_CMD%" -cp "%BCP%" "%LIBP%" %DBGOPTS% "%LOGREF%" "%KILLPORT%" "%BASEDIR%" %CLDR% %MAINCZ% "%HOHENHEIM_HOME%" %*
+REM CMDLINE="%JAVA_CMD%" -cp "%BCP%" "%LIBP%" %DBGOPTS% "%LOGREF%" "%NETTY%" "%KILLPORT%" "%BASEDIR%" %CLDR% %MAINCZ% "%HOHENHEIM_HOME%" %*
 if %BG% == "true" goto runcmd
 call :splash
 :runcmd
-"%JAVA_CMD%" -cp "%BCP%" "%LIBP%" %DBGOPTS% "%LOGREF%" "%KILLPORT%" "%BASEDIR%" %CLDR% %MAINCZ% "%HOHENHEIM_HOME%" %*
+"%JAVA_CMD%" -cp "%BCP%" "%LIBP%" %DBGOPTS% "%LOGREF%" "%NETTY%" "%KILLPORT%" "%BASEDIR%" %CLDR% %MAINCZ% "%HOHENHEIM_HOME%" %*
 set ECODE=%ERRORLEVEL%
 goto end
 
