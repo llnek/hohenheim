@@ -167,7 +167,7 @@
 (defn- enableRemoteShutdown [^comzotohcljc.util.core.MuObj ctx]
   (let [ port (CU/conv-long (System/getProperty "hohenheim.kill.port") 4444) ]
     (info "Enabling remote shutdown...")
-    (make-mem-httpd
+    (makeMemHttpd
       "127.0.0.1"
       port
       (reify NettyServiceIO
@@ -176,7 +176,7 @@
         (onreq [_ ch req msginfo xdata]
           (CU/Try!
             (.addListener
-              ^ChannelFuture (wflush ch (make-resp-status))
+              ^ChannelFuture (wflush ch (makeHttpReply 200))
               ChannelFutureListener/CLOSE))
           (stop-cli ctx))
         (onres [_ ch rsp msginfo xdata] nil))

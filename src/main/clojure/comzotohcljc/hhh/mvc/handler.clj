@@ -95,7 +95,7 @@
   [^comzotohcljc.hhh.core.sys.Element src
    ^Channel ch
    code]
-  (with-local-vars [ rsp (NE/make-resp-status code) ]
+  (with-local-vars [ rsp (NE/makeHttpReply code) ]
     (try
       (let [ h (.getAttr src :errorHandler)
              ^HTTPErrorHandler
@@ -110,7 +110,7 @@
             (HttpHeaders/setContentLength @rsp (alength bits))
             (NE/wflush ch @rsp)
             (var-set rsp nil)
-            (NE/wflush ch (Unpooled/copiedBuffer bits)))))
+            (NE/wflush ch (Unpooled/wrappedBuffer bits)))))
       (when-not (nil? @rsp)
         (NE/closeCF true (NE/wflush ch @rsp)))
       (catch Throwable e#
@@ -118,7 +118,7 @@
         (NetUtils/closeChannel ch)))))
 
 (defn- handleStatic [src ^Channel ch req ^HTTPEvent evt ^File file]
-  (let [ rsp (NE/make-resp-status) ]
+  (let [ rsp (NE/makeHttpReply 200) ]
     (try
       (if (or (nil? file)
               (not (.exists file)))
@@ -227,7 +227,7 @@
             ))) )))
 
 
-(defmethod netty-service-req :czc.hhh.io/NettyMVC
+(defmethod nettyServiceReq :czc.hhh.io/NettyMVC
   [^comzotohcljc.hhh.io.core.EmitterAPI co
    ch req msginfo xdata]
   (handleOneNettyREQ co ch req msginfo xdata))
