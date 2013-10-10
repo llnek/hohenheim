@@ -124,11 +124,13 @@
   (hasRoutes? [_])
   (crack [_ msgInfo] ))
 
+(def ^:private ATTR-KEY (AttributeKey. "attObj"))
 (defn sa-map! "Set attachment object from the channel." [^Channel ch obj]
-  (-> (.attr ch (AttributeKey. "attObj")) (.set obj)))
+  (-> (.attr ch ATTR-KEY) (.set obj)))
 
 (defn ga-map "Get attachment object from the channel." [^Channel ch]
-  (-> (.attr ch (AttributeKey. "attObj")) (.get)))
+  (let [ rc (-> (.attr ch ATTR-KEY) (.get)) ]
+    (if (nil? rc) {} rc)))
 
 (defn makeHttpReply "Make a netty http-response object."
   (^HttpResponse [] (makeHttpReply 200))
@@ -280,7 +282,7 @@
     { :protocol (-> msg (.getProtocolVersion) (.toString))
       :is-chunked (HttpHeaders/isTransferEncodingChunked msg)
       :keep-alive (HttpHeaders/isKeepAlive msg)
-      :clen (HttpHeaders/getContentLength msg)
+      :clen (HttpHeaders/getContentLength msg 0)
       :headers (nioMapHeaders msg) } )
 
 (defn- nioExtractReq "Extract info from request."
@@ -295,7 +297,7 @@
          params (persistent! (reduce (fn [sum en]
                           (assoc! sum (.toLowerCase (SU/nsb (first en))) (vec (nth en 1))))
                       (transient {}) (.parameters decr))) ]
-
+    (debug "basic request info: " m1)
     (comzotohcljc.net.comms.HTTPMsgInfo.
       (:protocol m1)
       (-> (if (= "websocket" ws) "WS" (if (SU/hgl? mo) mo md))
@@ -312,7 +314,14 @@
       (:protocol m1) "" "" (:is-chunked m1)
       (:keep-alive m1) (:clen m1) (:headers m1) {})))
 
+(defn- nioFinz "Close any output stream created during the message handling."
+  [^ChannelHandlerContext ctx]
+  (let [ ch (.channel ctx) attObj (ga-map ch)
+         os (:os attObj) ]
+    (IOUtils/closeQuietly ^OutputStream os) ))
+
 (defn- nioComplete "" [^ChannelHandlerContext ctx msg]
+  (nioFinz ctx)
   (let [ ch (.channel ctx) attObj (ga-map ch)
          ^XData xdata (:xs attObj)
          info (:info attObj)
@@ -323,7 +332,8 @@
 
          os (:os attObj)
          clen (:clen attObj) ]
-    (when (and (> clen 0) (instance? ByteArrayOutputStream os))
+    (when (and (instance? ByteArrayOutputStream os)
+               (> clen 0))
       (.resetContent xdata os))
     (cond
       (instance? HttpResponse dir)
@@ -366,12 +376,6 @@
          ^comzotohcljc.netty.comms.NettyServiceIO
          usercb (:cb attObj) ]
     (.onerror usercb ch info err) ))
-
-(defn- nioFinz "Close any output stream created during the message handling."
-  [^ChannelHandlerContext ctx]
-  (let [ ch (.channel ctx) attObj (ga-map ch)
-         os (:os attObj) ]
-    (IOUtils/closeQuietly ^OutputStream os) ))
 
 (defn- nioFrameChunk [^ChannelHandlerContext ctx
                       ^ContinuationWebSocketFrame frame]
@@ -461,19 +465,17 @@
         (if (:is-chunked msginfo)
           (debug "nioWReq: request is chunked.")
           ;; msg not chunked, suck all data from the request
-          (do
-            (try
-                (nioSockitDown ctx (.content ^ByteBufHolder req))
-              (finally (nioFinz ctx)))
-            (nioComplete ctx req))))
+          (when (instance? ByteBufHolder  req)
+            (nioSockitDown ctx (.content ^ByteBufHolder req)))))
       ;; bad route, so just pass it down and let it handle the error.
       (nioComplete ctx req))))
 
 (defn- nioPRequest "handle a request"
   [^ChannelHandlerContext ctx
-   ^HttpRequest req 
+   ^HttpRequest req
    usercb
    ^comzotohcljc.netty.comms.RouteCracker rtcObj]
+  (nioCfgCtx ctx usercb)
   (let [ msginfo (nioExtractReq req)
          ch (.channel ctx)
          attObj (ga-map ch)
@@ -485,7 +487,6 @@
                     (assoc :info msginfo)
                     (assoc :rts rts)
                     (assoc :dir req)))
-    (nioCfgCtx ctx usercb)
     (if (= "WS" (:method msginfo))
         (nioWSock ctx req)
         (nioWReq ctx req))))
@@ -497,12 +498,12 @@
 (defn- nioPResBody "" [^ChannelHandlerContext ctx ^HttpResponse res]
   (if (HttpHeaders/isTransferEncodingChunked res)
     (debug "nioPResBody: response is chunked.")
-    (try
-        (nioSockitDown ctx (.content ^ByteBufHolder res))
-      (finally (nioFinz ctx)))))
+    (when (instance? ByteBufHolder  res)
+      (nioSockitDown ctx (.content ^ByteBufHolder res))) ))
 
 (defn- nioPRes "handle a response"
   [^ChannelHandlerContext ctx ^HttpResponse res usercb]
+  (nioCfgCtx ctx usercb)
   (let [ msginfo (nioExtractRes res)
          ch (.channel ctx)
          attObj (ga-map ch)
@@ -514,7 +515,6 @@
                     (assoc :info msginfo)
                     (assoc :dir res)
                     (assoc :rts false)))
-    (nioCfgCtx ctx usercb)
     (cond
       (and (>= c 200) (< c 300)) (nioPResBody ctx res)
       (and (>= c 300) (< c 400)) (nioRedirect ctx)
@@ -552,7 +552,9 @@
       (.flush ^ChannelHandlerContext ctx))
 
     (channelRead0 [ctx msg]
+      (debug "entering with msg: " (type msg))
       (cond
+        (instance? LastHttpContent msg) (nioChunk ctx msg)
         (instance? HttpRequest msg) (nioPRequest ctx msg usercb rtcObj)
         (instance? WebSocketFrame msg) (nioWSFrame ctx msg)
         (instance? HttpResponse msg) (nioPRes ctx msg usercb)

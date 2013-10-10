@@ -190,7 +190,7 @@
         (hasData [_] (CU/notnil? xdata))
         (data [_] xdata)
 
-        (contentLength [_] (HttpHeaders/getContentLength req))
+        (contentLength [_] (HttpHeaders/getContentLength req 0))
         (contentType [_] (HttpHeaders/getHeader req "content-type"))
 
         (encoding [this]  (MM/get-charset (.contentType this)))
