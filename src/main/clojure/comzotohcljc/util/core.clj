@@ -387,7 +387,7 @@
   [^String param v]
   (assert (not (nil? (not-empty v))) (str  param  " must be non empty.") ))
 
-(defn throw-badarg "Force throw a bad parameter exception."
+(defn throwBadArg "Force throw a bad parameter exception."
   [^String msg]
   (throw (IllegalArgumentException. msg)))
 

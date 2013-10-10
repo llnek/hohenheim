@@ -38,9 +38,9 @@
 (import '(org.bouncycastle.crypto.modes CBCBlockCipher))
 (import '(org.apache.commons.lang3 StringUtils))
 
-(require '[ comzotohcljc.util.core :as CU])
-(require '[ comzotohcljc.util.io :as IO])
-(require '[ comzotohcljc.util.str :as SU])
+(use '[ comzotohcljc.util.core :only (bytesify stringify throwBadArg )])
+(use '[ comzotohcljc.util.io :only (make-baos )])
+(use '[ comzotohcljc.util.str :only (nsb )])
 
 
 
@@ -72,15 +72,16 @@
 (def ^:private C_ALGO T3_DES) ;; default javax supports this
 ;;(def ^:private ALPHA_CHS 26)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- ensure-key-size ""
 
   ^String
   [^String keystr ^String algo]
 
-  (let [ len (alength (CU/bytesify keystr)) ]
+  (let [ len (alength (bytesify keystr)) ]
     (when (and (= T3_DES algo) (< len 24))
-      (CU/throw-badarg "Encryption key length must be 24, when using TripleDES"))
+      (throwBadArg "Encryption key length must be 24, when using TripleDES"))
     keystr))
 
 (defn- keyAsBits ""
