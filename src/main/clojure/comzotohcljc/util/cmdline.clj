@@ -23,13 +23,12 @@
 (import '(java.io Reader Writer))
 (import '(java.util Properties))
 (import '(org.apache.commons.lang3 StringUtils))
-(require '[ comzotohcljc.util.core :as CU])
-(require '[ comzotohcljc.util.str :as SU])
+(require '[ comzotohcljc.util.core :only (into-map is-windows? ) ])
+(require '[ comzotohcljc.util.str :only (nsb has? ) ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
-
 
 ;;(defrecord CmdSeqQ [qid qline choices dft must onok] )
 
@@ -72,13 +71,13 @@
 
 (defn- popQQ "" [^Writer cout ^Reader cin cmdQ ^Properties props]
   (let [ must (:must cmdQ)
-         dft (SU/nsb (:dft cmdQ))
+         dft (nsb (:dft cmdQ))
          onResp (:onok cmdQ)
          q (:qline cmdQ)
-         chs (SU/nsb (:choices cmdQ)) ]
+         chs (nsb (:choices cmdQ)) ]
     (.write cout (str q (if must "*" "" ) " ? "))
     (when-not (StringUtils/isEmpty chs)
-      (if (SU/has? chs \n)
+      (if (has? chs \n)
         (do (.write cout (str
               (if (.startsWith chs "\n") "[" "[\n")  chs
               (if (.endsWith chs "\n") "]" "\n]" ) )))
@@ -107,7 +106,7 @@
         nil
 
         (StringUtils/isEmpty rc)
-        (CU/into-map props)
+        (into-map props)
 
         :else
         (recur (popQ cout cin (get cmdQNs rc) props))))))
@@ -115,7 +114,7 @@
 (defn cli-converse "Prompt a sequence of questions via console."
   [cmdQs ^String question1]
   (let [ cout (OutputStreamWriter. (BufferedOutputStream. (System/out)))
-         kp (if (CU/is-windows?) "<Ctrl-C>" "<Ctrl-D>")
+         kp (if (is-windows?) "<Ctrl-C>" "<Ctrl-D>")
          cin (InputStreamReader. (System/in))
          props (Properties.) ]
     (.write cout (str ">>> Press " kp "<Enter> to cancel...\n"))

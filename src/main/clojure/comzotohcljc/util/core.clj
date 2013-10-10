@@ -57,11 +57,12 @@
   `(not (nil? ~x)))
 
 (def NICHTS (TYPE_NICHTS.) )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- nsb ^String [s] (if (nil? s) "" (.toString ^Object s)))
+(defn- nsb "" ^String [s] (if (nil? s) "" (.toString ^Object s)))
 
-(defn- get-czldr
+(defn- get-czldr ""
   (^ClassLoader [] (get-czldr nil) )
   (^ClassLoader [^ClassLoader cl]
     (if (nil? cl) (.getContextClassLoader (Thread/currentThread)) cl)))
@@ -73,9 +74,12 @@
 (defn flatten-nil "Get rid of any nil(s) in a sequence."
   [vs]
   (cond
-    (nil? vs) nil
-    (empty? vs) []
-    :else (into [] (remove nil? vs))))
+    (nil? vs)
+    nil
+    (empty? vs)
+    []
+    :else
+    (into [] (remove nil? vs))))
 
 (defn ndz "Returns 0.0 if param is nil." ^double [d] (if (nil? d) 0.0 d))
 (defn nnz "Returns 0 is param is nil." ^long [n] (if (nil? n) 0 n))
@@ -86,15 +90,18 @@
   (if (nil? setOfChars) false (contains? setOfChars ch)))
 
 (defn sysvar "Get value for this system property."
-  ^String [^String v]
+  ^String
+  [^String v]
   (if (StringUtils/isEmpty v) nil (System/getProperty v)))
 
 (defn envvar "Get value for this env var."
-  ^String [^String v]
+  ^String
+  [^String v]
   (if (StringUtils/isEmpty v) nil (System/getenv v)))
 
 (defn uid "Generate a unique id using std java."
-  ^String []
+  ^String
+  []
   (.replaceAll (.toString (UID.)) "[:\\-]+" ""))
 
 (defn new-random "Return a new random object."
@@ -102,15 +109,15 @@
   (^SecureRandom [numBytes] (SecureRandom. (SecureRandom/getSeed numBytes)) ))
 
 (defn now-jtstamp "Return a java sql Timestamp."
-  ^Timestamp []
+  ^Timestamp
+  []
   (Timestamp. (.getTime (Date.))))
 
-(defn now-date "Return a java Date."
-  ^Date []
-  (Date.) )
+(defn now-date "Return a java Date." ^Date [] (Date.) )
 
 (defn now-cal "Return a Gregorian Calendar."
-  ^Calendar []
+  ^Calendar
+  []
   (GregorianCalendar. ))
 
 (defn to-charset "Return a java Charset of the encoding."
@@ -118,53 +125,64 @@
   (^Charset [] (to-charset "utf-8")) )
 
 (defmethod nice-fpath String
-  ^String [^String fpath]
+  ^String
+  [^String fpath]
   (FilenameUtils/normalizeNoEndSeparator (nsb fpath) true))
 
 (defmethod nice-fpath File
-  ^String [^File aFile]
+  ^String
+  [^File aFile]
   (if (nil? aFile) "" (nice-fpath (.getCanonicalPath aFile)) ))
 
 (defn subs-var "Replaces all system & env variables in the value."
-  ^String [^String value]
+  ^String
+  [^String value]
   (if (nil? value)
     ""
     (.replace (StrSubstitutor. (System/getenv))
               (StrSubstitutor/replaceSystemProperties value))))
 
 (defn subs-svar "Expand any sys-var found inside the string value."
-  ^String [^String value]
+  ^String
+  [^String value]
   (if (nil? value) "" (StrSubstitutor/replaceSystemProperties value)) )
 
 (defn subs-evar "Expand any env-var found inside the string value."
-  ^String [^String value]
+  ^String
+  [^String value]
   (if (nil? value) "" (.replace (StrSubstitutor. (System/getenv)) value)) )
 
 (defn subs-props "Expand any env & sys vars found inside the property values."
-  ^Properties [^Properties props]
+  ^Properties
+  [^Properties props]
   (reduce
     (fn [^Properties bc k]
       (.put bc k (subs-var (.get props k))) bc )
     (Properties.) (.keySet props) ))
 
 (defn sysprop "Get the value of a system property."
-  ^String [^String prop]
+  ^String
+  [^String prop]
   (System/getProperty (nsb prop) ""))
 
 (defn homedir "Get the user's home directory."
-  ^File []
+  ^File
+  []
   (File. (sysprop "user.home")) )
 
 (defn getuser "Get the current user login name."
-  ^String []
+  ^String
+  []
   (sysprop "user.name"))
 
 (defn getcwd "Get the current dir."
-  ^String []
+  ^String
+  []
   (sysprop "user.dir"))
 
 (defn trim-lastPathSep "Get rid of trailing dir paths."
-  ^String [path]
+  ^String
+  [path]
   (.replaceFirst (nsb path) "[/\\\\]+$"  ""))
 
 (defn serialize "Object serialization."
@@ -176,11 +194,13 @@
   (if (nil? bits) nil (SerializationUtils/deserialize bits)))
 
 (defn get-classname "Get the object's class name."
-  ^String [^Object obj]
+  ^String
+  [^Object obj]
   (if (nil? obj) "null" (.getName (.getClass obj))))
 
 (defn file-path "Get the file path."
-  ^String [^File aFile]
+  ^String
+  [^File aFile]
   (if (nil? aFile) "" (nice-fpath aFile)))
 
 (defn is-windows? "Returns true if platform is windows."
@@ -192,15 +212,18 @@
   (not (is-windows?)))
 
 (defn conv-long "Parse string as a long value."
-  ^long [^String s dftLongVal]
-  (try (Long/parseLong s) (catch Throwable e dftLongVal)))
+  ^long
+  [^String s dftLongVal]
+  (try (Long/parseLong s) (catch Throwable e# dftLongVal)))
 
 (defn conv-double "Parse string as a double value."
-  ^double [^String s dftDblVal]
-  (try (Double/parseDouble s) (catch Throwable e dftDblVal)))
+  ^double
+  [^String s dftDblVal]
+  (try (Double/parseDouble s) (catch Throwable e# dftDblVal)))
 
 (defn conv-bool "Parse string as a boolean value."
-  ^Boolean [^String s]
+  ^Boolean
+  [^String s]
   (contains? _BOOLS (.toLowerCase (nsb s))))
 
 (defmethod load-javaprops InputStream
@@ -292,17 +315,20 @@
     (str "" rc)))
 
 (defn now-millis "Return the current time in milliseconds."
-  ^long []
+  ^long
+  []
   (java.lang.System/currentTimeMillis))
 
 (defn get-fpath "Return the file path only."
-  ^String [^String fileUrlPath]
+  ^String
+  [^String fileUrlPath]
   (if (nil? fileUrlPath)
     ""
     (.getPath (URL. fileUrlPath))) )
 
 (defn fmt-fileurl "Return the file path as URL."
-  ^URL [^String path]
+  ^URL
+  [^String path]
   (if (nil? path)
     nil
     (.toURL (.toURI (File. path)))))
@@ -313,11 +339,13 @@
     fp))
 
 (defn make-tmpdir "Generate and return a new temp File dir."
-  ^File []
+  ^File
+  []
   (fetch-tmpdir (uid)))
 
 (defn get-tmpdir "Return the current temp File dir."
-  ^File []
+  ^File
+  []
   (fetch-tmpdir ""))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -388,12 +416,13 @@
   (assert (not (nil? (not-empty v))) (str  param  " must be non empty.") ))
 
 (defn throwBadArg "Force throw a bad parameter exception."
-  [^String msg]
-  (throw (IllegalArgumentException. msg)))
+  [msg]
+  (throw (IllegalArgumentException. ^String msg)))
 
 (defn root-cause "Dig into error and find the root exception."
-  ^Throwable [^Throwable root]
-  (loop [r root t (if (nil? root) nil (.getCause root)) ]
+  ^Throwable
+  [root]
+  (loop [r root t (if (nil? root) nil (.getCause ^Throwable root)) ]
     (if (nil? t)
       r
       (recur t (.getCause t)) )))
@@ -422,48 +451,42 @@
   ([ss] (sort-join "" ss))
   ([sep ss] (if (nil? ss) "" (clojure.string/join sep (sort ss)))))
 
-
 (defn into-map ""
   [^Properties props]
   (persistent! (reduce (fn [sum k]
-                          (assoc! sum (keyword k) (.get props k)))
+                         (assoc! sum (keyword k) (.get props k)))
                        (transient {})
                        (seq (.keySet props)))) )
 
-
 (defprotocol MuObj
+  "A Mutable Object."
   (setf! [_ k v] )
   (seq* [_] )
   (getf [_ k] )
   (clear! [_] )
   (clrf! [_ k] ))
 
-
 (defprotocol MutableMapAPI
+  "A Mutable Map."
   (mm-r [_ k] )
   (mm-m* [_] )
   (mm-g [_ k] )
   (mm-c [_] )
   (mm-s [_ k v]))
 
-
 (deftype MutableMap [ ^:unsynchronized-mutable data ] MutableMapAPI
-  (mm-r [_ k]
-    (set! data (dissoc data k)))
+  (mm-s [_ k v] (set! data (assoc data k v)))
+  (mm-r [_ k] (set! data (dissoc data k)))
   (mm-m* [_] (seq data))
   (mm-g [_ k] (get data k))
-  (mm-c [_ ] (set! data {} ))
-  (mm-s [_ k v]
-    (set! data (assoc data k v))))
-
+  (mm-c [_ ] (set! data {} )) )
 
 (defn make-mmap ""
   ^comzotohcljc.util.core.MutableMapAPI
   []
   (MutableMap. {} ))
 
-
-(defn print-mutableObj
+(defn print-mutableObj ""
   ([ctx] (print-mutableObj ctx false))
   ([^comzotohcljc.util.core.MuObj ctx dbg]
     (let [ b (StringBuilder.) ]
@@ -472,7 +495,7 @@
       (let [ s (str "\n" b) ]
         (if dbg
           (debug s)
-          (info s)))) ) )
+          (info s)))) ))
 
 (defn stripNSPath [path]
   (let [ s (str path) ]
@@ -482,7 +505,6 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 
 (def ^:private core-eof nil)

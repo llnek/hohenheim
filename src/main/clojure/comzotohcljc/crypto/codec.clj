@@ -89,7 +89,7 @@
   ^bytes
   [^String pwd ^String algo]
 
-  (let [ bits (CU/bytesify pwd) ]
+  (let [ bits (bytesify pwd) ]
     (if (and (= T3_DES algo) (> (alength bits) 24))
       (into-array Byte/TYPE (take 24 bits)) ;; only 24 bits wanted
       bits)))
@@ -222,8 +222,8 @@
   (if (StringUtils/isEmpty text)
     text
     (let [ ^Cipher c (getCipher pkey Cipher/ENCRYPT_MODE algo )
-           baos (IO/make-baos)
-           p (CU/bytesify text)
+           baos (make-baos)
+           p (bytesify text)
            out (byte-array (max 4096 (.getOutputSize c (alength p))))
            n (.update c p 0 (alength p) out 0) ]
       (when (> n 0) (.write baos out 0 n))
@@ -246,7 +246,7 @@
       (when (> n 0) (.write baos out 0 n))
       (let [ n2 (.doFinal c out 0) ]
         (when (> n2 0) (.write baos out 0 n2)))
-      (CU/stringify (.toByteArray baos)))) )
+      (stringify (.toByteArray baos)))) )
 
 (defn java-cryptor "Make a Standard Java cryptor."
   ^comzotohcljc.crypto.codec.BaseCryptor []
@@ -283,12 +283,12 @@
                     (.init false (KeyParameter. (keyAsBits pkey algo))))
            p (Base64/decodeBase64 text)
            out (byte-array 1024)
-           baos (IO/make-baos)
+           baos (make-baos)
            c (.processBytes cipher p 0 (alength p) out 0) ]
       (when (> c 0) (.write baos out 0 c))
       (let [ c2 (.doFinal cipher out 0) ]
         (when (> c2 0) (.write baos out 0 c2)))
-      (CU/stringify (.toByteArray baos)))) )
+      (stringify (.toByteArray baos)))) )
 
 (defn- bcEncr ^String [^String pkey ^String text ^String algo]
 
@@ -297,8 +297,8 @@
     (let [ cipher (doto (PaddedBufferedBlockCipher. (CBCBlockCipher. (DESedeEngine.)))
                     (.init true (KeyParameter. (keyAsBits pkey algo))))
            out (byte-array 4096)
-           baos (IO/make-baos)
-           p (CU/bytesify text)
+           baos (make-baos)
+           p (bytesify text)
            c (.processBytes cipher p 0 (alength p) out 0) ]
       (when (> c 0) (.write baos out 0 c))
       (let [ c2 (.doFinal cipher out 0) ]
@@ -348,7 +348,7 @@
 
   Object
   (equals [this obj] (and (instance? Password obj) (= (.toString this) (.toString ^Object obj))) )
-  (hashCode [this] (.hashCode (SU/nsb (.pwdStr this))))
+  (hashCode [this] (.hashCode (nsb (.pwdStr this))))
   (toString [this] (.text this))
 
   PasswordAPI
@@ -373,7 +373,7 @@
     (if (StringUtils/isEmpty pwdStr)
       ""
       (str PWD_PFX (.encrypt (jasypt-cryptor) pkey pwdStr))))
-  (text [_] (SU/nsb pwdStr)))
+  (text [_] (nsb pwdStr)))
 
 (defn pwdify "Create a password object."
   ([ ^String pwdStr] (pwdify pwdStr C_KEY))
