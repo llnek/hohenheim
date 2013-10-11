@@ -20,13 +20,10 @@
 
   comzotohcljc.jmx.names )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(javax.management ObjectName))
-
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

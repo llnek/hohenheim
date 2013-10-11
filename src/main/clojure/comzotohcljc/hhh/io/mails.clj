@@ -26,31 +26,24 @@
   Session Provider Provider$Type))
 (import '(java.io IOException))
 (import '(com.zotoh.hohenheim.io EmailEvent))
-
 (import '(com.zotoh.frwk.core Identifiable))
 
 
-
-(use '[clojure.tools.logging :only (info warn error debug)])
-
-(require '[comzotohcljc.crypto.codec :as CR])
-(require '[comzotohcljc.util.seqnum :as SN])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.crypto.codec :only [pwdify] ])
+(use '[comzotohcljc.util.seqnum :only [next-long] ])
+(use '[comzotohcljc.util.core :only [TryC notnil?] ])
+(use '[comzotohcljc.util.str :only [hgl? nsb] ])
 (use '[comzotohcljc.hhh.core.sys])
-
 (use '[comzotohcljc.hhh.io.loops ])
 (use '[comzotohcljc.hhh.io.core ])
-
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 (defn- closeFolder [^Folder fd]
-  (CU/TryC
+  (TryC
     (when-not (nil? fd)
       (when (.isOpen fd) (.close fd true))) ))
 
@@ -58,7 +51,7 @@
   (let [ ^Store conn (.getAttr co :store)
          ^Folder fd (.getAttr co :folder) ]
     (closeFolder fd)
-    (CU/TryC
+    (TryC
       (when-not (nil? conn) (.close conn)) )
     (.setAttr! co :store nil)
     (.setAttr! co :folder nil)) )
@@ -75,7 +68,7 @@
       (var-set sun (some (fn [^Provider x] (if (= pkey (.getClassName x)) x nil)) (seq ps)))
       (when (nil? @sun)
         (throw (IOException. (str "Failed to find store: " pkey) )))
-      (when (SU/hgl? demo)
+      (when (hgl? demo)
         (var-set sun  (Provider. Provider$Type/STORE mock demo "test" "1.0.0"))
         (debug "using demo store " mock " !!!")
         (var-set proto mock) )
@@ -87,7 +80,7 @@
 
 
 (defn- ctor-email-event [co msg]
-  (let [ eeid (SN/next-long) ]
+  (let [ eeid (next-long) ]
     (with-meta
       (reify
 
@@ -113,15 +106,15 @@
 (def POP3S "pop3s")
 (def POP3C "pop3")
 
-(defn make-pop3client "" [container]
-  (make-emitter container :czc.hhh.io/POP3))
+(defn makePOP3client "" [container]
+  (makeEmitter container :czc.hhh.io/POP3))
 
 (defmethod ioes-reify-event :czc.hhh.io/POP3
   [co & args]
   (ctor-email-event co (first args)))
 
 (defn- connect-pop3 [^comzotohcljc.hhh.core.sys.Element co]
-  (let [ pwd (SU/nsb (.getAttr co :pwd))
+  (let [ pwd (nsb (.getAttr co :pwd))
          ^Session session (.getAttr co :session)
          user (.getAttr co :user)
          ^String host (.getAttr co :host)
@@ -129,7 +122,7 @@
          ^String proto (.getAttr co :proto)
          s (.getStore session proto) ]
     (when-not (nil? s)
-      (.connect s host port user (if (SU/hgl? pwd) pwd nil))
+      (.connect s host port user (if (hgl? pwd) pwd nil))
       (.setAttr! co :store s)
       (.setAttr! co :folder (.getDefaultFolder s)))
     (if-let [ ^Folder fd (.getAttr co :folder) ]
@@ -152,7 +145,7 @@
 (defn- scan-pop3 [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^Store s (.getAttr co :store)
          ^Folder fd (.getAttr co :folder) ]
-    (when (and (CU/notnil? fd) (not (.isOpen fd)))
+    (when (and (notnil? fd) (not (.isOpen fd)))
       (.open fd Folder/READ_WRITE) )
     (when (.isOpen fd)
       (let [ cnt (.getMessageCount fd) ]
@@ -183,7 +176,7 @@
     (.setAttr! co :host (:host cfg))
     (.setAttr! co :port (if (number? port) port 995))
     (.setAttr! co :user (:username cfg))
-    (.setAttr! co :pwd (CR/pwdify (if (SU/hgl? pwd) pwd "") pkey) )
+    (.setAttr! co :pwd (pwdify (if (hgl? pwd) pwd "") pkey) )
     co))
 
 (defmethod comp-configure :czc.hhh.io/POP3
@@ -206,8 +199,8 @@
 (def IMAPS "imaps" )
 (def IMAP "imap" )
 
-(defn make-imapclient "" [container]
-  (make-emitter container :czc.hhh.io/IMAP))
+(defn makeIMAPClient "" [container]
+  (makeEmitter container :czc.hhh.io/IMAP))
 
 (defmethod ioes-reify-event :czc.hhh.io/IMAP
   [co & args]

@@ -42,14 +42,9 @@
 (import '(com.zotoh.frwk.core Identifiable))
 
 
-
-
-(use '[comzotohcljc.hhh.io.http  :only (make-http-result) ])
-(use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.seqnum :as SN])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.mime :as MM])
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.hhh.io.http  :only [make-http-result] ])
+(use '[comzotohcljc.util.core :only [TryC] ])
 (use '[comzotohcljc.hhh.io.triggers])
 (use '[comzotohcljc.hhh.io.core])
 
@@ -74,7 +69,7 @@
 (defn- doASyncSvc [this evt req rsp]
   (let [ c (ContinuationSupport/getContinuation req) ]
     (when (.isInitial c) 
-      (CU/TryC
+      (TryC
           (dispREQ this c evt req rsp) ))))
 
 (defn- doSyncSvc [this evt req rsp]
@@ -104,7 +99,7 @@
            state (.myState this)
            src (.getAttribute ctx "czchhhiojetty") ]
       (reset! state src)
-      (CU/TryC
+      (TryC
         (debug
           "********************************************************************\n"
           (str "Servlet Container: " (.getServerInfo ctx) "\n")

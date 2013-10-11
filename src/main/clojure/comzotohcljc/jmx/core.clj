@@ -19,9 +19,9 @@
 
   comzotohcljc.jmx.core )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.util.core :only [make-mmap Try! TryC] ])
+(use '[comzotohcljc.util.str :only [hgl? ] ])
 
 (import '(java.lang.management ManagementFactory))
 (import '(java.net InetAddress MalformedURLException))
@@ -40,24 +40,24 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- mkJMXrror [^String msg ^Throwable e]
+(defn- mkJMXrror "" [^String msg ^Throwable e]
   (throw (doto (JMException. msg)
            (.initCause e))))
 
-(defn- startRMI [ ^comzotohcljc.util.core.MutableMapAPI impl]
+(defn- startRMI "" [ ^comzotohcljc.util.core.MutableMapAPI impl]
   (let [ ^long port (.mm-g impl :regoPort) ]
     (try
       (.mm-s impl :rmi (LocateRegistry/createRegistry port))
     (catch Throwable e#
       (mkJMXrror (str "Failed to create RMI registry: " port) e#)))) )
 
-(defn- startJMX [ ^comzotohcljc.util.core.MutableMapAPI impl]
+(defn- startJMX "" [ ^comzotohcljc.util.core.MutableMapAPI impl]
   (let [ hn (-> (InetAddress/getLocalHost)(.getHostName))
          ^long regoPort (.mm-g impl :regoPort)
          ^long port (.mm-g impl :port)
          ^String host (.mm-g impl :host)
          endpt (-> "service:jmx:rmi://{{host}}:{{sport}}/jndi/rmi://:{{rport}}/jmxrmi"
-                 (StringUtils/replace "{{host}}" (if (SU/hgl? host) host hn))
+                 (StringUtils/replace "{{host}}" (if (hgl? host) host hn))
                  (StringUtils/replace "{{sport}}" (str "" port))
                  (StringUtils/replace "{{rport}}" (str "" regoPort)))
          url (try
@@ -80,7 +80,7 @@
     (.mm-s impl :beanSvr (.getMBeanServer conn))
     (.mm-s impl :conn conn)))
 
-(defn- doReg[ ^MBeanServer svr ^ObjectName objName ^DynamicMBean mbean]
+(defn- doReg "" [ ^MBeanServer svr ^ObjectName objName ^DynamicMBean mbean]
   (try
     (.registerMBean svr mbean objName)
     (catch Throwable e#
@@ -97,7 +97,7 @@
   (dereg [_ nm] ))
 
 (defn make-jmxServer "" [ ^String host]
-  (let [ impl (CU/make-mmap)
+  (let [ impl (make-mmap)
          objNames (atom []) ]
     (.mm-s impl :regoPort 7777)
     (.mm-s impl :port 0)
@@ -108,7 +108,7 @@
       (reset [_]
         (let [ ^MBeanServer bs (.mm-g impl :beanSvr) ]
           (doseq [ nm (seq @objNames) ]
-            (CU/Try!
+            (Try!
                (.unregisterMBean bs nm)) )
           (reset! objNames [])))
 
@@ -145,10 +145,10 @@
                ^Registry r (.mm-g impl :rmi) ]
           (reset this)
           (when-not (nil? c)
-            (CU/TryC (.stop c)))
+            (TryC (.stop c)))
           (.mm-s impl :conn nil)
           (when-not (nil? r)
-            (CU/TryC
+            (TryC
               (UnicastRemoteObject/unexportObject r true)))
           (.mm-s impl :rmi nil)))
 

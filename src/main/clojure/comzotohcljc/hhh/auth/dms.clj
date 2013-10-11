@@ -60,7 +60,7 @@
 (defmodel!  "czc.hhh.auth" LoginAccount
   (with-db-fields
     { :acctid { :null false }
-      :salt { :null false :size 128 }
+      :salt { :size 128 }
       :passwd { :null false :domain :Password }
      })
   (with-db-assocs
@@ -82,7 +82,7 @@
   Schema
   (getModels [_] [ StdAddress AuthRole LoginAccount AccountRole] ))
 
-(defn generate-authPlugin-ddl ^String [dbtype]
+(defn generateAuthPluginDDL ^String [dbtype]
   (getDDL (make-MetaCache (AuthPluginSchema.))
     (case dbtype
       (:postgres :postgresql) Postgresql
@@ -92,12 +92,12 @@
       :oracle Oracle
       (throw (DBIOError. (str "Unsupported database type: " dbtype)))) ))
 
-(defn apply-authPlugin-ddl [^JDBCInfo jdbc]
+(defn applyAuthPluginDDL [^JDBCInfo jdbc]
   (let [ dbtype (match-jdbc-url (.getUrl jdbc)) ]
-    (upload-ddl jdbc (generate-authPlugin-ddl dbtype))) )
+    (upload-ddl jdbc (generateAuthPluginDDL dbtype))) )
 
-(defn export-authPlugin-ddl [dbtype ^File file]
-  (FileUtils/writeStringToFile file (generate-authPlugin-ddl dbtype) "utf-8"))
+(defn exportAuthPluginDDL [dbtype ^File file]
+  (FileUtils/writeStringToFile file (generateAuthPluginDDL dbtype) "utf-8"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

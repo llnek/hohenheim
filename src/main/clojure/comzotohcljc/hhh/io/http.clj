@@ -19,7 +19,6 @@
 
   comzotohcljc.hhh.io.http )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
 (import '(org.eclipse.jetty.server Server Connector ConnectionFactory))
 (import '(java.util.concurrent ConcurrentHashMap))
 (import '(java.net URL))
@@ -51,14 +50,13 @@
 (import '(com.zotoh.hohenheim.io HTTPResult HTTPEvent JettyUtils))
 (import '(com.zotoh.hohenheim.core Container))
 
+(use '[comzotohcljc.util.core :only [MuObj uid TryC make-mmap test-cond] ])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (use '[comzotohcljc.crypto.ssl])
-
-(require '[comzotohcljc.crypto.codec :as CR])
-(require '[comzotohcljc.util.seqnum :as SN])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-
-(use '[comzotohcljc.util.core :only (MuObj) ])
+(use '[comzotohcljc.crypto.codec :only [pwdify] ])
+(use '[comzotohcljc.util.seqnum :only [next-long] ])
+(use '[comzotohcljc.netty.comms :only [makeHttpReply] ])
+(use '[comzotohcljc.util.str :only [hgl? nsb strim] ])
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.io.core])
@@ -68,9 +66,9 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(defn make-servlet-emitter "" [^Container parObj]
-  (let [ eeid (SN/next-long)
-         impl (CU/make-mmap) ]
+(defn makeServletEmitter "" [^Container parObj]
+  (let [ eeid (next-long)
+         impl (make-mmap) ]
     (.mm-s impl :backlog (ConcurrentHashMap.))
     (with-meta
       (reify
@@ -142,7 +140,7 @@
               (.put b wid wevt))))
 
         (dispatch [this ev]
-          (CU/TryC
+          (TryC
               (.notifyObservers parObj ev) )) )
 
       { :typeid :czc.hhh.io/JettyIO } )))
@@ -157,17 +155,17 @@
          bio (:sync cfg)
          tds (:workers cfg)
          pkey (:hhh.pkey cfg)
-         ssl (SU/hgl? file) ]
+         ssl (hgl? file) ]
 
     (.setAttr! co :port
                (if (and (number? port)(pos? port)) port (if ssl 443 80)))
     (.setAttr! co :host (:host cfg))
-    (.setAttr! co :sslType (if (SU/hgl? fv) fv "TLS"))
+    (.setAttr! co :sslType (if (hgl? fv) fv "TLS"))
 
-    (when (SU/hgl? file)
-      (CU/test-cond "server-key file url" (.startsWith file "file:"))
+    (when (hgl? file)
+      (test-cond "server-key file url" (.startsWith file "file:"))
       (.setAttr! co :serverKey (URL. file))
-      (.setAttr! co :pwd (CR/pwdify ^String (:passwd cfg) pkey)) )
+      (.setAttr! co :pwd (pwdify ^String (:passwd cfg) pkey)) )
 
     (.setAttr! co :sockTimeOut
                (if (and (number? socto)(pos? socto)) socto 0))
@@ -186,9 +184,9 @@
 
 (defmethod comp-configure :czc.hhh.io/JettyIO
   [^comzotohcljc.hhh.core.sys.Element co cfg]
-  (let [ c (SU/nsb (:context cfg)) ]
+  (let [ c (nsb (:context cfg)) ]
     (.setAttr! co K_APP_CZLR (get cfg K_APP_CZLR))
-    (.setAttr! co :contextPath (SU/strim c))
+    (.setAttr! co :contextPath (strim c))
     (http-basic-config co cfg) ))
 
 (defn- cfgHTTPS ^ServerConnector [^Server server port ^URL keyfile ^String pwd conf]
@@ -198,19 +196,19 @@
                 (.setKeyStorePassword pwd)
                 (.setKeyManagerPassword pwd))
          config (doto (HttpConfiguration. conf)
-                  (.addCustomizer (SecureRequestCustomizer.)))
+                      (.addCustomizer (SecureRequestCustomizer.)))
          https (doto (ServerConnector. server)
-                 (.addConnectionFactory (SslConnectionFactory. sslxf "HTTP/1.1"))
-                 (.addConnectionFactory (HttpConnectionFactory. config))) ]
+                     (.addConnectionFactory (SslConnectionFactory. sslxf "HTTP/1.1"))
+                     (.addConnectionFactory (HttpConnectionFactory. config))) ]
     (doto https
-      (.setPort port)
-      (.setIdleTimeout (int 500000)))))
+          (.setPort port)
+          (.setIdleTimeout (int 500000)))))
 
 (defmethod comp-initialize :czc.hhh.io/JettyIO
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ conf (doto (HttpConfiguration.)
-                (.setRequestHeaderSize 8192)  ;; from jetty examples
-                (.setOutputBufferSize (int 32768)))
+                    (.setRequestHeaderSize 8192)  ;; from jetty examples
+                    (.setOutputBufferSize (int 32768)))
          keyfile (.getAttr co :serverKey)
          ^String host (.getAttr co :host)
          port (.getAttr co :port)
@@ -222,13 +220,13 @@
                (doto (JettyUtils/makeConnector svr conf)
                  (.setPort port)
                  (.setIdleTimeout (int 30000)))
-               (cfgHTTPS svr port keyfile (SU/nsb pwdObj)
+               (cfgHTTPS svr port keyfile (nsb pwdObj)
                          (doto conf
-                           (.setSecureScheme "https")
-                           (.setSecurePort port)))) ]
+                               (.setSecureScheme "https")
+                               (.setSecurePort port)))) ]
 
-    (when (SU/hgl? host) (.setHost cc host))
-    (.setName cc (CU/uid))
+    (when (hgl? host) (.setHost cc host))
+    (.setName cc (uid))
     (doto svr
       (.setConnectors (into-array Connector [cc])))
     (.setAttr! co :jetty svr)
@@ -241,7 +239,7 @@
   (let [ ^comzotohcljc.hhh.core.sys.Element ctr (.parent ^Hierarchial co)
          ^Server jetty (.getAttr co :jetty)
          ^File app (.getAttr ctr K_APPDIR)
-         ^String cp (SU/strim (.getAttr co :contextPath))
+         ^String cp (strim (.getAttr co :contextPath))
          ^WebAppContext
          webapp (JettyUtils/newWebAppContext app cp "czchhhiojetty" co)
          logDir (-> (File. app "WEB-INF/logs")(.toURI)(.toURL)(.toString))
@@ -263,12 +261,12 @@
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^Server svr (.getAttr co :jetty) ]
     (when-not (nil? svr)
-      (CU/TryC
+      (TryC
           (.stop svr) ))
     (ioes-stopped co)))
 
 (defn make-http-result []
-  (let [ impl (CU/make-mmap) ]
+  (let [ impl (make-mmap) ]
     (.mm-s impl :version "HTTP/1.1" )
     (.mm-s impl :code -1)
     (.mm-s impl :hds (NCMap.))
@@ -328,19 +326,19 @@
 
 (defn- cookie-to-javaCookie [^Cookie c]
   (doto (HttpCookie. (.getName c) (.getValue c))
-      (.setDomain (.getDomain c))
-      (.setHttpOnly (.isHttpOnly c))
-      (.setMaxAge (.getMaxAge c))
-      (.setPath (.getPath c))
-      (.setSecure (.getSecure c))
-      (.setVersion (.getVersion c))) )
+        (.setDomain (.getDomain c))
+        (.setHttpOnly (.isHttpOnly c))
+        (.setMaxAge (.getMaxAge c))
+        (.setPath (.getPath c))
+        (.setSecure (.getSecure c))
+        (.setVersion (.getVersion c))) )
 
 (defmethod ioes-reify-event :czc.hhh.io/JettyIO
   [co & args]
   (let [ ^HttpServletRequest req (first args)
          ^HTTPResult result (make-http-result)
-         impl (CU/make-mmap)
-         eid (SN/next-long) ]
+         impl (make-mmap)
+         eid (next-long) ]
     (reify
 
       Identifiable
@@ -368,7 +366,7 @@
       (getSession [_] (.mm-g impl :ios))
       (emitter [_] co)
       (isKeepAlive [_]
-        (= (-> (SU/nsb (.getHeader req "connection")) (.toLowerCase))
+        (= (-> (nsb (.getHeader req "connection")) (.toLowerCase))
         "keep-alive"))
       (data [_] nil)
       (hasData [_] false)
@@ -405,9 +403,9 @@
       (localHost [_] (.getLocalName req))
       (localPort [_] (.getLocalPort req))
 
+      (queryString [_] (.getQueryString req))
       (method [_] (.getMethod req))
       (protocol [_] (.getProtocol req))
-      (queryString [_] (.getQueryString req))
 
       (remoteAddr [_] (.getRemoteAddr req))
       (remoteHost [_] (.getRemoteHost req))

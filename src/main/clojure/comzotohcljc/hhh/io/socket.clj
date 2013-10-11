@@ -28,23 +28,22 @@
 (use '[comzotohcljc.hhh.io.core])
 (use '[comzotohcljc.hhh.core.sys])
 
-(require '[comzotohcljc.util.process :as PU])
-(require '[comzotohcljc.util.meta :as MU])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.seqnum :as SN])
-
+(use '[comzotohcljc.util.process :only [coroutine] ])
+(use '[comzotohcljc.util.meta :only [get-cldr] ])
+(use '[comzotohcljc.util.core :only [test-posnum conv-long] ])
+(use '[comzotohcljc.util.str :only [nsb hgl?] ])
+(use '[comzotohcljc.util.seqnum :only [next-long] ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defn make-socketio "" [container]
-  (make-emitter container :czc.hhh.io/SocketIO))
+(defn makeSocketIO "" [container]
+  (makeEmitter container :czc.hhh.io/SocketIO))
 
 (defmethod ioes-reify-event :czc.hhh.io/SocketIO
   [co & args]
   (let [ ^Socket soc (first args)
-         eeid (SN/next-long) ]
+         eeid (next-long) ]
     (with-meta
       (reify
 
@@ -68,11 +67,11 @@
          host (:host cfg)
          port (:port cfg)
          blog (:backlog cfg) ]
-    (CU/test-posnum "socket-io port" port)
-    (.setAttr! co :timeoutMillis (CU/conv-long tout 0))
-    (.setAttr! co :host (SU/nsb host))
+    (test-posnum "socket-io port" port)
+    (.setAttr! co :timeoutMillis (conv-long tout 0))
+    (.setAttr! co :host (nsb host))
     (.setAttr! co :port port)
-    (.setAttr! co :backlog (CU/conv-long blog 100))
+    (.setAttr! co :backlog (conv-long blog 100))
     co))
 
 
@@ -82,7 +81,7 @@
   (let [ backlog (.getAttr co :backlog)
          host (.getAttr co :host)
          port (.getAttr co :port)
-         ip (if (SU/hgl? host) (InetAddress/getByName host) (InetAddress/getLocalHost))
+         ip (if (hgl? host) (InetAddress/getByName host) (InetAddress/getLocalHost))
          soc (ServerSocket. port backlog ip) ]
     (info "opened Server Socket " soc  " (bound?) " (.isBound soc))
     (doto soc (.setReuseAddress true))
@@ -95,17 +94,17 @@
 (defmethod ioes-start :czc.hhh.io/SocketIO
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^ServerSocket ssoc (.getAttr co :ssocket)
-         cl (MU/get-cldr) ]
+         cl (get-cldr) ]
     (when-not (nil? ssoc)
-      (PU/coroutine (fn []
-                      (while (.isBound ssoc)
-                        (try
-                          (sockItDown co (.accept ssoc))
-                          (catch Throwable e#
-                            (warn e# "")
-                            (IOUtils/closeQuietly ssoc)
-                            (.setAttr! co :ssocket nil)))))
-                    cl))
+      (coroutine (fn [] 
+                   (while (.isBound ssoc)
+                     (try
+                       (sockItDown co (.accept ssoc))
+                       (catch Throwable e#
+                         (warn e# "")
+                         (IOUtils/closeQuietly ssoc)
+                         (.setAttr! co :ssocket nil)))))
+                 cl))
     (ioes-started co)))
 
 (defmethod ioes-stop :czc.hhh.io/SocketIO

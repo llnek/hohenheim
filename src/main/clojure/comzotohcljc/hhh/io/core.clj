@@ -28,14 +28,11 @@
   Identifiable Disposable Startable))
 (import '(com.zotoh.hohenheim.core Container))
 (import '(com.zotoh.hohenheim.io ServletEmitter Emitter))
-
 (import '(java.util Map))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (use '[comzotohcljc.hhh.core.sys])
-
-(require '[comzotohcljc.util.seqnum :as SN])
-(require '[comzotohcljc.util.core :as CU])
+(use '[comzotohcljc.util.core :only [make-mmap TryC] ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -54,8 +51,8 @@
 
 (defprotocol WaitEventHolder
   ""
-  (resumeOnResult [_ res] )
   (timeoutMillis [_ millis] )
+  (resumeOnResult [_ res] )
   (onExpiry [_])
   (timeoutSecs [_ secs] ) )
 
@@ -98,8 +95,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn make-emitter "" [^Container parObj emId emAlias]
-  (let [ impl (CU/make-mmap)
+(defn makeEmitter "" [^Container parObj emId emAlias]
+  (let [ impl (make-mmap)
          eeid emAlias ]
     (.mm-s impl :backlog (ConcurrentHashMap.))
     (with-meta
@@ -164,7 +161,7 @@
               (.put b wid wevt))))
 
         (dispatch [_ ev]
-          (CU/TryC
+          (TryC
               (.notifyObservers parObj ev) )) )
 
       { :typeid emId } )))

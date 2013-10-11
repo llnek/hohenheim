@@ -27,15 +27,14 @@
     :state myState
   ))
 
-(import '(javax.servlet 
-  ServletContextListener ServletContext ServletContextEvent))
+(import '(javax.servlet ServletContextListener ServletContext ServletContextEvent))
 (import '(java.io File))
 (import '(com.zotoh.hohenheim.core Container))
 (import '(com.zotoh.hohenheim.io Emitter))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.util.core :only [TryC] ])
+(use '[comzotohcljc.util.str :only [nsb] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -51,11 +50,11 @@
          m (.getMajorVersion x)
          n (.getMinorVersion x)
          ctx   (if (or (> m 2) (and (= m 2)(> n 4)))
-                  (.getContextPath x)
-                  nil) ]
+                   (.getContextPath x)
+                   nil) ]
     (debug "WEBContextListener: contextInitialized()")
-    (CU/TryC
-        (inizAsJ2EE x (SU/nsb ctx)) ) ))
+    (TryC
+        (inizAsJ2EE x (nsb ctx)) ) ))
 
 (defn -contextDestroyed [this e]
   (let [ state (.myState this)

@@ -23,36 +23,29 @@
 (import '(com.zotoh.hohenheim.io TimerEvent))
 (import '(com.zotoh.frwk.core Identifiable Startable))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-
-(use '[comzotohcljc.util.core :only (MuObj) ])
-
-(require '[comzotohcljc.util.process :as PU])
-(require '[comzotohcljc.util.dates :as DU])
-(require '[comzotohcljc.util.meta :as MU])
-(require '[comzotohcljc.util.seqnum :as SN])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.util.core :only [MuObj TryC] ])
+(use '[comzotohcljc.util.process :only [coroutine safe-wait] ])
+(use '[comzotohcljc.util.dates :only [parse-date] ])
+(use '[comzotohcljc.util.meta :only [get-cldr] ])
+(use '[comzotohcljc.util.seqnum :only [next-long] ])
+(use '[comzotohcljc.util.str :only [nsb hgl? strim] ])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.io.core])
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-
-(defmulti loopable-oneloop "" (fn [a] (:typeid (meta a)) ))
 (defmulti loopable-wakeup "" (fn [a & args] (:typeid (meta a)) ))
+(defmulti loopable-oneloop "" (fn [a] (:typeid (meta a)) ))
 (defmulti loopable-schedule "" (fn [a] (:typeid (meta a)) ))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- config-repeat-timer [^Timer tm delays intv func]
+(defn- config-repeat-timer "" [^Timer tm delays intv func]
   (let [ tt (proxy [TimerTask][]
               (run []
-                (CU/TryC
+                (TryC
                     (when (fn? func) (func)))))
          [^Date dw ^long ds] delays ]
     (when (instance? Date dw)
@@ -60,7 +53,7 @@
     (when (number? ds)
       (.schedule tm tt ds ^long intv))) )
 
-(defn- config-timer [^Timer tm delays func]
+(defn- config-timer "" [^Timer tm delays func]
   (let [ tt (proxy [TimerTask][]
               (run []
                 (when (fn? func) (func))))
@@ -71,7 +64,7 @@
       (.schedule tm tt ds))) )
 
 
-(defn- config-timertask [^comzotohcljc.hhh.core.sys.Element co]
+(defn- config-timertask "" [^comzotohcljc.hhh.core.sys.Element co]
   (let [ intv (.getAttr co :intervalMillis)
          t (.getAttr co :timer)
          ds (.getAttr co :delayMillis)
@@ -83,12 +76,12 @@
     co))
 
 
-(defn cfg-loopable [^comzotohcljc.hhh.core.sys.Element co cfg]
+(defn cfg-loopable "" [^comzotohcljc.hhh.core.sys.Element co cfg]
   (let [ intv (:interval-secs cfg)
          ds (:delay-secs cfg)
-         dw (SU/nsb (:delay-when cfg)) ]
-    (if (SU/hgl? dw)
-      (.setAttr! co :delayWhen (DU/parse-date (SU/strim dw) "yyyy-MM-ddTHH:mm:ss"))
+         dw (nsb (:delay-when cfg)) ]
+    (if (hgl? dw)
+      (.setAttr! co :delayWhen (parse-date (strim dw) "yyyy-MM-ddTHH:mm:ss"))
       (do
         (.setAttr! co :delayMillis
                    (* 1000 (Math/min (int 3)
@@ -97,25 +90,25 @@
       (.setAttr! co :intervalMillis (* 1000 intv)))
     co))
 
-(defn- start-timer [^comzotohcljc.hhh.core.sys.Element co]
+(defn- start-timer "" [^comzotohcljc.hhh.core.sys.Element co]
   (do
     (.setAttr! co :timer (Timer. true))
     (loopable-schedule co)))
 
-(defn- kill-timer [^comzotohcljc.hhh.core.sys.Element co]
+(defn- kill-timer "" [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^Timer t (.getAttr co :timer) ]
-    (CU/TryC
+    (TryC
         (when-not (nil? t) (.cancel t)) )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Repeating Timer
 
-(defn make-repeating-timer [container]
-  (make-emitter container :czc.hhh.io/RepeatingTimer))
+(defn makeRepeatingTimer [container]
+  (makeEmitter container :czc.hhh.io/RepeatingTimer))
 
 (defmethod ioes-reify-event :czc.hhh.io/RepeatingTimer
   [co & args]
-  (let [ eeid (SN/next-long) ]
+  (let [ eeid (next-long) ]
     (with-meta
       (reify
 
@@ -159,12 +152,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Once Timer
 
-(defn make-once-timer [container]
-  (make-emitter container :czc.hhh.io/OnceTimer))
+(defn makeOnceTimer [container]
+  (makeEmitter container :czc.hhh.io/OnceTimer))
 
 (defmethod ioes-reify-event :czc.hhh.io/OnceTimer
   [co & args]
-  (let [ eeid (SN/next-long) ]
+  (let [ eeid (next-long) ]
     (with-meta
       (reify
 
@@ -209,12 +202,12 @@
 (defmethod loopable-schedule :czc.hhh.io/ThreadedTimer
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ intv (.getAttr co :intervalMillis)
-         cl (MU/get-cldr)
+         cl (get-cldr)
          loopy (atom true)
          func (fn []
-                (PU/coroutine (fn []
-                                (while @loopy (loopable-wakeup co intv)))
-                              cl)) ]
+                (coroutine (fn []
+                             (while @loopy (loopable-wakeup co intv)))
+                           cl)) ]
     (.setAttr! co :loopy loopy)
     (info "threaded one timer - interval = " intv)
     (func)))
@@ -222,10 +215,9 @@
 (defmethod loopable-wakeup :czc.hhh.io/ThreadedTimer
   [co & args]
   (do
-    (CU/TryC
+    (TryC
         (loopable-oneloop co) )
-    (PU/safe-wait (first args) )) )
-
+    (safe-wait (first args) )) )
 
 (defmethod ioes-start :czc.hhh.io/ThreadedTimer
   [^comzotohcljc.hhh.core.sys.Element co]
@@ -233,7 +225,7 @@
          dw (.getAttr co :delayWhen)
          intv (.getAttr co :intervalMillis)
          loopy (atom true)
-         cl (MU/get-cldr)
+         cl (get-cldr)
          func (fn [] (loopable-schedule co)) ]
     (.setAttr! co :loopy loopy)
     (if (or (number? ds) (instance? Date dw))

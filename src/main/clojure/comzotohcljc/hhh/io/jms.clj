@@ -19,11 +19,8 @@
 
   comzotohcljc.hhh.io.jms)
 
-(import '(com.zotoh.frwk.core Identifiable))
-
-
-
 (import '(org.apache.commons.lang3 StringUtils))
+(import '(com.zotoh.frwk.core Identifiable))
 (import '(java.util
   Hashtable Properties ResourceBundle))
 (import '(javax.jms Connection
@@ -48,12 +45,10 @@
 (import '(java.io IOException))
 (import '(com.zotoh.hohenheim.io JMSEvent))
 
-(use '[comzotohcljc.util.core :only (MuObj) ])
-(require '[comzotohcljc.crypto.codec :as CR])
-(require '[comzotohcljc.util.seqnum :as SN])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-
+(use '[comzotohcljc.util.core :only [MuObj make-mmap uid TryC] ])
+(use '[comzotohcljc.crypto.codec :only [pwdify] ])
+(use '[comzotohcljc.util.seqnum :only [next-long] ])
+(use '[comzotohcljc.util.str :only [hgl? nsb] ])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.io.core])
 
@@ -62,13 +57,13 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(defn make-jmsclient "" [container]
-  (make-emitter container :czc.hhh.io/JMS))
+(defn makeJMSClient "" [container]
+  (makeEmitter container :czc.hhh.io/JMS))
 
 (defmethod ioes-reify-event :czc.hhh.io/JMS
   [co & args]
-  (let [ eeid (SN/next-long)
-         impl (CU/make-mmap)
+  (let [ eeid (next-long)
+         impl (make-mmap)
          msg (first args) ]
     (with-meta
       (reify
@@ -95,9 +90,9 @@
     (.setAttr! co :contextFactory (:contextfactory cfg))
     (.setAttr! co :connFactory (:connfactory cfg))
     (.setAttr! co :jndiUser (:jndiuser cfg))
-    (.setAttr! co :jndiPwd (CR/pwdify (:jndipwd cfg) pkey))
+    (.setAttr! co :jndiPwd (pwdify (:jndipwd cfg) pkey))
     (.setAttr! co :jmsUser (:jmsuser cfg))
-    (.setAttr! co :jmsPwd (CR/pwdify (:jmspwd cfg) pkey))
+    (.setAttr! co :jmsPwd (pwdify (:jmspwd cfg) pkey))
     (.setAttr! co :durable (:durable cfg))
     (.setAttr! co :providerUrl (:providerurl cfg))
     (.setAttr! co :destination (:destination cfg))
@@ -110,9 +105,9 @@
   (let [ ^String des (.getAttr co :destination)
          c (.lookup ctx des)
          ju (.getAttr co :jmsUser)
-         jp (SU/nsb (.getAttr co :jmsPwd))
-         ^Connection conn (if (SU/hgl? ju)
-                (.createConnection cf ju (if (SU/hgl? jp) jp nil))
+         jp (nsb (.getAttr co :jmsPwd))
+         ^Connection conn (if (hgl? ju)
+                (.createConnection cf ju (if (hgl? jp) jp nil))
                 (.createConnection cf)) ]
 
     (if (instance? Destination c)
@@ -130,11 +125,11 @@
                   ^InitialContext ctx
                   ^TopicConnectionFactory cf]
 
-  (let [ ^String jp (SU/nsb (.getAttr co :jmsPwd))
+  (let [ ^String jp (nsb (.getAttr co :jmsPwd))
          ^String des (.getAttr co :destination)
          ^String ju (.getAttr co :jmsUser)
-         conn (if (SU/hgl? ju)
-                (.createTopicConnection cf ju (if (SU/hgl? jp) jp nil))
+         conn (if (hgl? ju)
+                (.createTopicConnection cf ju (if (hgl? jp) jp nil))
                 (.createTopicConnection cf))
          s (.createTopicSession conn false Session/CLIENT_ACKNOWLEDGE)
          t (.lookup ctx des) ]
@@ -143,7 +138,7 @@
       (throw (IOException. "Object not of Topic type.")))
 
     (-> (if (.getAttr co :durable)
-          (.createDurableSubscriber s t (CU/uid))
+          (.createDurableSubscriber s t (uid))
           (.createSubscriber s t))
       (.setMessageListener (reify MessageListener
                               (onMessage [_ m] (onMessage co m))) ))
@@ -154,11 +149,11 @@
                   ^InitialContext ctx
                   ^QueueConnectionFactory cf]
 
-  (let [ ^String jp (SU/nsb (.getAttr co :jmsPwd))
+  (let [ ^String jp (nsb (.getAttr co :jmsPwd))
          ^String des (.getAttr co :destination)
          ^String ju (.getAttr co :jmsUser)
-         conn (if (SU/hgl? ju)
-                (.createQueueConnection cf ju (if (SU/hgl? jp) jp nil))
+         conn (if (hgl? ju)
+                (.createQueueConnection cf ju (if (hgl? jp) jp nil))
                 (.createQueueConnection cf))
          s (.createQueueSession conn false Session/CLIENT_ACKNOWLEDGE)
          q (.lookup ctx des) ]
@@ -177,18 +172,18 @@
   (let [ ^String cf (.getAttr co :contextFactory)
          pl (.getAttr co :providerUrl)
          ^String ju (.getAttr co :jndiUser)
-         ^String jp (SU/nsb (.getAttr co :jndiPwd))
+         ^String jp (nsb (.getAttr co :jndiPwd))
          vars (Hashtable.) ]
 
-    (when (SU/hgl? cf)
+    (when (hgl? cf)
       (.put vars Context/INITIAL_CONTEXT_FACTORY cf))
 
-    (when (SU/hgl? pl)
+    (when (hgl? pl)
       (.put vars Context/PROVIDER_URL pl))
 
-    (when (SU/hgl? ju)
+    (when (hgl? ju)
       (.put vars "jndi.user" ju)
-      (when (SU/hgl? jp)
+      (when (hgl? jp)
         (.put vars "jndi.password" jp)))
 
     (let [ ctx (InitialContext. vars)
@@ -217,7 +212,7 @@
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ ^Connection c (.getAttr co :conn) ]
     (when-not (nil? c)
-      (CU/TryC (.close c)))
+      (TryC (.close c)))
     (.setAttr! co :conn nil)
     (ioes-stopped co)))
 

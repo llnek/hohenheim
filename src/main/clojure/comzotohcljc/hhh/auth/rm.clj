@@ -29,11 +29,8 @@
   ))
 
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-
-
-(import '(org.apache.shiro.subject PrincipalCollection))
 (import '(org.apache.shiro.authz AuthorizationException AuthorizationInfo))
+(import '(org.apache.shiro.subject PrincipalCollection))
 (import '(org.apache.shiro.realm AuthorizingRealm))
 (import '(org.apache.shiro.authc
   AuthenticationException AuthenticationToken SimpleAccount))
@@ -41,11 +38,11 @@
 (import '(org.apache.shiro.realm CachingRealm))
 (import '(java.util Collection))
 
-(require '[comzotohcljc.crypto.codec :as CE])
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.crypto.codec :only [pwdify] ])
 (use '[comzotohcljc.hhh.auth.core])
 (use '[comzotohcljc.dbio.connect])
 (use '[comzotohcljc.dbio.core])
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -60,7 +57,7 @@
            user (.getPrincipal token)
            sql (.newSimpleSQLr db) ]
       (try
-        (let[ acc (get-loginAccount sql user (CE/pwdify pwd))
+        (let[ acc (get-loginAccount sql user (pwdify pwd))
               rc (SimpleAccount.  acc (:passwd acc) (.getName this)) ]
           rc)
         (catch Throwable e#

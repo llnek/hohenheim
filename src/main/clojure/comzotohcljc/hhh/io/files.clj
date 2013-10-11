@@ -39,18 +39,17 @@
 (import '(com.zotoh.frwk.core Identifiable))
 
 
-(use '[comzotohcljc.hhh.core.sys :rename { seq* rego-seq* has? rego-has? } ])
-(use '[clojure.tools.logging :only (info warn error debug)])
-
+(use '[comzotohcljc.hhh.core.sys :rename { seq* rego-seq*
+                                           has? rego-has? } ])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (use '[comzotohcljc.hhh.io.loops
-       :only (loopable-schedule loopable-oneloop cfg-loopable) ])
+       :only [loopable-schedule loopable-oneloop cfg-loopable] ])
 (use '[comzotohcljc.hhh.io.core])
-
-(use '[comzotohcljc.util.seqnum :as SN])
-(use '[comzotohcljc.util.core :as CU])
-(use '[comzotohcljc.util.str :as SU])
-
-
+(use '[comzotohcljc.util.seqnum :only [next-long] ])
+(use '[comzotohcljc.util.core :only [make-mmap notnil?
+                                     test-nestr
+                                     TryC subs-var subs-var] ])
+(use '[comzotohcljc.util.str :only [nsb hgl? nsn] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -65,13 +64,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; FilePicker
 
-(defn make-filepicker [container]
-  (make-emitter container :czc.hhh.io/FilePicker))
+(defn makeFilePicker [container]
+  (makeEmitter container :czc.hhh.io/FilePicker))
 
 (defmethod ioes-reify-event :czc.hhh.io/FilePicker
   [co & args]
-  (let [ eeid (SN/next-long)
-         impl (CU/make-mmap)
+  (let [ eeid (next-long)
+         impl (make-mmap)
          ^File
          f (nth args 1) ]
     (with-meta
@@ -99,8 +98,8 @@
          fname (.getName f)
          cf (cond
               (= action :FP-CREATED)
-              (if (CU/notnil? des)
-                (CU/TryC
+              (if (notnil? des)
+                (TryC
                   (FileUtils/moveFileToDirectory f des false)
                   (File. des fname) )
                 f)
@@ -111,11 +110,11 @@
 
 (defmethod comp-configure :czc.hhh.io/FilePicker
   [^comzotohcljc.hhh.core.sys.Element co cfg]
-  (let [ ^String root (CU/subs-var (SU/nsb (:target-folder cfg)))
-         ^String dest (CU/subs-var (SU/nsb (:recv-folder cfg)))
-         ^String mask (SU/nsb (:fmask cfg)) ]
+  (let [ ^String root (subs-var (nsb (:target-folder cfg)))
+         ^String dest (subs-var (nsb (:recv-folder cfg)))
+         ^String mask (nsb (:fmask cfg)) ]
     (cfg-loopable co cfg)
-    (CU/test-nestr "file-root-folder" root)
+    (test-nestr "file-root-folder" root)
     (.setAttr! co :target (doto (File. root) (.mkdirs)))
     (.setAttr! co :mask
       (cond
@@ -130,11 +129,11 @@
 
         :else
         FileFileFilter/FILE ) )
-    (when (SU/hgl? dest)
+    (when (hgl? dest)
       (.setAttr! co :dest (doto (File. dest) (.mkdirs))))
 
     (info "Monitoring folder: " root)
-    (info "Recv folder: " (SU/nsn dest))
+    (info "Recv folder: " (nsn dest))
 
     co))
 
@@ -165,10 +164,7 @@
     (info "FilePicker's apache io monitor starting...")
     (.start mon)))
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (def ^:private files-eof nil)
 

@@ -19,14 +19,13 @@
 
   comzotohcljc.hhh.io.triggers )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-
 (import '(io.netty.handler.codec.http HttpResponseStatus))
 (import '(org.eclipse.jetty.continuation ContinuationSupport))
 (import '(org.eclipse.jetty.continuation Continuation))
 (import '(io.netty.channel Channel ChannelFuture ChannelFutureListener))
 (import '(io.netty.handler.codec.http
-  HttpHeaders HttpHeaders$Names HttpVersion ServerCookieEncoder DefaultHttpResponse))
+  HttpResponse HttpHeaders HttpHeaders$Names HttpVersion
+  ServerCookieEncoder DefaultHttpResponse))
 (import '(java.nio.channels ClosedChannelException))
 (import '(java.io OutputStream IOException))
 (import '(io.netty.handler.stream ChunkedStream))
@@ -46,11 +45,10 @@
   BinaryWebSocketFrame
   TextWebSocketFrame))
 
-(use '[comzotohcljc.netty.comms :only (HTTP-CODES wflush) ])
-(require '[comzotohcljc.net.comms :as NU])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.netty.comms :only [HTTP-CODES wflush makeHttpReply] ])
+(use '[comzotohcljc.util.core :only [make-mmap stringify notnil? Try!] ])
+(use '[comzotohcljc.util.str :only [nsb] ])
 (use '[comzotohcljc.hhh.io.core])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60,21 +58,21 @@
 
 (defn isServletKeepAlive [^HttpServletRequest req]
   (let [ v (.getHeader req "connection") ]
-    (= "keep-alive" (.toLowerCase (SU/nsb v)))))
+    (= "keep-alive" (.toLowerCase (nsb v)))))
 
 (defn- cookieToServlet ^Cookie [^HttpCookie c]
   (doto (Cookie. (.getName c) (.getValue c))
-      (.setDomain (.getDomain c))
-      (.setHttpOnly (.isHttpOnly c))
-      (.setMaxAge (.getMaxAge c))
-      (.setPath (.getPath c))
-      (.setSecure (.getSecure c))
-      (.setVersion (.getVersion c))) )
+        (.setDomain (.getDomain c))
+        (.setHttpOnly (.isHttpOnly c))
+        (.setMaxAge (.getMaxAge c))
+        (.setPath (.getPath c))
+        (.setSecure (.getSecure c))
+        (.setVersion (.getVersion c))) )
 
-(defn- replyServlet [ ^comzotohcljc.util.core.MuObj res
+(defn- replyServlet [^comzotohcljc.util.core.MuObj res
                      ^HttpServletRequest req
                      ^HttpServletResponse rsp
-                    src]
+                     src]
   (let [ ^OutputStream os (.getOutputStream rsp)
          ^NCMap hds (.getf res :hds)
          ^List cks (.getf res :cookies)
@@ -95,13 +93,13 @@
         (.addCookie rsp (cookieToServlet c)))
       (cond
         (and (>= code 300)(< code 400))
-        (.sendRedirect rsp (.encodeRedirectURL rsp (SU/nsb url)))
+        (.sendRedirect rsp (.encodeRedirectURL rsp (nsb url)))
         :else
         (let [ ^XData dd (cond
                             (instance? XData data) data
-                            (CU/notnil? data) (XData. data)
+                            (notnil? data) (XData. data)
                             :else nil)
-               clen (if (and (CU/notnil? dd) (.hasContent dd))
+               clen (if (and (notnil? dd) (.hasContent dd))
                         (.size dd)
                         0) ]
             (.setContentLength rsp clen)
@@ -112,7 +110,7 @@
       (catch Throwable e#
         (error e# ""))
       (finally
-        (CU/Try! (when-not (isServletKeepAlive req) (.close os)))
+        (Try! (when-not (isServletKeepAlive req) (.close os)))
         (-> (ContinuationSupport/getContinuation req)
           (.complete))) ) ) )
 
@@ -145,28 +143,28 @@
                          (conj! sum
                                 (ServerCookieEncoder/encode
                                   (.getName c)(.getValue c))))
-          (transient []) (seq cookies)) ))
+                       (transient [])
+                       (seq cookies)) ))
 
 (defn- netty-ws-reply [^WebSockResult res ^Channel ch ^WebSockEvent evt src]
   (let [ ^XData xs (.getData res)
          bits (.javaBytes xs)
-         ^WebSocketFrame 
+         ^WebSocketFrame
          f (cond
               (.isBinary res)
-              (BinaryWebSocketFrame. (Unpooled/copiedBuffer bits))
+              (BinaryWebSocketFrame. (Unpooled/wrappedBuffer bits))
 
               :else
-              (TextWebSocketFrame. (SU/nsb (CU/stringify bits)))) ]
+              (TextWebSocketFrame. (nsb (stringify bits)))) ]
     (wflush ch f)))
 
 (defn- netty-reply [^comzotohcljc.util.core.MuObj res
                     ^Channel ch
                     ^HTTPEvent evt
                     src]
-  (let [ code (.getf res :code)
-         rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1
-                                   (HttpResponseStatus/valueOf code))
-         cks (cookiesToNetty (.getf res :cookies))
+  (let [ cks (cookiesToNetty (.getf res :cookies))
+         code (.getf res :code)
+         rsp (makeHttpReply code)
          data (.getf res :data)
          hdrs (.getf res :hds) ]
     (with-local-vars [ clen 0 xd nil ]
@@ -178,7 +176,7 @@
         (HttpHeaders/addHeader rsp HttpHeaders$Names/SET_COOKIE cks) )
       (cond
         (and (>= code 300)(< code 400))
-        (HttpHeaders/setHeader rsp "Location" (SU/nsb (.getf res :redirect)))
+        (HttpHeaders/setHeader rsp "Location" (nsb (.getf res :redirect)))
         :else
         (let [ ^XData dd (if (nil? data)
                             (XData.)
@@ -209,13 +207,12 @@
     (resumeWithResult [_ res]
       (cond
         (instance? WebSockEvent evt)
-        (CU/Try! (netty-ws-reply res ch evt src) )
+        (Try! (netty-ws-reply res ch evt src) )
         :else
-        (CU/Try! (netty-reply res ch evt src) ) ))
+        (Try! (netty-reply res ch evt src) ) ))
 
     (resumeWithError [_]
-      (let [ rsp (DefaultHttpResponse. HttpVersion/HTTP_1_1
-                                   (HttpResponseStatus/valueOf 500)) ]
+      (let [ rsp (makeHttpReply 500) ]
         (try
           (maybeClose evt (wflush ch rsp))
           (catch ClosedChannelException e#
@@ -230,7 +227,7 @@
   [ ^comzotohcljc.hhh.io.core.AsyncWaitTrigger trigger
     ^HTTPEvent event ]
 
-  (let [ impl (CU/make-mmap) ]
+  (let [ impl (make-mmap) ]
     (reify
 
       Identifiable

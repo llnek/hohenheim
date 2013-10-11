@@ -21,7 +21,7 @@
   comzotohcljc.hhh.auth.core
   (:gen-class))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 
 (import '(com.zotoh.hohenheim.runtime AuthError UnknownUser))
 (import '(com.zotoh.hohenheim.etc PluginFactory Plugin))
@@ -36,50 +36,51 @@
 (import '(org.apache.shiro SecurityUtils))
 (import '(org.apache.shiro.subject Subject))
 
-(require '[clojure.data.json :as json])
-
-(require '[comzotohcljc.crypto.codec :as CE])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-
+(use '[comzotohcljc.util.core :only [make-mmap uid load-javaprops] ])
+(use '[comzotohcljc.crypto.codec :only [pwdify] ])
+(use '[comzotohcljc.util.str :only [nsb strim] ])
 (use '[comzotohcljc.hhh.auth.dms])
 (use '[comzotohcljc.dbio.core])
+(require '[clojure.data.json :as json])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn create-authRole [ ^SQLr sql ^String role ^String desc]
+(defn create-authRole "" [^SQLr sql ^String role ^String desc]
   (.insert sql (-> (dbio-create-obj :czc.hhh.auth/AuthRole)
                  (dbio-set-fld :name role)
                  (dbio-set-fld :desc desc)) ))
 
-(defn remove-authRole [^SQLr sql role]
+(defn remove-authRole "" [^SQLr sql role]
   (.execute sql
             (str "delete from "
                  (ese (:table AuthRole))
                  " where "
                  (ese (:column (:name (:fields (meta AuthRole)))))
                  " = ?")
-            [(SU/nsb role)]))
+            [(nsb role)]))
 
-(defn list-authRoles [^SQLr sql]
+(defn list-authRoles ""
+  [^SQLr sql]
   (.findAll sql :czc.hhh.auth/AuthRole))
 
-(defn create-loginAccount  ""
-  [^SQLr sql user ^comzotohcljc.crypto.codec.Password pwdObj roleObjs]
+(defn create-loginAccount  "" [^SQLr sql
+                               ^String user
+                               ^comzotohcljc.crypto.codec.Password pwdObj roleObjs]
   (let [ [p s] (.hashed pwdObj)
          acc (.insert sql (-> (dbio-create-obj :czc.hhh.auth/LoginAccount)
-                            (dbio-set-fld :acctid (SU/strim user))
+                            (dbio-set-fld :acctid (strim user))
                             (dbio-set-fld :salt s)
                             (dbio-set-fld :passwd  p))) ]
     (doseq [ r (seq roleObjs) ]
       (dbio-set-m2m { :as :roles :with sql } acc r))
     acc))
 
-(defn get-loginAccount  ""
-  [^SQLr sql ^String user ^comzotohcljc.crypto.codec.Password pwdObj]
+(defn get-loginAccount  "" [^SQLr sql
+                            ^String user
+                            ^comzotohcljc.crypto.codec.Password pwdObj]
   (let [ acct (.findOne sql :czc.hhh.auth/LoginAccount
-                        { :acctid (SU/strim user) } ) ]
+                        { :acctid (strim user) } ) ]
     (cond
       (nil? acct)
       (throw (UnknownUser. user))
@@ -90,15 +91,16 @@
       :else
       (throw (AuthError. "Incorrect password"))) ))
 
-(defn change-loginAccount [^SQLr sql userObj
-                      ^comzotohcljc.crypto.codec.Password pwdObj ]
+(defn change-loginAccount "" [^SQLr sql
+                              userObj
+                              ^comzotohcljc.crypto.codec.Password pwdObj ]
   (let [ [p s] (.hashed pwdObj)
          u (-> userObj
               (dbio-set-fld :passwd p)
               (dbio-set-fld :salt s)) ]
     (.update sql u)))
 
-(defn update-loginAccount [^SQLr sql userObj details]
+(defn update-loginAccount "" [^SQLr sql userObj details]
   (if (empty? details)
     userObj
     (with-local-vars [ u userObj ]
@@ -106,27 +108,27 @@
         (var-set u (dbio-set-fld @u f v)))
       (.update sql @u)) ))
 
-(defn remove-loginAccount-role [^SQLr sql userObj roleObj]
+(defn remove-loginAccountRole "" [^SQLr sql userObj roleObj]
   (dbio-clr-m2m {:as :roles :with sql } userObj roleObj))
 
-(defn add-loginAccount-role [^SQLr sql userObj roleObj]
+(defn add-loginAccountRole "" [^SQLr sql userObj roleObj]
   (dbio-set-m2m {:as :roles :with sql } userObj roleObj))
 
-(defn remove-loginAccount [^SQLr sql userObj]
+(defn remove-loginAccount "" [^SQLr sql userObj]
   (.delete sql userObj))
 
-(defn delete-loginAccount [^SQLr sql user]
+(defn delete-loginAccount "" [^SQLr sql user]
   (.execute
     sql
     (str "delete from " (ese (:table LoginAccount))
          " where " (ese (:column (:acctid (:fields (meta LoginAccount)))))
          " =?")
-    [ (SU/strim user) ]))
+    [ (strim user) ]))
 
-(defn list-loginAccounts [^SQLr sql]
+(defn list-loginAccounts "" [^SQLr sql]
   (.findAll sql :czc.hhh.auth/LoginAccount))
 
-(defn- init-shiro [^File appDir ^String appKey]
+(defn- init-shiro "" [^File appDir ^String appKey]
   (let [ ini (File. appDir "conf/shiro.ini")
          sm (-> (IniSecurityManagerFactory. (-> ini (.toURI)(.toURL)(.toString)))
               (.getInstance)) ]
@@ -134,8 +136,10 @@
     (info "created shiro security manager: " sm)
   ))
 
-(defn make-auth-plugin ^Plugin []
-  (let [ impl (CU/make-mmap) ]
+(defn makeAuthPlugin ""
+  ^Plugin
+  []
+  (let [ impl (make-mmap) ]
     (reify
       Plugin
       (contextualize [_ ctr]
@@ -147,7 +151,7 @@
       (initialize [_]
         (let [ pkey (.mm-g impl :appKey)
                cfg (get (.mm-g impl :cfg) (keyword "_"))
-               j (make-jdbc (CU/uid) cfg (CE/pwdify (:passwd cfg) pkey)) ]
+               j (make-jdbc (uid) cfg (pwdify (:passwd cfg) pkey)) ]
           (apply-authPlugin-ddl j)
           (init-shiro (.mm-g impl :appDir)
                       (.mm-g impl :appKey))))
@@ -162,13 +166,13 @@
   PluginFactory
   (createPlugin [_]
     (require 'comzotohcljc.hhh.auth.core)
-    (make-auth-plugin)))
+    (makeAuthPlugin)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- doMain [& args]
   (let [ appDir (File. ^String (nth args 0))
-         ^Properties mf (CU/load-javaprops (File. appDir "META-INF/MANIFEST.MF"))
+         ^Properties mf (load-javaprops (File. appDir "META-INF/MANIFEST.MF"))
          pkey (.getProperty mf "Implementation-Vendor-Id")
          ^String cmd (nth args 1)
          ^String db (nth args 2)
@@ -177,8 +181,8 @@
                :key-fn keyword)
          cfg (get (:jdbc (:databases env)) (keyword db)) ]
     (when-not (nil? cfg)
-      (let [ j (make-jdbc db cfg (CE/pwdify (:passwd cfg) pkey))
-             t (match-jdbc-url (SU/nsb (:url cfg))) ]
+      (let [ j (make-jdbc db cfg (pwdify (:passwd cfg) pkey))
+             t (match-jdbc-url (nsb (:url cfg))) ]
         (cond
           (= "init-db" cmd)
           (let []

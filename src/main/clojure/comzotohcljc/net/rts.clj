@@ -23,12 +23,10 @@
 (import '(jregex Matcher Pattern))
 (import '(java.util StringTokenizer))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-(use '[comzotohcljc.util.core :only (MuObj) ])
-
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.ini :as WI])
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.util.core :only [MuObj make-mmap test-nestr] ])
+(use '[comzotohcljc.util.str :only [nsb nichts? hgl?] ])
+(use '[comzotohcljc.util.ini :only [parse-inifile] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44,9 +42,9 @@
   (collect [_ matcher] ))
 
 
-(defn- make-route-info [route ^String verb handler]
+(defn- make-route-info "" [route ^String verb handler]
   (let [ verbList (.toUpperCase verb)
-         impl (CU/make-mmap) ]
+         impl (make-mmap) ]
     (with-meta
       (reify
 
@@ -85,12 +83,12 @@
                 (var-set rc
                          (assoc! rc
                                  @r2
-                                 (SU/nsb (.group mmc ^String @r2)))))
+                                 (nsb (.group mmc ^String @r2)))))
               (persistent! @rc)))) )
 
       { :typeid :czc.net/RouteInfo } )) )
 
-(defn- initRoute
+(defn- initRoute ""
 
   [^comzotohcljc.util.core.MuObj rc
    ^String path]
@@ -120,7 +118,8 @@
       (.setf! rc :placeHolders (persistent! @phs))
       rc)) )
 
-(defn- mkRoute [stat path ^comzotohcljc.util.ini.IWin32Conf cfile]
+(defn- mkRoute "" [stat path
+                   ^comzotohcljc.util.ini.IWin32Conf cfile]
   (let [ tpl (.optString cfile path :template "")
          verb (.optString cfile path :verb "")
          mpt (.optString cfile path :mount "")
@@ -128,17 +127,17 @@
          ^comzotohcljc.util.core.MuObj
          rc (make-route-info
               path
-              (if (and stat (SU/nichts? verb)) "GET" verb)
+              (if (and stat (nichts? verb)) "GET" verb)
               pipe) ]
     (if stat
       (do
         (.setf! rc :mountPoint mpt)
         (.setf! rc :static true)
-        (CU/test-nestr "static-route mount point" mpt))
+        (test-nestr "static-route mount point" mpt))
       (do
-        (CU/test-nestr "http method for route" verb)
-        (CU/test-nestr "pipeline for route" pipe)))
-    (when (SU/hgl? tpl)
+        (test-nestr "http method for route" verb)
+        (test-nestr "pipeline for route" pipe)))
+    (when (hgl? tpl)
       (.setf! rc :template tpl))
     (initRoute rc path)
     rc))
@@ -146,9 +145,9 @@
 ;;
 ;; path can be /host.com/abc/:id1/gg/:id2
 ;;
-(defn load-routes [^File file]
+(defn load-routes "" [^File file]
   (let [ stat  (-> file (.getName)(.startsWith "static-"))
-         cf (WI/parse-inifile file) ]
+         cf (parse-inifile file) ]
     (with-local-vars [rc (transient []) ]
       (doseq [ s (seq (.sectionKeys cf)) ]
         (var-set rc (conj! @rc (mkRoute stat s cf))))

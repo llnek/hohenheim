@@ -50,20 +50,19 @@
   PingWebSocketFrame
   PongWebSocketFrame))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-(use '[comzotohcljc.util.core :only (MuObj) ])
-
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.io.core])
 (use '[comzotohcljc.hhh.io.http])
 (use '[comzotohcljc.hhh.io.triggers])
-
-(require '[comzotohcljc.crypto.ssl :as SS])
-(require '[comzotohcljc.netty.comms :as NE])
-(require '[comzotohcljc.util.seqnum :as SN])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.mime :as MM])
-(require '[comzotohcljc.util.str :as SU])
+(use '[comzotohcljc.util.core :only [MuObj make-mmap notnil? conv-long] ])
+(use '[comzotohcljc.crypto.ssl :only [make-sslContext] ])
+(use '[comzotohcljc.netty.comms :only [nioServerBootstrap
+                                       makeChannelGroup finzServer
+                                       makeServerPipe make-routeCracker] ])
+(use '[comzotohcljc.util.seqnum :only [next-long] ])
+(use '[comzotohcljc.util.mime :only [get-charset] ])
+(use '[comzotohcljc.util.str :only [hgl? nsb strim nichts?] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -72,7 +71,7 @@
 (defmulti nettyServiceReq "" (fn [a & args] (:typeid (meta a))))
 
 (defn- make-wsock-result []
-  (let [ impl (CU/make-mmap) ]
+  (let [ impl (make-mmap) ]
     (.mm-s impl :binary false)
     (.mm-s impl :text false)
     (.mm-s impl :data nil)
@@ -103,11 +102,11 @@
   [^comzotohcljc.hhh.io.core.EmitterAPI co
                          ^Channel ch
                          ^XData xdata]
-  (let [ ssl (CU/notnil? (.get (NetUtils/getPipeline ch) "ssl"))
+  (let [ ssl (notnil? (.get (NetUtils/getPipeline ch) "ssl"))
          ^InetSocketAddress laddr (.localAddress ch)
          ^WebSockResult res (make-wsock-result)
-         impl (CU/make-mmap)
-         eeid (SN/next-long) ]
+         impl (make-mmap)
+         eeid (next-long) ]
     (with-meta
       (reify
         MuObj
@@ -145,10 +144,10 @@
          ^HttpRequest req (nth args 1)
          ^XData xdata (nth args 2)
          ^Channel ch (nth args 0)
-         ssl (CU/notnil? (.get (NetUtils/getPipeline ch) "ssl"))
+         ssl (notnil? (.get (NetUtils/getPipeline ch) "ssl"))
          ^InetSocketAddress laddr (.localAddress ch)
-         impl (CU/make-mmap)
-         eeid (SN/next-long) ]
+         impl (make-mmap)
+         eeid (next-long) ]
     (with-meta
       (reify
 
@@ -169,16 +168,16 @@
         (getId [_] eeid)
         (emitter [_] co)
         (getCookies [_]
-          (let [ v (SU/nsb (HttpHeaders/getHeader req "Cookie"))
+          (let [ v (nsb (HttpHeaders/getHeader req "Cookie"))
                  rc (ArrayList.)
-                 cks (if (SU/hgl? v) (CookieDecoder/decode v) []) ]
+                 cks (if (hgl? v) (CookieDecoder/decode v) []) ]
             (doseq [ ^Cookie c (seq cks) ]
               (.add rc (cookieToJava c)))
             rc))
         (getCookie [_ nm]
-          (let [ v (SU/nsb (HttpHeaders/getHeader req "Cookie"))
+          (let [ v (nsb (HttpHeaders/getHeader req "Cookie"))
                  lnm (.toLowerCase nm)
-                 cks (if (SU/hgl? v) (CookieDecoder/decode v) []) ]
+                 cks (if (hgl? v) (CookieDecoder/decode v) []) ]
             (some (fn [^Cookie c]
                     (if (= (.toLowerCase (.getName c)) lnm)
                       (cookieToJava c)
@@ -187,13 +186,13 @@
 
         (isKeepAlive [_] (HttpHeaders/isKeepAlive req))
 
-        (hasData [_] (CU/notnil? xdata))
+        (hasData [_] (notnil? xdata))
         (data [_] xdata)
 
         (contentLength [_] (HttpHeaders/getContentLength req 0))
         (contentType [_] (HttpHeaders/getHeader req "content-type"))
 
-        (encoding [this]  (MM/get-charset (.contentType this)))
+        (encoding [this]  (get-charset (.contentType this)))
         (contextPath [_] "")
 
         (getHeaderValues [_ nm] (-> (.headers req) (.getAll nm)))
@@ -210,7 +209,7 @@
         (getParameterValue [_ nm]
           (let [ dc (QueryStringDecoder. (.getUri req))
                  ^List rc (.get (.parameters dc) nm) ]
-            (if (and (CU/notnil? rc) (> (.size rc) 0))
+            (if (and (notnil? rc) (> (.size rc) 0))
               (.get rc 0)
               nil)))
 
@@ -224,20 +223,20 @@
         (host [_] (HttpHeaders/getHost req))
 
         (queryString [_]
-          (let [ s (SU/nsb (.getUri req))
+          (let [ s (nsb (.getUri req))
                  pos (.indexOf s "?") ]
             (if (>= pos 0)
               (.substring s pos)
               "")))
 
-        (remotePort [_] (CU/conv-long (HttpHeaders/getHeader req "REMOTE_PORT") 0))
-        (remoteAddr [_] (SU/nsb (HttpHeaders/getHeader req "REMOTE_ADDR")))
-        (remoteHost [_] (SU/nsb (HttpHeaders/getHeader req "")))
+        (remotePort [_] (conv-long (HttpHeaders/getHeader req "REMOTE_PORT") 0))
+        (remoteAddr [_] (nsb (HttpHeaders/getHeader req "REMOTE_ADDR")))
+        (remoteHost [_] (nsb (HttpHeaders/getHeader req "")))
 
         (scheme [_] (if ssl "https" "http"))
 
-        (serverPort [_] (CU/conv-long (HttpHeaders/getHeader req "SERVER_PORT") 0))
-        (serverName [_] (SU/nsb (HttpHeaders/getHeader req "SERVER_NAME")))
+        (serverPort [_] (conv-long (HttpHeaders/getHeader req "SERVER_PORT") 0))
+        (serverName [_] (nsb (HttpHeaders/getHeader req "SERVER_NAME")))
 
         (isSSL [_] ssl)
 
@@ -260,8 +259,8 @@
 
 (defmethod comp-configure :czc.hhh.io/NettyIO
   [^comzotohcljc.hhh.core.sys.Element co cfg]
-  (let [ c (SU/nsb (:context cfg)) ]
-    (.setAttr! co :contextPath (SU/strim c))
+  (let [ c (nsb (:context cfg)) ]
+    (.setAttr! co :contextPath (strim c))
     (http-basic-config co cfg) ))
 
 (defmethod nettyServiceReq :czc.hhh.io/NettyIO
@@ -292,35 +291,35 @@
 
 (defn- init-netty
   [^comzotohcljc.hhh.core.sys.Element co reqcb]
-  (let [ ^ServerBootstrap bs (NE/nioServerBootstrap)
+  (let [ ^ServerBootstrap bs (nioServerBootstrap)
          file (.getAttr co :serverKey)
-         ssl (CU/notnil? file)
+         ssl (notnil? file)
          pwd (.getAttr co :pwd)
          ^comzotohcljc.hhh.core.sys.Element
          ctr (.parent ^Hierarchial co)
          routes (.getAttr ctr :routes)
-         ctx (if ssl (SS/make-sslContext file pwd)) ]
+         ctx (if ssl (make-sslContext file pwd)) ]
     (doto bs
-      (.childHandler
-        (NE/makeServerPipe ctx
-                            (make-service-io co reqcb)
-                            (NE/make-routeCracker routes) )))
+          (.childHandler (makeServerPipe
+                           ctx
+                           (make-service-io co reqcb)
+                           (make-routeCracker routes) )))
     (.setAttr! co :netty
       (comzotohcljc.netty.comms.NettyServer. bs nil))
     co))
 
 (defmethod ioes-start :czc.hhh.io/NettyIO
   [^comzotohcljc.hhh.core.sys.Element co]
-  (let [ host (SU/nsb (.getAttr co :host))
+  (let [ host (nsb (.getAttr co :host))
          ^long port (.getAttr co :port)
          ^comzotohcljc.netty.comms.NettyServer
          nes (.getAttr co :netty)
          ^ServerBootstrap bs (.server nes)
-         ^InetAddress ip (if (SU/nichts? host)
+         ^InetAddress ip (if (nichts? host)
               (InetAddress/getLocalHost)
               (InetAddress/getByName host))
          c (.bind bs (InetSocketAddress. ip port))
-         cg (NE/makeChannelGroup) ]
+         cg (makeChannelGroup) ]
 ;;    c.getConfig().setConnectTimeoutMillis(millis)
     (.add cg (.channel c))
     (.setAttr! co :netty
@@ -331,7 +330,7 @@
 (defmethod ioes-stop :czc.hhh.io/NettyIO
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ nes (.getAttr co :netty) ]
-    (NE/finzServer nes)
+    (finzServer nes)
     (ioes-stopped co)))
 
 (defmethod comp-initialize :czc.hhh.io/NettyIO

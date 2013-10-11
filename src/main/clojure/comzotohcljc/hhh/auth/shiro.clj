@@ -20,17 +20,15 @@
   comzotohcljc.hhh.auth.shiro)
 
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-
-
-(import '(org.apache.shiro.authc.credential CredentialsMatcher))
 (import '(org.apache.shiro.authz AuthorizationException AuthorizationInfo))
+(import '(org.apache.shiro.authc.credential CredentialsMatcher))
 (import '(org.apache.shiro.realm AuthorizingRealm))
 (import '(org.apache.shiro.authc
   AuthenticationException AuthenticationToken AuthenticationInfo SimpleAccount))
 (import '(com.zotoh.frwk.dbio DBAPI))
 
-(require '[comzotohcljc.crypto.codec :as CE])
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.crypto.codec :only [pwdify] ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -42,9 +40,7 @@
            pu (-> (.getPrincipals ^AuthenticationInfo info)
                   (.getPrimaryPrincipal)) ]
       (and (= pu uid)
-               (= pc (CE/pwdify pwd ""))) )))
-
-
+               (= pc (pwdify pwd ""))) )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

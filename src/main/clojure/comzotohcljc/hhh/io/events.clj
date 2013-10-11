@@ -19,11 +19,6 @@
 
   comzotohcljc.hhh.io.events )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-
-(use '[comzotohcljc.util.core :only (MuObj) ])
-(use '[comzotohcljc.hhh.io.core])
-
 (import '(org.apache.commons.io IOUtils))
 (import '(javax.mail.internet MimeMessage))
 (import '(javax.jms Message))
@@ -33,8 +28,10 @@
 (import '(com.zotoh.frwk.core Identifiable))
 (import '(com.zotoh.hohenheim.io IOResult IOEvent Emitter))
 
-(require '[comzotohcljc.util.seqnum :as SN])
-(require '[comzotohcljc.util.core :as CU])
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.util.core :only [MuObj make-mmap] ])
+(use '[comzotohcljc.hhh.io.core])
+(use '[comzotohcljc.util.seqnum :only [next-long] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44,9 +41,9 @@
 (defmulti eve-set-result "" (fn [a b] (:typeid (meta a))))
 (defmulti eve-destroy "" (fn [a] (:typeid (meta a))))
 
-(defn make-event [src evtId]
-  (let [ eeid (SN/next-long)
-         impl (CU/make-mmap) ]
+(defn makeEvent [src evtId]
+  (let [ eeid (next-long)
+         impl (make-mmap) ]
     (with-meta
       (reify
 
