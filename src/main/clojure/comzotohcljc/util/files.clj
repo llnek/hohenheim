@@ -19,7 +19,7 @@
 
   comzotohcljc.util.files)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.io
@@ -30,7 +30,6 @@
 (import '(org.apache.commons.io IOUtils))
 (import '(java.util.zip ZipFile ZipEntry))
 (import '(com.zotoh.frwk.io XData))
-(require '[ comzotohcljc.util.core :as CU])
 
 
 

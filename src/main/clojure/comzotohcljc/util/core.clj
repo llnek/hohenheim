@@ -17,7 +17,7 @@
 (ns ^{ :doc "General utilties." :author "kenl" }
   comzotohcljc.util.core)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 ;;(:use [clojure.string])
 (import '(java.security SecureRandom))
 (import '(java.net URL))

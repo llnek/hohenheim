@@ -19,7 +19,7 @@
 
   comzotohcljc.crypto.core)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (require '[clojure.math.numeric-tower :as math])
 
 (import '(java.io PrintStream File InputStream IOException
@@ -115,14 +115,21 @@
 (import '(org.apache.commons.io FileUtils IOUtils))
 (import '(com.zotoh.frwk.crypto SDataSource))
 (import '(com.zotoh.frwk.io XData))
+(import '(java.lang Math))
 
-(require '[comzotohcljc.crypto.codec :as CR])
-(require '[comzotohcljc.util.seqnum :as SN])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.dates :as DU])
-(require '[comzotohcljc.util.mime :as MM])
-(require '[comzotohcljc.util.io :as IO])
-(require '[comzotohcljc.util.str :as SU])
+(use '[comzotohcljc.util.seqnum :only [next-int] ])
+(use '[comzotohcljc.util.core
+       :only [bytesify Try! uid get-classname] ])
+(use '[comzotohcljc.util.dates :only [plus-months] ])
+(use '[comzotohcljc.util.mime
+       :only [maybe-stream is-compressed? is-encrypted? is-signed? ]
+       :rename { is-compressed? iscmpz?
+                 is-encrypted? isencr?
+                 is-signed? issigned?
+               }
+       ])
+(use '[comzotohcljc.util.io :only [streamify make-baos reset-stream!] ])
+(use '[comzotohcljc.util.str :only [nsb hgl?] ])
 
 
 (def DES_EDE3_CBC CMSAlgorithm/DES_EDE3_CBC)
@@ -182,7 +189,7 @@
          cipher (doto (Cipher/getInstance BFISH)
                       (.init (Cipher/ENCRYPT_MODE)
                              (SecretKeySpec. (.. kgen generateKey getEncoded) BFISH))) ]
-    (.doFinal cipher (CU/bytesify "This is just an example"))))
+    (.doFinal cipher (bytesify "This is just an example"))))
 
 (def ^Provider _BCProvider (let [ bcp (BouncyCastleProvider.) ] (Security/addProvider bcp) bcp))
 
@@ -206,15 +213,15 @@
 
 (defn make-MsgDigest "Get a message digest instance."
   ^MessageDigest [^String algo]
-  (MessageDigest/getInstance (SU/nsb algo) _BCProvider))
+  (MessageDigest/getInstance (nsb algo) _BCProvider))
 
 (defn next-serial "Get a random Big Integer."
   ^BigInteger []
   (let [ r (Random. (.getTime (Date.))) ]
-    (BigInteger/valueOf (math/abs (.nextLong r)))) )
+    (BigInteger/valueOf (Math/abs (.nextLong r)))) )
 
 (defn dbg-provider "" [^PrintStream os]
-  (CU/Try!
+  (Try!
     (.list _BCProvider os)))
 
 (defn get-srand "Get a secure random."
@@ -224,7 +231,7 @@
 
 (defn new-alias "Generate a new name."
   ^String []
-  (str "" (System/currentTimeMillis) (SN/next-int)))
+  (str "" (System/currentTimeMillis) (next-int)))
 
 (defn- find-aliases "" [^KeyStore keystore pred]
   (let [ en (.aliases keystore) ]
@@ -300,7 +307,7 @@
              ^bytes bits
              ^comzotohcljc.crypto.codec.Password pwdObj]
 
-  (init-store! store (IO/streamify bits) pwdObj))
+  (init-store! store (streamify bits) pwdObj))
 
 (defmethod init-store! :file
   ^KeyStore [^KeyStore store
@@ -316,7 +323,7 @@
   (let [ ks (get-pkcsStore)
          nm (new-alias)
          c (-> (CertificateFactory/getInstance "X.509")
-                      (.generateCertificate  (IO/streamify bits))) ]
+                      (.generateCertificate  (streamify bits))) ]
     (.setCertificateEntry ks nm c)
     (.getEntry ks nm nil)) )
 
@@ -327,9 +334,9 @@
 
   (let [ ca (if-not (nil? pwdObj)(.toCharArray pwdObj))
          ks (get-pkcsStore) ]
-    (.load ks (IO/streamify bits) ca)
+    (.load ks (streamify bits) ca)
     (.getEntry ks
-                (SU/nsb (first (pkey-aliases ks)))
+                (nsb (first (pkey-aliases ks)))
                 (KeyStore$PasswordProtection. ca))))
 
 (defn make-easyPolicy "Make a Policy that enables all permissions."
@@ -344,14 +351,14 @@
   (^String [^bytes skey ^String data ^String algo]
     (let [ mac (doto (Mac/getInstance algo _BCProvider)
                      (.init (SecretKeySpec. skey algo))
-                     (.update (CU/bytesify data))) ]
+                     (.update (bytesify data))) ]
       (Hex/encodeHexString (.doFinal mac)))))
 
 (defn gen-hash "Generate a Message Digest."
   (^String [^String data] (gen-hash data SHA_512))
   (^String [^String data ^String algo]
     (let [ dig (MessageDigest/getInstance algo)
-           b (.digest dig (CU/bytesify data)) ]
+           b (.digest dig (bytesify data)) ]
       (Base64/encodeBase64String b))) )
 
 (defn make-keypair "Make a Asymmetric key-pair."
@@ -371,7 +378,7 @@
     (let [ ca (if-not (nil? pwdObj)(.toCharArray pwdObj))
            ks (doto (get-pkcsStore)
                     (.load inp ca))
-           rc (.getEntry ks (SU/nsb (.nextElement (.aliases ks)))
+           rc (.getEntry ks (nsb (.nextElement (.aliases ks)))
                          (KeyStore$PasswordProtection. ca)) ]
       rc)) )
 
@@ -380,14 +387,14 @@
   [^String top ^String end ^bytes bits]
 
   (let [ bs (Base64/encodeBase64 bits)
-         nl (CU/bytesify "\n")
-         baos (IO/make-baos)
+         nl (bytesify "\n")
+         baos (make-baos)
          len (alength bs)
          bb (byte-array 1) ]
-    (.write baos (CU/bytesify top))
+    (.write baos (bytesify top))
     (loop [pos 0]
       (if (= pos len)
-        (do (.write baos (CU/bytesify end)) (.toByteArray baos))
+        (do (.write baos (bytesify end)) (.toByteArray baos))
         (do
           (when (and (> pos 0) (= (mod pos 64) 0)) (.write baos nl))
           (aset bb 0 (aget ^bytes bs pos))
@@ -420,10 +427,10 @@
   [keylen ^String dnStr ^clojure.lang.Keyword fmt]
   (do
     (debug "make-csrreq: dnStr= " dnStr ", key-len= " keylen)
-    (let [ ^KeyPair kp (make-keypair (SU/nsb RSA) keylen)
+    (let [ ^KeyPair kp (make-keypair (nsb RSA) keylen)
            k (.getPrivate kp)
            u (.getPublic kp)
-           csb (JcaContentSignerBuilder. (SU/nsb DEF_ALGO))
+           csb (JcaContentSignerBuilder. (nsb DEF_ALGO))
            cs (.build (.setProvider csb _BCProvider) k)
            xdn (X500Principal. dnStr)
            rbr (JcaPKCS10CertificationRequestBuilder. xdn u)
@@ -471,8 +478,8 @@
     (let [ pv (.getProvider ks)
            [^Certificate cert ^PrivateKey pkey] (mkSSV1Cert pv kp options)
            ca (if-not (nil? pwdObj)(.toCharArray pwdObj))
-           baos (IO/make-baos) ]
-      (.setKeyEntry ks (CU/uid) pkey ca (into-array Certificate [cert] ))
+           baos (make-baos) ]
+      (.setKeyEntry ks (uid) pkey ca (into-array Certificate [cert] ))
       (.store ks baos ca)
       (.toByteArray baos)) )
 
@@ -482,12 +489,12 @@
    ^comzotohcljc.crypto.codec.Password pwdObj ^File out]
 
   (let [ ct (.getTrustedCertificate (conv-cert certPEM))
-         rdr (InputStreamReader. (IO/streamify keyPEM))
+         rdr (InputStreamReader. (streamify keyPEM))
          ca (if-not (nil? pwdObj)(.toCharArray pwdObj))
-         baos (IO/make-baos)
+         baos (make-baos)
          ss (get-pkcsStore)
          ^KeyPair kp (.readObject (PEMParser. rdr)) ]
-    (.setKeyEntry ss (CU/uid) (.getPrivate kp) ca (into-array Certificate [ct]))
+    (.setKeyEntry ss (uid) (.getPrivate kp) ca (into-array Certificate [ct]))
     (.store ss baos ca)
     (FileUtils/writeByteArrayToFile out (.toByteArray baos))))
 
@@ -496,10 +503,10 @@
   [^String dnStr ^comzotohcljc.crypto.codec.Password pwdObj
    ^File out options]
 
-  (let [ dft { :keylen 1024 :start (Date.) :end (DU/plus-months 12) :algo DEF_ALGO }
+  (let [ dft { :keylen 1024 :start (Date.) :end (plus-months 12) :algo DEF_ALGO }
          opts (assoc (merge dft options) :dnStr dnStr)
          ^long keylen (:keylen opts)
-         kp (make-keypair (SU/nsb RSA) keylen)
+         kp (make-keypair (nsb RSA) keylen)
          ks (get-pkcsStore)
          rc (mkSSV1 ks kp pwdObj opts) ]
     (FileUtils/writeByteArrayToFile out rc)))
@@ -509,10 +516,10 @@
   [^String dnStr ^comzotohcljc.crypto.codec.Password pwdObj
    ^File out options]
 
-  (let [ dft { :keylen 1024 :start (Date.) :end (DU/plus-months 12) :algo "SHA1withDSA" }
+  (let [ dft { :keylen 1024 :start (Date.) :end (plus-months 12) :algo "SHA1withDSA" }
          opts (assoc (merge dft options) :dnStr dnStr)
          ^long keylen (:keylen opts)
-         kp (make-keypair (SU/nsb DSA) keylen)
+         kp (make-keypair (nsb DSA) keylen)
          ks (get-jksStore)
          rc (mkSSV1 ks kp pwdObj opts) ]
     (FileUtils/writeByteArrayToFile out rc)))
@@ -559,9 +566,9 @@
          [^Certificate cert ^PrivateKey pkey] (mkSSV3Cert (.getProvider ks) kp 
                            [ (first issuerCerts) issuerKey ] options)
          ca (if-not (nil? pwdObj)(.toCharArray pwdObj))
-         baos (IO/make-baos)
+         baos (make-baos)
          cs (cons cert issuerCerts) ]
-    (.setKeyEntry ks (CU/uid) pkey ca (into-array Certificate cs))
+    (.setKeyEntry ks (uid) pkey ca (into-array Certificate cs))
     (.store ks baos ca)
     (.toByteArray baos)))
 
@@ -572,7 +579,7 @@
    ^File out options]
 
   (let [ hack (:hack options)
-         dft { :keylen 1024 :start (Date.) :end (DU/plus-months 12) :algo (:algo hack) }
+         dft { :keylen 1024 :start (Date.) :end (plus-months 12) :algo (:algo hack) }
          issuerObjs [ (:issuerCerts options) (:issuerKey options) ]
          opts (assoc (merge dft options) :dnStr dnStr)
          ^KeyStore ks (:ks hack)
@@ -611,7 +618,7 @@
 ;;    "SHA1withRSA"
          ;;cs (.build (.setProvider (JcaContentSignerBuilder. (CMSSignedGenerator/DIGEST_SHA512)) _BCProvider) k)
          cs (.build (.setProvider
-                      (JcaContentSignerBuilder. (SU/nsb SHA512)) _BCProvider)
+                      (JcaContentSignerBuilder. (nsb SHA512)) _BCProvider)
                     k)
          gen (CMSSignedDataGenerator.)
          ^X509Certificate x509 (first cl) ]
@@ -619,7 +626,7 @@
     (.addSignerInfoGenerator gen (.build bdr cs x509))
     (.addCertificates gen (JcaCertStore. cl))
 
-    (let [ dummy (CMSProcessableByteArray. (CU/bytesify "Hello"))
+    (let [ dummy (CMSProcessableByteArray. (bytesify "Hello"))
            bits (.getEncoded (.generate gen CMSSignedGenerator/DATA
                                         dummy false _BCProvider false)) ]
       (FileUtils/writeByteArrayToFile fileOut bits))) )
@@ -630,7 +637,7 @@
     (Session/getInstance (System/getProperties)
       (if (StringUtils/isEmpty user)
         nil
-        (DefaultAuthenticator. user (SU/nsb pwdObj)) ))))
+        (DefaultAuthenticator. user (nsb pwdObj)) ))))
 
 (defn new-mimeMsg "Create a new MIME Message."
   (^MimeMessage [^String user ^comzotohcljc.crypto.codec.Password pwdObj]
@@ -643,65 +650,65 @@
 
 (defn is-signed? "Check if this stream-like object/message-part is signed."
   [^Object obj]
-  (let [ inp (MM/maybe-stream obj) ]
+  (let [ inp (maybe-stream obj) ]
     (if (nil? inp)
       (if (instance? Multipart obj)
-        (let [ ^Multipart mp obj ] (MM/is-signed? (.getContentType mp)))
-        (throw (IOException. (str "Invalid content: " (CU/get-classname obj)))))
+        (let [ ^Multipart mp obj ] (issigned? (.getContentType mp)))
+        (throw (IOException. (str "Invalid content: " (get-classname obj)))))
       (try
-        (is-signed? (.getContentType (new-mimeMsg "" "" inp)))
-        (finally (IO/reset-stream! inp))))) )
+        (issigned? (.getContentType (new-mimeMsg "" "" inp)))
+        (finally (reset-stream! inp))))) )
 
 (defn is-compressed? "Check if this stream-like object/message-part is compressed."
   [^Object obj]
-  (let [ inp (MM/maybe-stream obj) ]
+  (let [ inp (maybe-stream obj) ]
     (if (nil? inp)
       (cond
         (instance? Multipart obj)
         (let [ ^Multipart mp obj ]
-          (MM/is-compressed? (.getContentType mp)))
+          (iscmpz? (.getContentType mp)))
 
         (instance? BodyPart obj)
         (let [ ^BodyPart bp obj ]
-          (MM/is-compressed? (.getContentType bp)))
+          (iscmpz? (.getContentType bp)))
 
         :else
-        (throw (IOException. (str "Invalid content: " (CU/get-classname obj)))))
+        (throw (IOException. (str "Invalid content: " (get-classname obj)))))
       (try
-        (MM/is-compressed? (.getContentType (new-mimeMsg "" "" inp)))
-        (finally (IO/reset-stream! inp))))) )
+        (iscmpz? (.getContentType (new-mimeMsg "" "" inp)))
+        (finally (reset-stream! inp))))) )
 
 (defn is-encrypted? "Check if this stream-like object/message-part is encrypted."
   [^Object obj]
-  (let [ inp (MM/maybe-stream obj) ]
+  (let [ inp (maybe-stream obj) ]
     (if (nil? inp)
       (cond
         (instance? Multipart obj)
         (let [ ^Multipart mp obj ]
-          (MM/is-encrypted? (.getContentType mp)))
+          (isencr? (.getContentType mp)))
 
         (instance? BodyPart obj)
         (let [ ^BodyPart bp obj ]
-          (MM/is-encrypted? (.getContentType bp)))
+          (isencr? (.getContentType bp)))
 
         :else
-        (throw (IOException. (str "Invalid content: " (CU/get-classname obj)))))
+        (throw (IOException. (str "Invalid content: " (get-classname obj)))))
       (try
-        (MM/is-encrypted? (.getContentType (new-mimeMsg "" "" inp)))
-        (finally (IO/reset-stream! inp))))))
+        (isencr? (.getContentType (new-mimeMsg "" "" inp)))
+        (finally (reset-stream! inp))))))
 
 (defn get-charset "Deduce the char-set from content-type."
   (^String [^String cType]
-    (if (SU/hgl? cType)
+    (if (hgl? cType)
       (try
-        (SU/nsb (MimeUtility/javaCharset (-> (ContentType. cType) (.getParameter "charset"))))
+        (nsb (MimeUtility/javaCharset (-> (ContentType. cType) (.getParameter "charset"))))
         (catch Throwable e# (do (warn e# "") "")))
       ""))
   (^String [^String cType ^String dft]
     (let [ cs (get-charset cType) ]
-      (SU/nsb (if (SU/hgl? cs) cs (MimeUtility/javaCharset dft))))) )
+      (nsb (if (hgl? cs) cs (MimeUtility/javaCharset dft))))) )
 
-(defn- make-signerGentor 
+(defn- make-signerGentor
   ^SMIMESignedGenerator
   [^PrivateKey pkey certs ^String algo]
   (let [ gen (SMIMESignedGenerator. "base64")
@@ -726,7 +733,7 @@
                             (.setProvider _BCProvider)
                             (.build)) )
                 (.setDirectSignature true))
-         cs (-> (JcaContentSignerBuilder. (SU/nsb algo))
+         cs (-> (JcaContentSignerBuilder. (nsb algo))
               (.setProvider _BCProvider)
               (.build pkey)) ]
 
@@ -832,7 +839,7 @@
   ([^Multipart mp certs] (test-smimeDigSig mp certs ""))
   ([^Multipart mp certs ^String cte]
     (let [ ^MimeMultipart mmp mp
-           sc (if (SU/hgl? cte) (SMIMESigned. mmp cte) (SMIMESigned. mmp))
+           sc (if (hgl? cte) (SMIMESigned. mmp cte) (SMIMESigned. mmp))
            s (JcaCertStore. (vec certs))
            sns (-> (.getSignerInfos sc) (.getSigners) )
            rc (some (fn [^SignerInformation si]
@@ -962,13 +969,13 @@
            bp (MimeBodyPart.)
            ds (if (.isDiskFile xdata) (SDataSource. (.fileRef xdata) cType)
                     (SDataSource. (.javaBytes xdata) cType)) ]
-      (when (SU/hgl? contentLoc) (.setHeader bp "content-location" contentLoc))
-      (when (SU/hgl? cid) (.setHeader bp "content-id" cid))
+      (when (hgl? contentLoc) (.setHeader bp "content-location" contentLoc))
+      (when (hgl? cid) (.setHeader bp "content-id" cid))
       (.setDataHandler bp (DataHandler. ds))
       (let [ zbp (.generate gen bp SMIMECompressedGenerator/ZLIB)
              pos (.lastIndexOf cid (int \>))
              cID (if (>= pos 0) (str (.substring cid 0 pos) "--z>") (str cid "--z")) ]
-        (when (SU/hgl? contentLoc) (.setHeader zbp "content-location" contentLoc))
+        (when (hgl? contentLoc) (.setHeader zbp "content-location" contentLoc))
         (.setHeader zbp "content-id" cID)
         ;; always base64
         ;;cte="base64"
@@ -981,7 +988,7 @@
     (let [ gen (CMSSignedDataGenerator.)
            cl (vec certs)
            ^X509Certificate cert (first cl)
-           cs (-> (JcaContentSignerBuilder. (SU/nsb algo))
+           cs (-> (JcaContentSignerBuilder. (nsb algo))
                 (.setProvider _BCProvider)
                 (.build pkey))
            bdr (JcaSignerInfoGeneratorBuilder.
@@ -1033,7 +1040,7 @@
 
 (defn- finger-print ^String [^bytes data ^String algo]
 
-  (let [ md (MessageDigest/getInstance (SU/nsb algo))
+  (let [ md (MessageDigest/getInstance (nsb algo))
          ret (StringBuilder. (int 256))
          hv (.digest md data)
          tail (dec (alength hv)) ]

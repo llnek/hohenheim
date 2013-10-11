@@ -15,44 +15,41 @@
 ;;
 
 
-(ns ^{ :doc "" 
+(ns ^{ :doc ""
        :author "kenl" }
 
   comzotohcljc.crypto.stores)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (require '[clojure.math.numeric-tower :as math])
 
 (import '(java.io File FileInputStream IOException InputStream))
 (import '(java.security.cert CertificateFactory X509Certificate Certificate))
 (import '(java.security KeyStore PrivateKey
   KeyStore$TrustedCertificateEntry
-  KeyStore$ProtectionParameter 
+  KeyStore$ProtectionParameter
   KeyStore$PasswordProtection
   KeyStore$PrivateKeyEntry))
 (import '(javax.net.ssl KeyManagerFactory TrustManagerFactory))
 (import '(javax.security.auth.x500 X500Principal))
 
 
-(require '[comzotohcljc.crypto.codec :as CR])
-(require '[comzotohcljc.crypto.core :as CO])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
+(use '[comzotohcljc.crypto.core 
+       :only [new-alias cert-aliases pkey-aliases get-pkcsStore get-jksStore] ])
+(use '[comzotohcljc.util.str :only [hgl?] ])
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* false)
 
-
-
-(defn- onNewKey [^KeyStore keystore ^String nm 
-                 ^KeyStore$PrivateKeyEntry pkey 
+(defn- onNewKey [^KeyStore keystore ^String nm
+                 ^KeyStore$PrivateKeyEntry pkey
                  ^KeyStore$ProtectionParameter pm]
 
   (let [ cc (.getCertificateChain pkey) ]
     (doseq [ ^Certificate c (seq cc) ]
-      (.setCertificateEntry keystore (CO/new-alias) c))
+      (.setCertificateEntry keystore (new-alias) c))
     (.setEntry keystore nm pkey pm)))
 
 (defn- getCAs [^KeyStore keystore tca root]
@@ -90,8 +87,8 @@
 
 (defn- mkStore ^KeyStore [^KeyStore keystore]
   (case (.getType keystore)
-    "PKCS12" (CO/get-pkcsStore)
-    "JKS" (CO/get-jksStore)
+    "PKCS12" (get-pkcsStore)
+    "JKS" (get-jksStore)
     (throw (IllegalArgumentException. "wrong keystore type."))))
 
 (defn make-crypto-store ""
@@ -109,12 +106,12 @@
              tmp (doto (mkStore keystore) (.load bits ch))
              pp (KeyStore$PasswordProtection. ch)
              ^KeyStore$PrivateKeyEntry pkey (.getEntry tmp (.nextElement (.aliases tmp)) pp) ]
-        (onNewKey this (CO/new-alias) pkey pp)))
+        (onNewKey this (new-alias) pkey pp)))
 
     (addCertEntity [_ bits]
       (let [ fac (CertificateFactory/getInstance "X.509")
              ^X509Certificate c (.generateCertificate fac bits) ]
-        (.setCertificateEntry keystore (CO/new-alias) c)))
+        (.setCertificateEntry keystore (new-alias) c)))
 
     (trustManagerFactory [_]
       (doto (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))
@@ -124,19 +121,19 @@
       (doto (KeyManagerFactory/getInstance (KeyManagerFactory/getDefaultAlgorithm))
         (.init keystore  (.toCharArray passwdObj))))
 
-    (certAliases [_] (CO/cert-aliases keystore))
-    (keyAliases [_] (CO/pkey-aliases keystore))
+    (certAliases [_] (cert-aliases keystore))
+    (keyAliases [_] (pkey-aliases keystore))
 
     (keyEntity [_ nm pwdObj]
       (let [ ca (.toCharArray ^comzotohcljc.crypto.codec.Password pwdObj) ]
         (.getEntry keystore nm (KeyStore$PasswordProtection. ca))))
 
     (certEntity [_ nm]
-      (if (SU/hgl? nm)
+      (if (hgl? nm)
         (.getEntry keystore ^String nm nil) ))
 
     (removeEntity [_ nm]
-      (if (SU/hgl? nm)
+      (if (hgl? nm)
         (when (.containsAlias keystore ^String nm) (.deleteEntry keystore ^String nm))))
 
     (intermediateCAs [_] (getCAs keystore true false))
@@ -152,7 +149,7 @@
       (let [ fac (CertificateFactory/getInstance "X.509")
              certs (.generateCertificates fac bits) ]
         (doseq [ ^X509Certificate c (seq certs) ]
-          (.setCertificateEntry keystore (CO/new-alias) c))))
+          (.setCertificateEntry keystore (new-alias) c))))
 
   ))
 

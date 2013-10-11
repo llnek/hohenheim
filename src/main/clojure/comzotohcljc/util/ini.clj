@@ -26,16 +26,14 @@
 (import '(com.zotoh.frwk.util NCMap))
 (import '(java.util Map LinkedHashMap))
 
-(require '[ comzotohcljc.util.files :as FU])
-(require '[ comzotohcljc.util.core :as CU])
-(require '[ comzotohcljc.util.str :as SU])
-
-
+(use '[ comzotohcljc.util.files :only [file-read?] ])
+(use '[ comzotohcljc.util.core :only [conv-bool conv-long conv-double] ])
+(use '[ comzotohcljc.util.str :only [nsb] ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defprotocol IWin32Conf 
+(defprotocol IWin32Conf
   "A Windows INI file object."
   (getSection [_ sectionName] )
   (sectionKeys [_ ] )
@@ -50,7 +48,6 @@
   (optDouble [_ sectionName property dft] ) )
 
 (defmulti ^comzotohcljc.util.ini.IWin32Conf parse-inifile "Parse a INI config file." class)
-
 
 (defn- throwBadIni "" [^LineNumberReader rdr]
   (throw (IOException. (str "Bad ini line: " (.getLineNumber rdr)))))
@@ -102,7 +99,7 @@
       (nil? mp) (if err (throwBadMap sn) nil)
       (nil? k) (if err (throwBadKey "") nil)
       (not (hasKV mp k)) (if err (throwBadKey kn) nil)
-      :else (SU/nsb (.get mp kn)))))
+      :else (nsb (.get mp kn)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -118,38 +115,38 @@
     (sectionKeys [_] (.keySet mapOfSections))
 
     (getString [this section property]
-      (SU/nsb (getKV this section property true)))
+      (nsb (getKV this section property true)))
 
     (optString [this section property dft]
       (let [ rc (getKV this section property false) ]
         (if (nil? rc) dft rc)))
 
     (getLong [this section property]
-      (CU/conv-long (getKV this section property true) 0))
+      (conv-long (getKV this section property true) 0))
 
     (optLong [this section property dft]
       (let [ rc (getKV this section property false) ]
         (if (nil? rc)
           dft
-          (CU/conv-long rc 0))))
+          (conv-long rc 0))))
 
     (getDouble [this section property]
-      (CU/conv-double (getKV this section property true) 0.0))
+      (conv-double (getKV this section property true) 0.0))
 
     (optDouble [this section property dft]
       (let [ rc (getKV this section property false) ]
         (if (nil? rc)
           dft
-          (CU/conv-double rc 0.0))))
+          (conv-double rc 0.0))))
 
     (getBool [this section property]
-      (CU/conv-bool (getKV this section property true) false))
+      (conv-bool (getKV this section property true) false))
 
     (optBool [this section property dft]
       (let [ rc (getKV this section property false) ]
         (if (nil? rc)
           dft
-          (CU/conv-bool rc false))))
+          (conv-bool rc false))))
 
     (dbgShow [_]
       (let [ buf (StringBuilder.) ]
@@ -170,7 +167,7 @@
 
 (defmethod parse-inifile File
   ^comzotohcljc.util.ini.IWin32Conf [^File file]
-  (if (or (nil? file) (not (FU/file-read? file)))
+  (if (or (nil? file) (not (file-read? file)))
     nil
     (parse-inifile (.toURL (.toURI file)))))
 

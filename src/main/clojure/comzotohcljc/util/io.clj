@@ -31,8 +31,7 @@
 (import '(org.xml.sax InputSource))
 (import '(java.nio.charset Charset))
 
-(require '[ comzotohcljc.util.core :as CU])
-
+(use '[ comzotohcljc.util.core :only [Try!] ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -102,7 +101,7 @@
 
 (defn reset-stream! "Call reset on this input stream."
   [^InputStream inp]
-  (CU/Try!
+  (Try!
     (when-not (nil? inp)  (.reset inp)) ))
 
 (defmethod open-file String
@@ -144,9 +143,9 @@
   (when-not (nil? inpsrc)
     (let [ rdr (.getCharacterStream inpsrc)
            ism (.getByteStream inpsrc) ]
-      (CU/Try!
+      (Try!
         (when-not (nil? ism) (.reset ism)) )
-      (CU/Try!
+      (Try!
         (when-not (nil? rdr) (.reset rdr)) ))))
 
 (defn make-xdata "Return a newly created XData."

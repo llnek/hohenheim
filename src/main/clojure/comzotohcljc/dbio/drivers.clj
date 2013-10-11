@@ -20,22 +20,20 @@
 
   comzotohcljc.dbio.drivers)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-(use '[comzotohcljc.dbio.core])
-
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (import '(com.zotoh.frwk.dbio MetaCache DBAPI DBIOError))
 (import '(java.util Map HashMap))
+
+(use '[comzotohcljc.util.str :only [hgl? add-delim! nsb] ])
+(use '[comzotohcljc.dbio.core])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-
 (defn- getcolname ^String [flds fid]
   (let [ ^String c (:column (get flds fid)) ]
-    (if (SU/hgl? c) (.toUpperCase c) c)))
+    (if (hgl? c) (.toUpperCase c) c)))
 
 (defn- getNotNull ^String [db] "NOT NULL")
 
@@ -184,13 +182,13 @@
     (doseq [ [nm nv] (seq m) ]
       (let [ cols (map #(getcolname flds %) nv) ]
         (when (empty? cols) (dbio-error (str "Cannot have empty unique: " (name nm))))
-        (SU/add-delim! bf ",\n"
+        (add-delim! bf ",\n"
             (str (getPad db) "UNIQUE(" (clojure.string/join "," cols) ")"))))
     (.toString bf)))
 
 (defn- genPrimaryKey [db zm pks]
     (str (getPad db) "PRIMARY KEY("
-         (.toUpperCase (SU/nsb (clojure.string/join "," pks)) )
+         (.toUpperCase (nsb (clojure.string/join "," pks)) )
          ")"))
 
 (defn- genBody [db cache table zm]
@@ -219,7 +217,7 @@
                     :Bytes (genBytes db fld)
                     (dbio-error (str "Unsupported domain type " dt))) ]
           (when (:pkey fld) (var-set pkeys (conj! @pkeys cn)))
-          (SU/add-delim! bf ",\n" col)))
+          (add-delim! bf ",\n" col)))
       ;; now do the assocs
       ;; now explicit indexes
       (-> inx (.append (genExIndexes db cache table flds zm)))
@@ -228,7 +226,7 @@
         (when (> (count @pkeys) 0)
           (.append bf (str ",\n" (genPrimaryKey db zm (persistent! @pkeys)))))
         (let [ s (genUniques db cache flds zm) ]
-          (when (SU/hgl? s)
+          (when (hgl? s)
             (.append bf (str ",\n" s)))))
 
     [ (.toString bf) (.toString inx) ] )) )
@@ -240,7 +238,7 @@
            e (genEnd db table)
            s1 (str b (first d) e)
            inx (last d) ]
-      (str s1 (if (SU/hgl? inx) inx "") (genGrant db table))))
+      (str s1 (if (hgl? inx) inx "") (genGrant db table))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -255,7 +253,7 @@
            body (StringBuilder.) ]
       (doseq [ [id tdef] (seq ms) ]
         (let [ ^String tbl (:table tdef) ]
-          (when (and (not (:abstract tdef)) (SU/hgl? tbl))
+          (when (and (not (:abstract tdef)) (hgl? tbl))
             (debug "model id: " (name id) " table: " tbl)
             (-> drops (.append (genDrop db (.toUpperCase tbl) )))
             (-> body (.append (genOneTable db ms tdef))))))

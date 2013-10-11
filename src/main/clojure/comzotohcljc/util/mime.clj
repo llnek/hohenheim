@@ -19,7 +19,7 @@
 
   comzotohcljc.util.mime)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.net URLDecoder URLEncoder))
@@ -29,16 +29,14 @@
 (import '(java.util Properties))
 (import '(javax.mail Message))
 
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.meta :as MU])
-(require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.io :as IO])
+(use '[comzotohcljc.util.core :only [bytesify Try! into-map] ])
+(use '[comzotohcljc.util.meta :only [bytes-class] ])
+(use '[comzotohcljc.util.str :only [nsb hgl?] ])
+(use '[comzotohcljc.util.io :only [streamify] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
-
-
 
 (def CTE_QUOTED "quoted-printable")
 (def CTE_7BIT "7bit")
@@ -129,7 +127,7 @@
 
 (defn get-charset "Get charset from this content-type string."
   ^String [^String cType]
-  (let [ pos (-> (SU/nsb cType) (.toLowerCase) (.indexOf "charset="))
+  (let [ pos (-> (nsb cType) (.toLowerCase) (.indexOf "charset="))
          rc "utf-8" ]
          ;;rc "ISO-8859-1" ]
     (if (> pos 0)
@@ -139,36 +137,36 @@
 
 (defn is-signed? "Returns true if this content-type indicates signed."
   [^String cType]
-  (let [ ct (.toLowerCase (SU/nsb cType)) ]
+  (let [ ct (.toLowerCase (nsb cType)) ]
     (or (>= (.indexOf ct "multipart/signed") 0)
         (and (is-pkcs7mime? ct) (>= (.indexOf ct "signed-data") 0)))) )
 
 (defn is-encrypted? "Returns true if this content-type indicates encrypted."
   [^String cType]
-  (let [ ct (.toLowerCase (SU/nsb cType)) ]
+  (let [ ct (.toLowerCase (nsb cType)) ]
     (and (is-pkcs7mime? ct) (>= (.indexOf ct "enveloped-data") 0))) )
 
 (defn is-compressed? "Returns true if this content-type indicates compressed."
   [^String cType]
-  (let [ ct (.toLowerCase (SU/nsb cType)) ]
+  (let [ ct (.toLowerCase (nsb cType)) ]
     (and (>= (.indexOf ct "application/pkcs7-mime") 0) (>= (.indexOf ct "compressed-data") 0))) )
 
 (defn is-mdn? "Returns true if this content-type indicates MDN."
   [^String cType]
-  (let [ ct (.toLowerCase (SU/nsb cType)) ]
+  (let [ ct (.toLowerCase (nsb cType)) ]
     (and (>= (.indexOf ct "multipart/report") 0) (>= (.indexOf ct "disposition-notification") 0))) )
 
 (defn maybe-stream "Turn this object into some form of stream, if possible."
   ^InputStream [^Object obj]
   (cond
     (instance? String obj)
-    (IO/streamify (CU/bytesify obj))
+    (streamify (bytesify obj))
 
     (instance? InputStream obj)
     obj
 
-    (instance? (MU/bytes-class) obj)
-    (IO/streamify obj)
+    (instance? (bytes-class) obj)
+    (streamify obj)
 
     :else
     nil))
@@ -177,14 +175,14 @@
   [^String u]
   (if (nil? u)
     nil
-    (CU/Try!
+    (Try!
       (URLDecoder/decode u "utf-8") )))
 
 (defn url-encode "URL encode this string."
   [^String u]
   (if (nil? u)
     nil
-    (CU/Try!
+    (Try!
       (URLEncoder/encode u "utf-8") )))
 
 (defn guess-mimetype "Guess the MIME type of file."
@@ -193,14 +191,14 @@
     (let [ ^Pattern rgx _extRegex
            ^Matcher mc (.matcher rgx (.toLowerCase (.getName file)))
            ex (if (.matches mc) (.group mc 1) "")
-           p (if (SU/hgl? ex) ((keyword ex) (mime-cache))) ]
-      (if (SU/hgl? p) p dft))) )
+           p (if (hgl? ex) ((keyword ex) (mime-cache))) ]
+      (if (hgl? p) p dft))) )
 
 (defn guess-contenttype "Guess the content-type of file."
   (^String [^File file] (guess-contenttype file "utf-8" "application/octet-stream" ))
   (^String [^File file ^String enc ^String dft]
     (let [ mt (guess-mimetype file)
-           ct (if (SU/hgl? mt) mt dft) ]
+           ct (if (hgl? mt) mt dft) ]
       (if (not (.startsWith ct "text/")) ct (str ct "; charset=" enc)))) )
 
 (defn setup-cache "Load file mime-types as a map."
@@ -208,11 +206,7 @@
   (with-open [ inp (.openStream fileUrl) ]
     (let [ ps (Properties.) ]
       (.load ps inp)
-      (reset! _mime_cache (CU/into-map ps)))))
-
-
-
-
+      (reset! _mime_cache (into-map ps)))))
 
 
 (def ^:private mime-eof nil)

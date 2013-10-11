@@ -19,15 +19,13 @@
 
   comzotohcljc.dbio.simple )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (import '(com.zotoh.frwk.dbio DBAPI MetaCache SQLr))
 (import '(java.sql Connection))
 
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
+(use '[comzotohcljc.util.str :only [hgl?] ])
 (use '[comzotohcljc.dbio.core])
 (use '[comzotohcljc.dbio.sql])
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -64,8 +62,8 @@
                  tbl (table-name zm)
                  s (str "SELECT * FROM " (ese tbl))
                  [wc pms] (sql-filter-clause zm filters)
-                 extra (if (SU/hgl? extraSQL) extraSQL "") ]
-            (if (SU/hgl? wc)
+                 extra (if (hgl? extraSQL) extraSQL "") ]
+            (if (hgl? wc)
               (.doQuery proc conn (str s " WHERE " wc " " extra) pms model)
               (.doQuery proc conn (str s " " extra) [] model))) ))
 

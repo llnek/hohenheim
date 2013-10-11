@@ -19,7 +19,7 @@
 
   comzotohcljc.util.dates)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 
 (import '(java.text ParsePosition SimpleDateFormat))
 (import '(java.util Locale TimeZone SimpleTimeZone
@@ -27,9 +27,9 @@
 (import '(java.sql Timestamp))
 (import '(org.apache.commons.lang3 StringUtils))
 
+(use '[ comzotohcljc.util.str :only [has? has-any? nichts?] ])
 (require '[ comzotohcljc.util.constants :as CS ])
-(require '[ comzotohcljc.util.core :as CU ])
-(require '[ comzotohcljc.util.str :as SU ])
+(use '[ comzotohcljc.util.core :only [Try!] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -50,7 +50,7 @@
 (defn- hastzpart [^String s]
   (let [ pos (StringUtils/indexOf s ",; \t\r\n\f")
          ss (if (> pos 0) (.substring s (inc pos)) "") ]
-    (or (SU/has-any? ss ["+" "-"])
+    (or (has-any? ss ["+" "-"])
         (.matches ss "\\s*[a-zA-Z]+\\s*")) ) )
 
 (defn- has-tz? "Returns true if this datetime string contains some timezone info."
@@ -77,7 +77,7 @@
 (defn parse-timestamp "Convert string into a valid Timestamp object.
   *tstr* conforming to the format \"yyyy-mm-dd hh:mm:ss.[fff...]\""
   ^Timestamp [^String tstr]
-  (CU/Try!
+  (Try!
     (Timestamp/valueOf tstr) ))
 
 (defn parse-date "Convert string into a Date object."
@@ -88,10 +88,10 @@
 
 (defn- parse-iso8601 "Parses datetime in ISO8601 format."
   ^Date [^String tstr]
-  (if (SU/nichts? tstr)
+  (if (nichts? tstr)
     nil
-    (let [ fmt (if (SU/has? tstr \:)
-                 (if (SU/has? tstr \.) CS/DT_FMT_MICRO CS/DT_FMT )
+    (let [ fmt (if (has? tstr \:)
+                 (if (has? tstr \.) CS/DT_FMT_MICRO CS/DT_FMT )
                  CS/DATE_FMT ) ]
       (parse-date tstr (if (has-tz? tstr) (str fmt "Z") fmt)))))
 

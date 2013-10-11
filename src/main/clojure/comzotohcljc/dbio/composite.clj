@@ -19,17 +19,15 @@
 
   comzotohcljc.dbio.composite )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (import '(com.zotoh.frwk.dbio
   Transactable SQLr MetaCache DBAPI))
 (import '(java.sql Connection))
 
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
+(use '[comzotohcljc.util.core :only [test-nonil Try!] ])
+(use '[comzotohcljc.util.str :only [hgl?] ])
 (use '[comzotohcljc.dbio.core])
-
 (use '[comzotohcljc.dbio.sql])
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -60,8 +58,8 @@
                tbl (table-name zm)
                s (str "SELECT * FROM " (ese tbl))
                [wc pms] (sql-filter-clause zm filters)
-               extra (if (SU/hgl? extraSQL) extraSQL "") ]
-          (if (SU/hgl? wc)
+               extra (if (hgl? extraSQL) extraSQL "") ]
+          (if (hgl? wc)
             (.doQuery proc conn (str s " WHERE " wc " " extra) pms model)
             (.doQuery proc conn (str s " " extra) [] model))) )
 
@@ -87,15 +85,15 @@
     ^DBAPI db ]
 
   (let [ proc (make-proc metaCache db) ]
-    (CU/test-nonil "sql-proc!" proc)
-    (CU/test-nonil "meta-cache" metaCache)
-    (CU/test-nonil "dbapi" db)
+    (test-nonil "sql-proc!" proc)
+    (test-nonil "meta-cache" metaCache)
+    (test-nonil "dbapi" db)
     (reify Transactable
 
       (execWith [this func]
         (with-local-vars [ rc nil ]
           (with-open [ conn (.begin this) ]
-            (CU/test-nonil "sql-connection" conn)
+            (test-nonil "sql-connection" conn)
             (try
               (let [ tx (mk-tx metaCache db proc conn)
                      r (func tx) ]
@@ -105,7 +103,7 @@
               (catch Throwable e#
                 (do (.rollback this conn) (warn e# "") (throw e#))) ))))
 
-      (rollback [_ conn] (CU/Try! (.rollback ^Connection conn)))
+      (rollback [_ conn] (Try! (.rollback ^Connection conn)))
       (commit [_ conn] (.commit ^Connection conn))
       (begin [_]
         (let [ ^Connection conn (.open db) ]

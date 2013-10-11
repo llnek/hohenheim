@@ -23,17 +23,16 @@
 (import '(com.zotoh.frwk.util CoreUtils))
 (import '(java.lang Thread Runnable))
 
-(require '[ comzotohcljc.util.core :as CU])
-(require '[ comzotohcljc.util.meta :as MU])
-(require '[ comzotohcljc.util.str :as SU])
-
+(use '[ comzotohcljc.util.meta :only [get-cldr] ])
+(use '[ comzotohcljc.util.core :only [Try!] ])
+(use '[ comzotohcljc.util.str :only [nsb] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 (defn async-exec "Run the code (runnable) in a separate daemon thread."
-  ([^Runnable runable] (async-exec runable (MU/get-cldr)))
+  ([^Runnable runable] (async-exec runable (get-cldr)))
   ([^Runnable runable ^ClassLoader cl]
     (if (nil? runable)
       nil
@@ -51,13 +50,13 @@
 
 (defn safe-wait "Block current thread for some millisecs."
   [millisecs]
-  (CU/Try!
+  (Try!
     (when (> millisecs 0) (Thread/sleep millisecs))
     ))
 
 (defn pid "Get the current process pid."
   ^String []
-  (let [ ss (.split (SU/nsb (.getName (ManagementFactory/getRuntimeMXBean))) "@") ]
+  (let [ ss (.split (nsb (.getName (ManagementFactory/getRuntimeMXBean))) "@") ]
     (if (or (nil? ss) (empty ss)) "" (first ss))) )
 
 

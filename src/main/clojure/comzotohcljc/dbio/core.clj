@@ -20,7 +20,7 @@
 
   comzotohcljc.dbio.core )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (use '[clojure.set])
 
 (import '(org.apache.commons.lang3 StringUtils))
@@ -37,9 +37,9 @@
 (import '(org.apache.commons.lang3 StringUtils))
 
 (use '[comzotohcljc.crypto.codec])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.meta :as MU])
-(require '[comzotohcljc.util.str :as SU])
+(use '[comzotohcljc.util.core :only [TryC Try! root-cause stripNSPath notnil? nnz nbf uid] ])
+(use '[comzotohcljc.util.meta :only [for-name] ])
+(use '[comzotohcljc.util.str :only [strim embeds? nsb has-nocase? hgl?] ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -65,8 +65,6 @@
 (defn eseLHS [] (ese "lhs_rowid"))
 (defn eseRHS [] (ese "rhs_rowid"))
 
-
-
 (defn make-jdbc "Make a JDBCInfo record."
   ^JDBCInfo
   [^String id cfg ^comzotohcljc.crypto.codec.Password pwdObj]
@@ -76,7 +74,7 @@
     (getDriver [_] (:d cfg))
     (getUrl [_] (:url cfg))
     (getUser [_] (:user cfg))
-    (getPwd [_] (SU/nsb pwdObj)) ))
+    (getPwd [_] (nsb pwdObj)) ))
 
 (def SQLServer :sqlserver)
 (def Oracle :oracle)
@@ -99,11 +97,11 @@
 (defn- maybeGetVendor [^String product]
   (let [ lp (.toLowerCase product) ]
     (cond
-      (SU/has-nocase? lp "microsoft") :sqlserver
-      (SU/has-nocase? lp "postgres") :postgresql
-      (SU/has-nocase? lp "oracle") :oracle
-      (SU/has-nocase? lp "mysql") :mysql
-      (SU/has-nocase? lp "h2") :h2
+      (has-nocase? lp "microsoft") :sqlserver
+      (has-nocase? lp "postgres") :postgresql
+      (has-nocase? lp "oracle") :oracle
+      (has-nocase? lp "mysql") :mysql
+      (has-nocase? lp "h2") :h2
       :else (dbio-error (str "Unknown db product " product)))))
 
 (defn- fmtfkey [p1 p2]
@@ -371,7 +369,7 @@
 (defn- colmap-fields "" [flds]
   (with-local-vars [ sum (transient {}) ]
     (doseq [ [k v] (seq flds) ]
-      (let [ cn (.toUpperCase (SU/nsb (:column v))) ]
+      (let [ cn (.toUpperCase (nsb (:column v))) ]
         (var-set sum (assoc! @sum cn v))))
     (persistent! @sum)) )
 
@@ -411,16 +409,16 @@
   (let [ user (.getUser jdbc)
          url (.getUrl jdbc)
          dv (.getDriver jdbc)
-         d (if (SU/hgl? url) (DriverManager/getDriver url))
-         p (if (SU/hgl? user)
-               (doto (Properties.) (.put "password" (SU/nsb (.getPwd jdbc)))
+         d (if (hgl? url) (DriverManager/getDriver url))
+         p (if (hgl? user)
+               (doto (Properties.) (.put "password" (nsb (.getPwd jdbc)))
                                    (.put "user" user)
                                    (.put "username" user))
                (Properties.)) ]
     (when (nil? d)
       (dbio-error (str "Can't load Jdbc Url: " url)))
     (when
-      (and (SU/hgl? dv)
+      (and (hgl? dv)
            (not= (-> d (.getClass) (.getName)) dv))
         (warn "Expected " dv ", loaded with driver: " (.getClass d)))
     (.connect d url p)))
@@ -431,7 +429,7 @@
   [^JDBCInfo jdbc]
 
   (let [ url (.getUrl jdbc)
-         ^Connection conn (if (SU/hgl? (.getUser jdbc))
+         ^Connection conn (if (hgl? (.getUser jdbc))
                 (safeGetConn jdbc)
                 (DriverManager/getConnection url)) ]
     (when (nil? conn)
@@ -440,7 +438,7 @@
       (.setTransactionIsolation  Connection/TRANSACTION_READ_COMMITTED))))
 
 (defn test-connection "" [jdbc]
-  (CU/TryC (.close (make-connection jdbc))))
+  (TryC (.close (make-connection jdbc))))
 
 (defmulti resolve-vendor class)
 
@@ -474,7 +472,7 @@
 
   [^Connection conn ^String table]
   (with-local-vars [ rc false ]
-    (CU/Try!
+    (Try!
       (let [ mt (.getMetaData conn)
              tbl (cond
                     (.storesUpperCaseIdentifiers mt) (.toUpperCase table)
@@ -495,11 +493,11 @@
 (defmethod row-exist? Connection
   [^Connection conn ^String table]
   (with-local-vars [ rc false ]
-    (CU/Try!
+    (Try!
       (let [ sql (str "SELECT COUNT(*) FROM  " (.toUpperCase table)) ]
         (with-open [ stmt (.createStatement conn) ]
           (with-open [ res (.executeQuery stmt sql) ]
-            (when (and (CU/notnil? res) (.next res))
+            (when (and (notnil? res) (.next res))
               (var-set rc (> (.getInt res (int 1)) 0)))))) )
     @rc))
 
@@ -552,7 +550,7 @@
       Object
 
       (finalize [this]
-        (CU/Try! (.shutdown this)))
+        (Try! (.shutdown this)))
 
       JDBCPool
 
@@ -572,19 +570,19 @@
            ^String dv (.getDriver jdbc) ]
       ;;(debug "Driver : " dv)
       ;;(debug "URL : "  (.getUrl jdbc))
-      (when (SU/hgl? dv) (MU/for-name dv))
+      (when (hgl? dv) (for-name dv))
       (doto bcf
-        (.setPartitionCount (Math/max 1 (CU/nnz (:partitions options))))
-        (.setLogStatementsEnabled (CU/nbf (:debug options)))
-        (.setPassword (SU/nsb (.getPwd jdbc)))
+        (.setPartitionCount (Math/max 1 (nnz (:partitions options))))
+        (.setLogStatementsEnabled (nbf (:debug options)))
+        (.setPassword (nsb (.getPwd jdbc)))
         (.setJdbcUrl (.getUrl jdbc))
         (.setUsername (.getUser jdbc))
         (.setIdleMaxAgeInSeconds (* 60 60 24)) ;; 1 day
-        (.setMaxConnectionsPerPartition (Math/max 2 (CU/nnz (:max-conns options))))
-        (.setMinConnectionsPerPartition (Math/max 1 (CU/nnz (:min-conns options))))
-        (.setPoolName (CU/uid))
+        (.setMaxConnectionsPerPartition (Math/max 2 (nnz (:max-conns options))))
+        (.setMinConnectionsPerPartition (Math/max 1 (nnz (:min-conns options))))
+        (.setPoolName (uid))
         (.setAcquireRetryDelayInMs 5000)
-        (.setConnectionTimeoutInMs  (Math/max 5000 (CU/nnz (:max-conn-wait options))))
+        (.setConnectionTimeoutInMs  (Math/max 5000 (nnz (:max-conn-wait options))))
         (.setDefaultAutoCommit false)
         (.setAcquireRetryAttempts 1))
       (makePool jdbc (BoneCP. bcf))))  )
@@ -600,18 +598,18 @@
             ddl lines
             pos (.indexOf ddl ^String DDL_SEP) ]
       (if (< pos 0)
-        (do (var-set rc (persistent! sum)) (var-set s2 (SU/strim ddl)))
-        (let [ nl (SU/strim (.substring ddl 0 pos))
+        (do (var-set rc (persistent! sum)) (var-set s2 (strim ddl)))
+        (let [ nl (strim (.substring ddl 0 pos))
                d2 (.substring ddl (+ pos @w))
                p2 (.indexOf d2 ^String DDL_SEP) ]
           (recur (conj! sum nl) d2 p2))))
-    (if (SU/hgl? @s2)
+    (if (hgl? @s2)
       (conj @rc @s2)
       @rc)) )
 
 (defn- maybeOK [^String dbn ^Throwable e]
-  (let [ oracle (SU/embeds? (SU/nsb dbn) "oracle")
-         ee (CU/root-cause e)
+  (let [ oracle (embeds? (nsb dbn) "oracle")
+         ee (root-cause e)
          ec (if (instance? SQLException ee) (.getErrorCode ^SQLException ee) nil) ]
     (if (nil? ec)
       (throw e)
@@ -633,8 +631,8 @@
            lines (splitLines ddl) ]
       (.setAutoCommit conn true)
       (doseq [ ^String line (seq lines) ]
-        (let [ ln (StringUtils/strip (SU/strim line) ";") ]
-          (when (and (SU/hgl? ln) (not= (.toLowerCase ln) "go"))
+        (let [ ln (StringUtils/strip (strim line) ";") ]
+          (when (and (hgl? ln) (not= (.toLowerCase ln) "go"))
             (try
               (with-open [ stmt (.createStatement conn) ]
                 (.executeUpdate stmt ln))
@@ -777,14 +775,14 @@
          x (dbio-create-obj (:id mm))
          y  (if (= ml lid)
               (-> x
-                (dbio-set-fld :lhs-typeid (CU/stripNSPath lid))
+                (dbio-set-fld :lhs-typeid (stripNSPath lid))
                 (dbio-set-fld :lhs-oid lv)
-                (dbio-set-fld :rhs-typeid (CU/stripNSPath rid))
+                (dbio-set-fld :rhs-typeid (stripNSPath rid))
                 (dbio-set-fld :rhs-oid rv))
               (-> x
-                (dbio-set-fld :lhs-typeid (CU/stripNSPath rid))
+                (dbio-set-fld :lhs-typeid (stripNSPath rid))
                 (dbio-set-fld :lhs-oid rv)
-                (dbio-set-fld :rhs-typeid (CU/stripNSPath lid))
+                (dbio-set-fld :rhs-typeid (stripNSPath lid))
                 (dbio-set-fld :rhs-oid lv))) ]
     (.insert sql y)))
 
@@ -813,14 +811,14 @@
           sql
           (str "delete from " (ese (:table mm))
            " where " (ese x) " =? and " (ese y) " =?")
-          [ lv (CU/stripNSPath lid) ] )
+          [ lv (stripNSPath lid) ] )
         (.execute
           sql
           (str "delete from " (ese (:table mm))
            " where " (ese x) " =? and " (ese y) " =? and "
            (ese a) " =? and " (ese b) " =?" )
-          [ lv (CU/stripNSPath lid)
-            rv (CU/stripNSPath rid) ])) )))
+          [ lv (stripNSPath lid)
+            rv (stripNSPath rid) ])) )))
 
 (defn dbio-clr-m2m [ctx lhs]
   (let [ mc (.getMetas ^MetaCache *META-CACHE*)
@@ -843,7 +841,7 @@
            " where "
            (ese x) " =? and "
            (ese y) " =?")
-      [ lv (CU/stripNSPath lid) ] ) ))
+      [ lv (stripNSPath lid) ] ) ))
 
 (defn dbio-get-m2m [ctx lhs]
   (let [ mc (.getMetas ^MetaCache *META-CACHE*)
@@ -877,7 +875,7 @@
            "=? and "
            (str eseMM "." (ese (:column (k flds))))
            " = " (str eseRES "." (ese (:column (:rowid flds)))))
-      [ (CU/stripNSPath a) (CU/stripNSPath t) lv ]
+      [ (stripNSPath a) (stripNSPath t) lv ]
       )))
 
 

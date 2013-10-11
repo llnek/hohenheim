@@ -19,7 +19,7 @@
 
   comzotohcljc.crypto.codec)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (require '[clojure.math.numeric-tower :as math])
 
 (import '(org.apache.commons.codec.binary Base64))
@@ -38,9 +38,9 @@
 (import '(org.bouncycastle.crypto.modes CBCBlockCipher))
 (import '(org.apache.commons.lang3 StringUtils))
 
-(use '[ comzotohcljc.util.core :only (bytesify stringify throwBadArg )])
-(use '[ comzotohcljc.util.io :only (make-baos )])
-(use '[ comzotohcljc.util.str :only (nsb )])
+(use '[ comzotohcljc.util.core :only [bytesify stringify throwBadArg] ])
+(use '[ comzotohcljc.util.io :only [make-baos] ])
+(use '[ comzotohcljc.util.str :only [nsb] ])
 
 
 

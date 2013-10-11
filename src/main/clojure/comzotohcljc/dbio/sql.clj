@@ -14,20 +14,18 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-
-
 (ns ^{ :doc ""
        :author "kenl" }
 
   comzotohcljc.dbio.sql)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.meta :as MU])
-(require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.io :as IO])
-(require '[comzotohcljc.util.dates :as DT])
+(use '[comzotohcljc.util.core :only [flatten-nil notnil? now-jtstamp nnz] ])
+(use '[comzotohcljc.util.meta :only [bytes-class chars-class] ])
+(use '[comzotohcljc.util.str :only [add-delim! nsb strim] ])
+(use '[comzotohcljc.util.io :only [read-chars read-bytes ] ])
+(use '[comzotohcljc.util.dates :only [gmt-cal] ])
 (use '[comzotohcljc.dbio.core])
 
 (import '(java.util Calendar GregorianCalendar TimeZone))
@@ -73,12 +71,12 @@
          wc (reduce (fn [^StringBuilder sum en]
                       (let [ k (first en) fld (get flds k)
                              c (if (nil? fld) k (ese (:column fld))) ]
-                      (SU/add-delim! sum " AND "
+                      (add-delim! sum " AND "
                         (str c
                              (if (nil? (last en)) " IS NULL " " = ? ")))))
                     (StringBuilder.)
                     (seq filters)) ]
-    [ (SU/nsb wc) (CU/flatten-nil (vals filters)) ] ))
+    [ (nsb wc) (flatten-nil (vals filters)) ] ))
 
 (defn- readCol ^Object [sqlType pos ^ResultSet rset]
   (let [ obj (.getObject rset (int pos))
@@ -91,14 +89,14 @@
                   (instance? Reader obj) obj
                   :else nil) ]
     (cond
-      (CU/notnil? rdr) (with-open [r rdr] (IO/read-chars r))
-      (CU/notnil? inp) (with-open [p inp] (IO/read-bytes p))
+      (notnil? rdr) (with-open [r rdr] (read-chars r))
+      (notnil? inp) (with-open [p inp] (read-bytes p))
       :else obj)))
 
 (defn- readOneCol [sqlType pos ^ResultSet rset]
   (case sqlType
-      Types/TIMESTAMP (.getTimestamp rset (int pos) (DT/gmt-cal))
-      Types/DATE (.getDate rset (int pos) (DT/gmt-cal))
+      Types/TIMESTAMP (.getTimestamp rset (int pos) (gmt-cal))
+      Types/DATE (.getDate rset (int pos) (gmt-cal))
       (readCol sqlType pos rset)) )
 
 ;; row is a transient object.
@@ -124,7 +122,7 @@
     (persistent! @row) ))
 
 (defn- insert? [^String sql]
-  (.startsWith (.toLowerCase (SU/strim sql)) "insert"))
+  (.startsWith (.toLowerCase (strim sql)) "insert"))
 
 (defn- setBindVar [^PreparedStatement ps pos p]
   (cond
@@ -141,19 +139,19 @@
     (instance? Blob p) (.setBlob ps ^long pos ^Blob p)
     (instance? Clob p) (.setClob ps ^long pos ^Clob p)
 
-    (instance? (MU/chars-class) p) (.setString ps pos (String. ^chars p))
-    (instance? (MU/bytes-class) p) (.setBytes ps pos ^bytes p)
+    (instance? (chars-class) p) (.setString ps pos (String. ^chars p))
+    (instance? (bytes-class) p) (.setBytes ps pos ^bytes p)
     (instance? XData p) (.setBinaryStream ps pos (.stream ^XData p))
 
     (instance? Boolean p) (.setInt ps pos (if p 1 0))
     (instance? Double p) (.setDouble ps pos p)
     (instance? Float p) (.setFloat ps pos p)
 
-    (instance? Timestamp p) (.setTimestamp ps pos p (DT/gmt-cal))
-    (instance? Date p) (.setDate ps pos p (DT/gmt-cal))
+    (instance? Timestamp p) (.setTimestamp ps pos p (gmt-cal))
+    (instance? Date p) (.setDate ps pos p (gmt-cal))
     (instance? Calendar p) (.setTimestamp ps pos
                                           (Timestamp. (.getTimeInMillis ^Calendar p))
-                                          (DT/gmt-cal))
+                                          (gmt-cal))
 
     :else (dbio-error (str "Unsupported param type: " (type p)))) )
 
@@ -170,7 +168,7 @@
           (recur false (str (first rc) " WITH (" cmd ") " (last rc)) ))))))
 
 (defn- jiggleSQL [^DBAPI db ^String sqlstr]
-  (let [ sql (SU/strim sqlstr)
+  (let [ sql (strim sqlstr)
          lcs (.toLowerCase sql)
          v (.vendor db)   ]
     (if (= :sqlserver (:id v))
@@ -197,7 +195,7 @@
 (defn- handleGKeys [^ResultSet rs cnt options]
   (let [ rc (cond
               (= cnt 1) (.getObject rs 1)
-              :else (.getLong rs (SU/nsb (:pkey options)))) ]
+              :else (.getLong rs (nsb (:pkey options)))) ]
     { :1 rc }))
 
 (defprotocol ^:private SQueryAPI
@@ -261,11 +259,11 @@
     (doseq [ [k v] (seq obj) ]
       (let [ fdef (get flds k)
              ^String cn (:column fdef) ]
-        (when (and (CU/notnil? fdef)
+        (when (and (notnil? fdef)
                  (not (:auto fdef))
                  (not (:system fdef)))
-          (SU/add-delim! s1 "," (ese cn))
-          (SU/add-delim! s2 "," (if (nil? v) "NULL" "?"))
+          (add-delim! s1 "," (ese cn))
+          (add-delim! s2 "," (if (nil? v) "NULL" "?"))
           (when-not (nil? v)
             (var-set ps (conj! @ps v))))))
 
@@ -276,11 +274,11 @@
     (doseq [ [k v] (seq obj) ]
       (let [ fdef (get flds k)
              cn (col-name fdef) ]
-        (when (and (CU/notnil? fdef)
+        (when (and (notnil? fdef)
                    (:updatable fdef)
                    (not (:auto fdef)) (not (:system fdef)) )
           (doto sb1
-            (SU/add-delim! "," (ese cn))
+            (add-delim! "," (ese cn))
             (.append (if (nil? v) "=NULL" "=?")))
           (when-not (nil? v)
             (var-set ps (conj! @ps v))))))
@@ -356,7 +354,7 @@
           (let [ lock (.supportsOptimisticLock db)
                  flds (:fields (meta zm))
                  table (table-name zm)
-                 now (CU/now-jtstamp)
+                 now (now-jtstamp)
                  s2 (StringBuilder.)
                  s1 (StringBuilder.)
                  pms (insert-fields flds obj s1 s2) ]
@@ -379,22 +377,22 @@
                zm (get metas model) ]
           (when (nil? zm) (dbio-error (str "Unknown model " model)))
           (let [ lock (.supportsOptimisticLock db)
-                 cver (CU/nnz (:verid info))
+                 cver (nnz (:verid info))
                  flds (:fields (meta zm))
                  table (table-name zm)
                  rowid (:rowid info)
                  sb1 (StringBuilder.)
-                 now (CU/now-jtstamp)
+                 now (now-jtstamp)
                  nver (inc cver)
                  pms (update-fields flds obj sb1) ]
             (if (= (.length sb1) 0)
               nil
               (with-local-vars [ ps (transient pms) ]
-                (-> (SU/add-delim! sb1 "," (ese (col-name :last-modify zm)))
+                (-> (add-delim! sb1 "," (ese (col-name :last-modify zm)))
                     (.append "=?"))
                 (var-set  ps (conj! @ps now))
                 (when lock ;; up the version
-                  (-> (SU/add-delim! sb1 "," (ese (col-name :verid zm)))
+                  (-> (add-delim! sb1 "," (ese (col-name :verid zm)))
                       (.append "=?"))
                   (var-set ps (conj! @ps nver)))
                 ;; for the where clause

@@ -14,16 +14,11 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-
-
-
 (ns ^{ :doc ""
        :author "kenl" }
   comzotohcljc.dbio.postgresql)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (use '[comzotohcljc.dbio.drivers])
 (use '[comzotohcljc.dbio.core])
 

@@ -14,25 +14,19 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-
-
-
 (ns ^{ :doc ""
        :author "kenl" }
   comzotohcljc.dbio.oracle)
 
 (import '(java.util Map HashMap))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (use '[comzotohcljc.dbio.drivers])
 (use '[comzotohcljc.dbio.core])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
-
 
 (defn- create_sequence_trigger [db table col]
   (str "CREATE OR REPLACE TRIGGER TRIG_" table "\n"

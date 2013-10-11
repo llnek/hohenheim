@@ -18,7 +18,7 @@
       :author "kenl" }
   comzotohcljc.util.bytes)
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug]])
 
 (import '(java.nio ByteBuffer CharBuffer) )
 (import '(java.nio.charset Charset) )

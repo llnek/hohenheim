@@ -24,8 +24,8 @@
 (import '(java.net URL))
 (import '(javax.net.ssl KeyManagerFactory TrustManagerFactory))
 
-(require '[comzotohcljc.crypto.stores :as CS])
-(require '[comzotohcljc.crypto.core :as CY])
+(use '[comzotohcljc.crypto.stores :only [make-crypto-store] ])
+(use '[comzotohcljc.crypto.core :only [pkcs-file? get-jksStore get-pkcsStore get-srand make-simpleTrustMgr] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -40,14 +40,14 @@
   (^SSLContext [^URL keyUrl ^comzotohcljc.crypto.codec.Password pwdObj ^String flavor]
     (let [ ctx (SSLContext/getInstance flavor)
            ks (with-open [ inp (.openStream keyUrl) ]
-                (if (CY/pkcs-file? keyUrl)
-                    (CY/get-pkcsStore inp pwdObj)
-                    (CY/get-jksStore inp pwdObj)))
-           cs (CS/make-crypto-store ks pwdObj)
+                (if (pkcs-file? keyUrl)
+                    (get-pkcsStore inp pwdObj)
+                    (get-jksStore inp pwdObj)))
+           cs (make-crypto-store ks pwdObj)
            ^TrustManagerFactory tmf   (.trustManagerFactory cs)
            ^KeyManagerFactory kmf   (.keyManagerFactory cs) ]
 
-      (.init ctx (.getKeyManagers kmf) (.getTrustManagers tmf) (CY/get-srand))
+      (.init ctx (.getKeyManagers kmf) (.getTrustManagers tmf) (get-srand))
       ctx)) )
 
 
@@ -56,7 +56,7 @@
   (if (not ssl)
     nil
     (let [ ctx (SSLContext/getInstance "TLS") ]
-      (.init ctx nil (into-array TrustManager [(CY/make-simpleTrustMgr)]) nil)
+      (.init ctx nil (into-array TrustManager [(make-simpleTrustMgr)]) nil)
       ctx)))
 
 

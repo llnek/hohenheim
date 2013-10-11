@@ -24,10 +24,10 @@
 (import '(java.lang Math) )
 (import '(java.security SecureRandom))
 
-(require '[ comzotohcljc.util.core :as CU ] )
-(require '[ comzotohcljc.util.str :as SU ] )
-(require '[ comzotohcljc.util.bytes :as BU ] )
-(require '[ comzotohcljc.util.seqnum :as SQ ] )
+(use '[ comzotohcljc.util.core :only [now-millis TryC new-random] ])
+(use '[ comzotohcljc.util.bytes :only [read-int read-long] ])
+(use '[ comzotohcljc.util.seqnum :only [next-int] ])
+(use '[ comzotohcljc.util.str :only [left right] ])
 
 
 
@@ -53,17 +53,17 @@
 (defn- fmt-long ^String [nm] (fmt LONG_MASK (Long/toHexString nm)))
 
 (defn- splitTime []
-  (let [ s (fmt-long (CU/now-millis))
+  (let [ s (fmt-long (now-millis))
          n (.length s) ]
-    [ (SU/left s (/ n 2)) (SU/right s (max 0 (- n (/ n 2 )) )) ] ))
+    [ (left s (/ n 2)) (right s (max 0 (- n (/ n 2 )) )) ] ))
 
 (defn- maybeSetIP ^long []
-  (CU/TryC
+  (TryC
     (let [ neta (InetAddress/getLocalHost)
            b (.getAddress neta) ]
       (if (.isLoopbackAddress neta )
-        (.nextLong (CU/new-random))
-        (if (= 4 (alength b)) (long (BU/read-int b)) (BU/read-long b) )
+        (.nextLong (new-random))
+        (if (= 4 (alength b)) (long (read-int b)) (read-long b) )
         ))
     ))
 
@@ -73,7 +73,7 @@
   ^String []
   ;; At i==19 set the high bits of clock sequence as per rfc4122, sec. 4.1.5
   (let [ rc (char-array _UUIDLEN)
-         rnd (CU/new-random) ]
+         rnd (new-random) ]
     (dotimes [ n (alength rc) ]
       (aset-char rc n (case n
         (8 13 18 23) \-
@@ -86,12 +86,12 @@
 
 (defn new-wwid "Return a new guid based on time and ip-address."
   ^String []
-  (let [ seed (.nextInt (CU/new-random) (Integer/MAX_VALUE))
+  (let [ seed (.nextInt (new-random) (Integer/MAX_VALUE))
          ts (splitTime) ]
       (str (nth ts 0)
            (fmt-long _IP)
            (fmt-int seed)
-           (fmt-int (SQ/next-int))
+           (fmt-int (next-int))
            (nth ts 1)) ))
 
 

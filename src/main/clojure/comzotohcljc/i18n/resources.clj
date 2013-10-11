@@ -24,23 +24,22 @@
 (import '(java.io File FileInputStream))
 (import '(java.net URL))
 
-(require '[ comzotohcljc.util.meta :as MU])
-(require '[ comzotohcljc.util.core :as CU])
-(require '[ comzotohcljc.util.str :as SU])
-
-
+(use '[ comzotohcljc.util.meta :only [get-cldr] ])
+(use '[ comzotohcljc.util.str :only [nsb] ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 (defmulti load-resource "Load properties file with localized strings." class)
 
-(defmethod load-resource File
-  ^ResourceBundle [^File aFile]
+(defmethod load-resource File ""
+  ^ResourceBundle
+  [^File aFile]
   (load-resource (-> aFile (.toURI) (.toURL))))
 
-(defmethod load-resource URL
-  ^ResourceBundle [^URL url]
+(defmethod load-resource URL ""
+  ^ResourceBundle 
+  [^URL url]
   (with-open [ inp (.openStream url) ]
     (PropertyResourceBundle. inp)))
 
@@ -49,20 +48,21 @@
   ([^String baseName ^Locale locale ^ClassLoader cl]
     (if (or (nil? baseName)(nil? locale))
       nil
-      (ResourceBundle/getBundle baseName locale (MU/get-cldr cl))) ))
+      (ResourceBundle/getBundle baseName locale (get-cldr cl))) ))
 
 (defn get-string "Return the string value for this key, pms may contain values for positional substitutions."
   (^String [^ResourceBundle bundle ^String pkey] (get-string bundle pkey []))
   (^String [^ResourceBundle bundle ^String pkey pms]
-    (let [ kv (SU/nsb (.getString bundle pkey)) ]
+    (let [ kv (nsb (.getString bundle pkey)) ]
       (if (empty? pms)
         kv
         (loop [ src kv pos 0 ]
           (if (>= pos (count pms))
             src
-            (recur (StringUtils/replace src "{}" (SU/nsb (nth pms pos)) 1)
+            (recur (StringUtils/replace src "{}" (nsb (nth pms pos)) 1)
                    (inc pos))))))) )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private resources-eof nil)
 

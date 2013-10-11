@@ -28,8 +28,8 @@
 (import '(java.io File))
 (import '(java.sql DriverManager Connection Statement))
 
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
+(use '[comzotohcljc.util.core :only [test-nonil test-nestr] ])
+(use '[comzotohcljc.util.str :only [nsb] ])
 (use '[comzotohcljc.dbio.drivers])
 (use '[comzotohcljc.dbio.core])
 
@@ -69,12 +69,12 @@
 
 
 (defn make-h2-db [^File dbFileDir ^String dbid ^String user pwdObj]
-  (CU/test-nonil "file-dir" dbFileDir)
-  (CU/test-nestr "db-id" dbid)
-  (CU/test-nestr "user" user)
+  (test-nonil "file-dir" dbFileDir)
+  (test-nestr "db-id" dbid)
+  (test-nestr "user" user)
   (let [ url (File. dbFileDir dbid)
          u (.getCanonicalPath url)
-         pwd (SU/nsb pwdObj)
+         pwd (nsb pwdObj)
          dbUrl (StringUtils/replace H2-FILE-URL "{{path}}" u) ]
     (debug "Creating H2: " dbUrl)
     (.mkdir dbFileDir)
@@ -89,12 +89,12 @@
     dbUrl))
 
 (defn close-h2-db [^File dbFileDir ^String dbid ^String user pwdObj]
-  (CU/test-nonil "file-dir" dbFileDir)
-  (CU/test-nestr "db-id" dbid)
-  (CU/test-nestr "user" user)
+  (test-nonil "file-dir" dbFileDir)
+  (test-nestr "db-id" dbid)
+  (test-nestr "user" user)
   (let [ url (File. dbFileDir dbid)
          u (.getCanonicalPath url)
-         pwd (SU/nsb pwdObj)
+         pwd (nsb pwdObj)
          dbUrl (StringUtils/replace H2-FILE-URL "{{path}}" u) ]
     (debug "Closing H2: " dbUrl)
     (with-open [ c1 (DriverManager/getConnection dbUrl user pwd) ]

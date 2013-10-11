@@ -23,8 +23,8 @@
 (import '(java.io Reader Writer))
 (import '(java.util Properties))
 (import '(org.apache.commons.lang3 StringUtils))
-(require '[ comzotohcljc.util.core :only (into-map is-windows? ) ])
-(require '[ comzotohcljc.util.str :only (nsb has? ) ])
+(use '[ comzotohcljc.util.core :only [into-map is-windows?] ])
+(use '[ comzotohcljc.util.str :only [nsb has?] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

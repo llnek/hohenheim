@@ -14,23 +14,19 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-
-
 (ns ^{ :doc ""
        :author "kenl" }
 
   comzotohcljc.dbio.connect )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (import '(java.util Map HashMap))
 
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.dbio.core :as DU])
+(use '[comzotohcljc.util.core :only [Try!] ])
+(use '[comzotohcljc.util.str :only [nsb] ])
+(use '[comzotohcljc.dbio.core :only [make-db-pool] ])
 (use '[comzotohcljc.dbio.composite])
 (use '[comzotohcljc.dbio.simple])
-
 (use '[comzotohcljc.dbio.sqlserver])
 (use '[comzotohcljc.dbio.postgresql])
 (use '[comzotohcljc.dbio.mysql])
@@ -46,10 +42,10 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- hashJdbc ^long [jdbc]
+(defn- hashJdbc "" ^long [jdbc]
   (.hashCode
     (str (:driver jdbc) (:url jdbc)
-         (:user jdbc) (SU/nsb (:pwdObj jdbc)))))
+         (:user jdbc) (nsb (:pwdObj jdbc)))))
 
 (defn registerJdbcTL "" [^JDBCInfo jdbc options]
   (let [ tloc (DBIOLocal/getCache)
@@ -57,7 +53,7 @@
          hc (.getId jdbc) ]
     (when-not (.containsKey c hc)
       (debug "no db pool found in thread-local, creating one...")
-      (let [ p (DU/make-db-pool jdbc options) ]
+      (let [ p (make-db-pool jdbc options) ]
         (.put c hc p)))
     (.get c hc)))
 
@@ -66,7 +62,7 @@
          ^Map c (.get tloc) ;; c == java hashmap
          p (.get c hc) ]
     (when-not (nil? p)
-      (CU/Try! (.shutdown ^JDBCPool p))
+      (Try! (.shutdown ^JDBCPool p))
       (.remove c hc))))
 
 (defn- maybe-get-pool ""

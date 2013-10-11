@@ -18,12 +18,9 @@
         :author "kenl" }
   comzotohcljc.util.meta)
 
-
 (import '(java.lang.reflect Member Field Method Modifier))
-(require '[ comzotohcljc.util.core :as CU ] )
-(require '[ comzotohcljc.util.str :as SU ] )
-
-
+(use '[ comzotohcljc.util.str :only [eq-any? hgl?] ])
+(use '[ comzotohcljc.util.core :only [test-nonil] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -56,47 +53,47 @@
 
 (defn is-boolean? "True if class is Boolean."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) ["boolean" "Boolean" "java.lang.Boolean"] ))
+  (eq-any? (.getName classObj) ["boolean" "Boolean" "java.lang.Boolean"] ))
 
 (defn is-void? "True if class is Void."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) ["void" "Void" "java.lang.Void"] ))
+  (eq-any? (.getName classObj) ["void" "Void" "java.lang.Void"] ))
 
 (defn is-char? "True if class is Char."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) [ "char" "Char" "java.lang.Character" ] ))
+  (eq-any? (.getName classObj) [ "char" "Char" "java.lang.Character" ] ))
 
 (defn is-int? "True if class is Int."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) [ "int" "Int" "java.lang.Integer" ] ))
+  (eq-any? (.getName classObj) [ "int" "Int" "java.lang.Integer" ] ))
 
 (defn is-long? "True if class is Long."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) [ "long" "Long" "java.lang.Long" ] ))
+  (eq-any? (.getName classObj) [ "long" "Long" "java.lang.Long" ] ))
 
 (defn is-float? "True if class is Float."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) [ "float" "Float" "java.lang.Float" ]))
+  (eq-any? (.getName classObj) [ "float" "Float" "java.lang.Float" ]))
 
 (defn is-double? "True if class is Double."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) [ "double" "Double" "java.lang.Double" ]))
+  (eq-any? (.getName classObj) [ "double" "Double" "java.lang.Double" ]))
 
 (defn is-byte? "True if class is Byte."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) [ "byte" "Byte" "java.lang.Byte" ]))
+  (eq-any? (.getName classObj) [ "byte" "Byte" "java.lang.Byte" ]))
 
 (defn is-short? "True if class is Short."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) [ "short" "Short" "java.lang.Short" ]))
+  (eq-any? (.getName classObj) [ "short" "Short" "java.lang.Short" ]))
 
 (defn is-string? "True if class is String."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) [ "String" "java.lang.String" ]))
+  (eq-any? (.getName classObj) [ "String" "java.lang.String" ]))
 
 (defn is-object? "True if class is Object."
   [^Class classObj]
-  (SU/eq-any? (.getName classObj) [ "Object" "java.lang.Object" ]))
+  (eq-any? (.getName classObj) [ "Object" "java.lang.Object" ]))
 
 (defn is-bytes? "True if class is byte[]."
   [^Class classObj]
@@ -114,25 +111,25 @@
 (defn set-cldr "Set current classloader."
   [^ClassLoader cl]
   (let []
-    (CU/test-nonil "class-loader" cl)
+    (test-nonil "class-loader" cl)
     (.setContextClassLoader (Thread/currentThread) cl)))
 
 (defn load-class "Load this class by name."
   (^Class [^String clazzName] (load-class clazzName nil))
   (^Class [^String clazzName ^ClassLoader cl]
-    (if (not (SU/hgl? clazzName)) nil (.loadClass (get-cldr cl) clazzName))))
+    (if (not (hgl? clazzName)) nil (.loadClass (get-cldr cl) clazzName))))
 
 (defn- ctorObj
   ^Object [^Class cz]
   (do
-    (CU/test-nonil "java-class" cz)
+    (test-nonil "java-class" cz)
     (.newInstance (.getDeclaredConstructor cz (make-array Class 0))
                   (make-array Object 0)  )))
 
 (defn make-obj "Make an object of this class by calling the default constructor."
   (^Object [^String clazzName] (make-obj clazzName nil))
   (^Object [^String clazzName ^ClassLoader cl]
-   (if (not (SU/hgl? clazzName)) nil (ctorObj (load-class clazzName cl)))) )
+   (if (not (hgl? clazzName)) nil (ctorObj (load-class clazzName cl)))) )
 
 (defn list-parents "List all parent classes."
   [^Class javaClass]

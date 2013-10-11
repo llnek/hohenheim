@@ -19,7 +19,7 @@
 
   comzotohcljc.util.scheduler )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 
 (import '(java.util.concurrent ConcurrentHashMap))
 (import '(com.zotoh.frwk.util
@@ -28,10 +28,7 @@
   Map Properties
   Timer TimerTask))
 
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-
-
+(use '[comzotohcljc.util.core :only [uid make-mmap] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -53,7 +50,7 @@
 
 (defn make-scheduler "Make a Scheduler." [parObj]
   (let [ ;;^comzotohcljc.util.core.MutableMapAPI
-         impl (CU/make-mmap) ]
+         impl (make-mmap) ]
     (with-meta
       (reify
 
@@ -69,8 +66,8 @@
 
           (activate [_ options]
             (let [ ^long t (:threads options)
-                   c (TCore. (CU/uid) (if (nil? t) 4 t)) ]
-              (.mm-s impl :timer (Timer. (CU/uid) true))
+                   c (TCore. (uid) (if (nil? t) 4 t)) ]
+              (.mm-s impl :timer (Timer. (uid) true))
               (.mm-s impl :holdQ (ConcurrentHashMap.))
               (.mm-s impl :runQ (ConcurrentHashMap.))
               (.mm-s impl :core c)
