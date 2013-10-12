@@ -190,10 +190,14 @@
           ))
       (HttpHeaders/setContentLength rsp @clen)
       (wwrite ch rsp)
+      (debug "wrote response headers out to client")
       (when (> @clen 0)
-        (wwrite ch (ChunkedStream. (.stream ^XData @xd))))
+        (wwrite ch (ChunkedStream. (.stream ^XData @xd)))
+        (debug "wrote response body out to client"))
       (let [ ^ChannelFuture wf (wflush ch LastHttpContent/EMPTY_LAST_CONTENT) ]
+        (debug "flushed last response content out to client")
         (when-not (.isKeepAlive evt)
+          (debug "keep-alive == false, closing channel.  bye.")
           (.addListener wf ChannelFutureListener/CLOSE)))
 
       )))

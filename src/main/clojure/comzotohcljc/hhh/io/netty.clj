@@ -184,14 +184,13 @@
                       nil))
                     (seq cks))))
 
-        (isKeepAlive [_] false)
-          ;;(HttpHeaders/isKeepAlive req))
+        (isKeepAlive [_] (HttpHeaders/isKeepAlive req))
 
         (hasData [_] (notnil? xdata))
         (data [_] xdata)
 
-        (contentLength [_] (HttpHeaders/getContentLength req 0))
         (contentType [_] (HttpHeaders/getHeader req "content-type"))
+        (contentLength [_] (HttpHeaders/getContentLength req 0))
 
         (encoding [this]  (get-charset (.contentType this)))
         (contextPath [_] "")

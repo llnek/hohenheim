@@ -54,7 +54,8 @@
   HttpHeaders HttpVersion HttpContent LastHttpContent
   HttpHeaders$Values HttpHeaders$Names
   HttpMessage HttpRequest HttpResponse HttpResponseStatus
-  DefaultFullHttpResponse QueryStringDecoder HttpMethod
+  DefaultFullHttpResponse DefaultHttpResponse QueryStringDecoder
+  HttpMethod
   DefaultFullHttpRequest HttpServerCodec HttpClientCodec
   HttpResponseEncoder))
 (import '(io.netty.handler.ssl SslHandler))
@@ -135,7 +136,7 @@
 (defn makeHttpReply "Make a netty http-response object."
   (^HttpResponse [] (makeHttpReply 200))
   (^HttpResponse [status]
-    (DefaultFullHttpResponse. HttpVersion/HTTP_1_1
+    (DefaultHttpResponse. HttpVersion/HTTP_1_1
                           (get HTTP-CODES status))))
 
 (defn closeCF "Maybe close the channel."
