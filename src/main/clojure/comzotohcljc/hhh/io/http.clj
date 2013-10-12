@@ -55,7 +55,6 @@
 (use '[comzotohcljc.crypto.ssl])
 (use '[comzotohcljc.crypto.codec :only [pwdify] ])
 (use '[comzotohcljc.util.seqnum :only [next-long] ])
-(use '[comzotohcljc.netty.comms :only [makeHttpReply] ])
 (use '[comzotohcljc.util.str :only [hgl? nsb strim] ])
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])

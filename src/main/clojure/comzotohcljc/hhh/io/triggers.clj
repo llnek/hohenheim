@@ -188,12 +188,18 @@
           (var-set clen (if (.hasContent dd) (.size dd) 0))
           (var-set xd dd)
           ))
+
+      (when (.isKeepAlive evt)
+        (HttpHeaders/setHeader rsp "Connection" "keep-alive"))
+
       (HttpHeaders/setContentLength rsp @clen)
       (wwrite ch rsp)
       (debug "wrote response headers out to client")
+
       (when (> @clen 0)
         (wwrite ch (ChunkedStream. (.stream ^XData @xd)))
         (debug "wrote response body out to client"))
+
       (let [ ^ChannelFuture wf (wflush ch LastHttpContent/EMPTY_LAST_CONTENT) ]
         (debug "flushed last response content out to client")
         (when-not (.isKeepAlive evt)

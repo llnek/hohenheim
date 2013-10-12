@@ -133,6 +133,12 @@
   (let [ rc (-> (.attr ch ATTR-KEY) (.get)) ]
   (if (nil? rc) {} rc)))
 
+(defn makeFullHttpReply "Make a netty http-response object."
+  (^HttpResponse [] (makeFullHttpReply 200))
+  (^HttpResponse [status]
+    (DefaultFullHttpResponse. HttpVersion/HTTP_1_1
+                          (get HTTP-CODES status))))
+
 (defn makeHttpReply "Make a netty http-response object."
   (^HttpResponse [] (makeHttpReply 200))
   (^HttpResponse [status]
@@ -144,17 +150,17 @@
   (if (and doit (notnil? cf))
     (.addListener cf ChannelFutureListener/CLOSE)))
 
-(defn wwrite "Write object." [^Channel ch obj]
+(defn wwrite "Write object." ^ChannelFuture [^Channel ch obj]
   ;; had to do this to work-around reflection warnings :(
   (NetUtils/writeOnly ch obj))
 
-(defn wflush "Write object and then flush." [^Channel ch obj]
+(defn wflush "Write object and then flush." ^ChannelFuture [^Channel ch obj]
   ;; had to do this to work-around reflection warnings :(
   (NetUtils/wrtFlush ch obj))
 
 (defn sendRedirect "Redirect a request."
   [^Channel ch perm ^String targetUrl]
-  (let [ rsp (makeHttpReply (if perm 301 307)) ]
+  (let [ rsp (makeFullHttpReply (if perm 301 307)) ]
     (debug "redirecting to -> " targetUrl)
     (HttpHeaders/setHeader rsp  "location" targetUrl)
     (closeCF true (wflush ch rsp))))
@@ -219,7 +225,7 @@
     (-> (.close ^ChannelGroup cg) (add-listener { :done (fn [_] (kill9 server)) }))))
 
 (defn contWith100 "Send back 100-continue." [^ChannelHandlerContext ctx]
-  (-> (.channel ctx) (wflush (makeHttpReply 100))))
+  (-> (.channel ctx) (wflush (makeFullHttpReply 100))))
 
 (defrecord NettyServer  [^ServerBootstrap server ^ChannelGroup cgroup ] )
 (defrecord NettyClient  [^Bootstrap client ^ChannelGroup cgroup ] )
@@ -270,7 +276,7 @@
                             (NetUtils/closeChannel (.channel cff))) } )))
 
 (defn- reply-xxx "" [^Channel ch status]
-  (let [ res (makeHttpReply status)
+  (let [ res (makeFullHttpReply status)
          info (:info (ga-map ch))
          kalive (if (nil? info) false (:keep-alive info)) ]
     ;;(HttpHeaders/setTransferEncodingChunked res)
@@ -644,8 +650,9 @@
     (HttpHeaders/setHeader res "content-type" "application/octet-stream")
     (HttpHeaders/setContentLength res clen)
     (HttpHeaders/setTransferEncodingChunked res)
-    (wflush ch res)
-    (-> (wflush ch (ChunkedStream. (.stream xdata)))
+    (wwrite ch res)
+    (wwrite ch (ChunkedStream. (.stream xdata)))
+    (-> (wflush ch LastHttpContent/EMPTY_LAST_CONTENT)
       (maybe-keepAlive kalive))))
 
 (defn- filer-handler [^File vdir]

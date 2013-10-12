@@ -20,10 +20,10 @@
 
 (import '(io.netty.handler.codec.http
   HttpMethod HttpHeaders HttpResponseStatus
-  HttpRequest HttpResponse))
+  LastHttpContent HttpRequest HttpResponse))
 (import '(io.netty.handler.stream
   ChunkedFile ChunkedStream ChunkedInput ))
-(import '(io.netty.channel Channel))
+(import '(io.netty.channel ChannelFuture ChannelFutureListener Channel))
 
 (import '(org.apache.commons.io FileUtils))
 (import '(com.zotoh.hohenheim.mvc
@@ -34,7 +34,7 @@
 (import '(com.zotoh.frwk.net NetUtils))
 
 (use '[clojure.tools.logging :only [info warn error debug] ])
-(use '[comzotohcljc.netty.comms :only [wflush closeCF] ])
+(use '[comzotohcljc.netty.comms :only [wwrite wflush closeCF] ])
 (use '[comzotohcljc.util.mime :only [guess-contenttype] ])
 (use '[comzotohcljc.util.core :only [Try! notnil? nice-fpath] ])
 (use '[comzotohcljc.util.io :only [streamify] ])
@@ -131,32 +131,32 @@
           (var-set ct (.contentType asset))
           (var-set clen (.size asset))
           (var-set inp (ChunkedStream. (streamify (.getBytes asset))))) )
-      (debug "serving file: " (.getName file)
-             " with clen= " @clen
-             ", ctype= " @ct)
+      (debug "serving file: " (.getName file) " with clen= " @clen ", ctype= " @ct)
       (try
-        (when (not= (.getStatus rsp) HttpResponseStatus/NOT_MODIFIED)
-          (HttpHeaders/setContentLength rsp @clen))
+        (when (= (.getStatus rsp) HttpResponseStatus/NOT_MODIFIED)
+          (var-set clen 0))
+        (HttpHeaders/setContentLength rsp @clen)
         (HttpHeaders/addHeader rsp "Accept-Ranges" "bytes")
         (HttpHeaders/setHeader rsp "Content-Type" @ct)
-        (if (= (.getMethod req) HttpMethod/HEAD)
-          (try
-            (wflush ch rsp)
-            (finally
-              (Try! (when (notnil? @raf)(.close ^RandomAccessFile @raf)))
-              (var-set raf nil)))
-          (closeCF
-            (not (HttpHeaders/isKeepAlive req))
-            (do
-              (wflush ch rsp)
-              (wflush ch @inp))) )
+        (wwrite ch rsp)
+        (when-not (= (.getMethod req) HttpMethod/HEAD)
+          (wwrite ch @inp))
+        (let [ wf (wflush ch LastHttpContent/EMPTY_LAST_CONTENT) ]
+          (.addListener wf (reify ChannelFutureListener
+                            (operationComplete [_ f]
+                              (Try! (when (notnil? @raf)
+                                      (.close ^RandomAccessFile @raf)))
+                              (when-not (HttpHeaders/isKeepAlive req)
+                                (NetUtils/closeChannel ch))))))
         (catch Throwable e#
-          (error e# "")
           (Try! (when (notnil? @raf)(.close ^RandomAccessFile @raf)))
-          (Try! (NetUtils/closeChannel ch))) ) )) )
+          (error e# "")
+          (Try! (NetUtils/closeChannel ch))) )
+      )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (def ^:private tpls-eof nil)
+
 

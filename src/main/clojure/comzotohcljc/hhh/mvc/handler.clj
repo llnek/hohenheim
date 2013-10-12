@@ -31,7 +31,7 @@
 (import '(io.netty.buffer ByteBuf Unpooled))
 (import '(io.netty.handler.codec.http
   HttpHeaders$Values HttpHeaders$Names
-  DefaultHttpRequest
+  LastHttpContent DefaultHttpRequest
   HttpContentCompressor HttpHeaders HttpVersion
   HttpMessage HttpRequest HttpResponse HttpResponseStatus
   DefaultHttpResponse HttpMethod))
@@ -47,6 +47,7 @@
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.mvc.tpls :only [getLocalFile replyFileAsset] ])
 (use '[comzotohcljc.netty.comms :only [sendRedirect make-routeCracker
+                                       wwrite
                                        makeHttpReply wflush closeCF] ])
 (use '[comzotohcljc.util.str :only [hgl? nsb] ])
 (use '[comzotohcljc.util.meta :only [make-obj] ])
@@ -93,7 +94,7 @@
   [^comzotohcljc.hhh.core.sys.Element src
    ^Channel ch
    code]
-  (with-local-vars [ rsp (makeHttpReply code) ]
+  (with-local-vars [ rsp (makeHttpReply code) bits nil ]
     (try
       (let [ h (.getAttr src :errorHandler)
              ^HTTPErrorHandler
@@ -104,15 +105,14 @@
                   (.getErrorResponse cb code)) ]
         (when-not (nil? rc)
           (HttpHeaders/setHeader ^HttpMessage @rsp "content-type" (.contentType rc))
-          (let [ bits (.body rc) ]
-            (HttpHeaders/setContentLength @rsp (alength bits))
-            (wflush ch @rsp)
-            (var-set rsp nil)
-            (wflush ch (Unpooled/wrappedBuffer bits)))))
-      (when-not (nil? @rsp)
-        (closeCF true (wflush ch @rsp)))
+          (var-set bits (.body rc)))
+        (HttpHeaders/setContentLength @rsp
+                                      (if (nil? @bits) 0 (alength @bits)))
+        (wwrite ch @rsp)
+        (when-not (nil? @bits)
+          (wwrite ch (Unpooled/wrappedBuffer @bits)))
+        (closeCF true (wflush ch LastHttpContent/EMPTY_LAST_CONTENT)))
       (catch Throwable e#
-        (warn e# "")
         (NetUtils/closeChannel ch)))))
 
 (defn- handleStatic [src ^Channel ch req ^HTTPEvent evt ^File file]
@@ -126,7 +126,11 @@
           (addETag src evt req rsp file)
           ;; 304 not-modified
           (if (= (-> rsp (.getStatus)(.code)) 304)
-            (closeCF (not (.isKeepAlive evt)) (wflush ch rsp))
+            (do
+              (HttpHeaders/setContentLength rsp 0)
+              (wwrite ch rsp)
+              (closeCF (not (.isKeepAlive evt))
+                       (wflush ch LastHttpContent/EMPTY_LAST_CONTENT)))
             (replyFileAsset src ch req rsp file))))
       (catch Throwable e#
         (error "failed to get static resource " (.getUri evt) e#)

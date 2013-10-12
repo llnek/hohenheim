@@ -174,7 +174,7 @@
         (onreq [_ ch req msginfo xdata]
           (Try!
             (.addListener
-              ^ChannelFuture (wflush ch (makeHttpReply 200))
+              ^ChannelFuture (wflush ch (makeFullHttpReply 200))
               ChannelFutureListener/CLOSE))
           (stop-cli ctx))
         (onres [_ ch rsp msginfo xdata] nil))
