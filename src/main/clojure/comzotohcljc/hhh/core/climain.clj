@@ -36,16 +36,14 @@
 (import '(java.io File))
 (import '(org.apache.commons.io FileUtils))
 
-(require '[comzotohcljc.i18n.resources :as LN])
-(require '[comzotohcljc.util.process :as PU])
-(require '[comzotohcljc.util.meta :as MU])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.files :as FU])
-(require '[comzotohcljc.util.ini :as WI])
+(use '[comzotohcljc.i18n.resources :only [get-resource] ])
+(use '[comzotohcljc.util.process :only [pid safe-wait] ])
+(use '[comzotohcljc.util.meta :only [set-cldr get-cldr] ])
+(use '[comzotohcljc.util.core :only [test-nonil test-cond conv-long Try! print-mutableObj make-mmap] ])
+(use '[comzotohcljc.util.str :only [hgl? nsb strim] ])
+(use '[comzotohcljc.util.ini :only [parse-inifile] ])
 (use '[comzotohcljc.netty.comms])
-
-(use '[comzotohcljc.hhh.impl.exec :only (make-execvisor) ])
+(use '[comzotohcljc.hhh.impl.exec :only [make-execvisor] ])
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.impl.defaults])
@@ -62,23 +60,23 @@
     (precondDir home)
     (precondDir cfg)
     (doto (make-context)
-      (.setf! K_BASEDIR home)
-      (.setf! K_CFGDIR cfg))))
+          (.setf! K_BASEDIR home)
+          (.setf! K_CFGDIR cfg))))
 
 (defn- setupClassLoader [^comzotohcljc.util.core.MuObj ctx]
   (let [ root (.getf ctx K_ROOT_CZLR)
          cl (ExecClassLoader. root) ]
-    (MU/set-cldr cl)
+    (set-cldr cl)
     (.setf! ctx K_EXEC_CZLR cl)
     ctx))
 
 (defn- setupClassLoaderAsRoot [^comzotohcljc.util.core.MuObj ctx]
-  (let [ root (RootClassLoader. (MU/get-cldr)) ]
+  (let [ root (RootClassLoader. (get-cldr)) ]
     (.setf! ctx K_ROOT_CZLR root)
     ctx))
 
 (defn- maybeInizLoaders [^comzotohcljc.util.core.MuObj ctx]
-  (let [ cz (MU/get-cldr) ]
+  (let [ cz (get-cldr) ]
     (cond
       (instance? RootClassLoader cz)
       (do
@@ -97,19 +95,19 @@
   (let [ ^File home (.getf ctx K_BASEDIR)
          cf (File. home  (str DN_CONF "/" (name K_PROPS) ))
         ^comzotohcljc.util.ini.IWin32Conf
-         w (WI/parse-inifile cf)
+         w (parse-inifile cf)
          lg (.toLowerCase ^String (.optString w K_LOCALE K_LANG "en"))
          cn (.toUpperCase ^String (.optString w K_LOCALE K_COUNTRY ""))
-         loc (if (SU/hgl? cn) (Locale. lg cn) (Locale. lg)) ]
+         loc (if (hgl? cn) (Locale. lg cn) (Locale. lg)) ]
     (info (str "using locale: " loc))
     (doto ctx
       (.setf! K_PROPS w)
       (.setf! K_LOCALE loc))) )
 
 (defn- setupResources [^comzotohcljc.util.core.MuObj ctx]
-  (let [ rc (LN/get-resource "comzotohcljc/hhh/etc/Resources"
+  (let [ rc (get-resource "comzotohcljc/hhh/etc/Resources"
                              (.getf ctx K_LOCALE)) ]
-    (CU/test-nonil "etc/resouces" rc)
+    (test-nonil "etc/resouces" rc)
     (.setf! ctx K_RCBUNDLE rc)
     (info "resource bundle found and loaded.")
     ctx))
@@ -140,7 +138,7 @@
         ^comzotohcljc.util.ini.IWin32Conf
          wc (.getf ctx K_PROPS)
          cz (.optString wc K_COMPS K_EXECV "") ]
-    (CU/test-cond "conf file:exec-visor"
+    (test-cond "conf file:exec-visor"
                   (= cz "comzotohcljc.hhh.impl.Execvisor"))
     (info "inside primodial()")
     (let [ ^comzotohcljc.util.core.MuObj execv (make-execvisor cli) ]
@@ -165,7 +163,7 @@
         (deliver CLI-TRIGGER 911)))))
 
 (defn- enableRemoteShutdown [^comzotohcljc.util.core.MuObj ctx]
-  (let [ port (CU/conv-long (System/getProperty "hohenheim.kill.port") 4444) ]
+  (let [ port (conv-long (System/getProperty "hohenheim.kill.port") 4444) ]
     (info "Enabling remote shutdown...")
     (makeMemHttpd
       "127.0.0.1"
@@ -174,7 +172,7 @@
         (before-send [_ ch msg] nil)
         (onerror [_ ch msginfo evt] nil)
         (onreq [_ ch req msginfo xdata]
-          (CU/Try!
+          (Try!
             (.addListener
               ^ChannelFuture (wflush ch (makeHttpReply 200))
               ChannelFutureListener/CLOSE))
@@ -186,26 +184,26 @@
   (let [ cli (.getf ctx K_CLISH) ]
     (.addShutdownHook (Runtime/getRuntime)
           (Thread. (reify Runnable
-                      (run [_] (CU/Try! (stop-cli ctx))))))
+                      (run [_] (Try! (stop-cli ctx))))))
     (enableRemoteShutdown ctx)
     (info "added shutdown hook.")
     ctx))
 
 (defn- writePID [^comzotohcljc.util.core.MuObj ctx]
   (let [ fp (File. ^File (.getf ctx K_BASEDIR) "hohenheim.pid") ]
-    (FileUtils/writeStringToFile fp (PU/pid) "utf-8")
+    (FileUtils/writeStringToFile fp (pid) "utf-8")
     (.setf! ctx K_PIDFILE fp)
     (info "wrote hohenheim.pid - OK.")
     ctx))
 
 (defn- pause-cli [^comzotohcljc.util.core.MuObj ctx]
   (do
-    (CU/print-mutableObj ctx)
+    (print-mutableObj ctx)
     (info "applications are now running...")
     (info "system thread paused on promise - awaits delivery.")
     (deref CLI-TRIGGER) ;; pause here
     (info "promise delivered!")
-    (PU/safe-wait 5000) ;; give some time for stuff to wind-down.
+    (safe-wait 5000) ;; give some time for stuff to wind-down.
     (System/exit 0)))
 
 
@@ -214,7 +212,7 @@
 
 
 (defn- make-climain [ & args ]
-  (let [ impl (CU/make-mmap) ]
+  (let [ impl (make-mmap) ]
     (reify
 
       Element

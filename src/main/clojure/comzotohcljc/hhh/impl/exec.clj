@@ -30,25 +30,19 @@
 (import '(com.zotoh.frwk.server
   Component ComponentRegistry))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.impl.defaults])
 (use '[comzotohcljc.jmx.core])
-
-(use '[comzotohcljc.hhh.impl.sys :only (make-kernel make-podmeta make-deployer) ])
-
-(require '[ comzotohcljc.util.core :as CU ] )
-(require '[ comzotohcljc.util.meta :as MU ] )
-(require '[ comzotohcljc.util.str :as SU ] )
-(require '[ comzotohcljc.util.ini :as WI ] )
-
-
+(use '[comzotohcljc.hhh.impl.sys :only [make-kernel make-podmeta make-deployer] ])
+(use '[ comzotohcljc.util.core :only [load-javaprops test-nestr nice-fpath TryC conv-long make-mmap uid test-nonil] ])
+(use '[ comzotohcljc.util.str :only [nsb strim hgl?] ])
+(use '[ comzotohcljc.util.ini :only [parse-inifile] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* false)
-
 
 
 (def ^:private START-TIME (.getTime (Date.)))
@@ -82,13 +76,13 @@
   (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx execv)
          ^ComponentRegistry root (.getf ctx K_COMPS)
          ^ComponentRegistry apps (.lookup root K_APPS)
-         ps (CU/load-javaprops mf)
+         ps (load-javaprops mf)
          ver (.getProperty ps "Implementation-Version" "")
          vid (.getProperty ps "Implementation-Vendor-Id")
          cz (.getProperty ps "Main-Class" "") ]
 
-    (CU/test-nestr "POD-MainClass" cz)
-    (CU/test-nestr "POD-Version" ver)
+    (test-nestr "POD-MainClass" cz)
+    (test-nestr "POD-Version" ver)
 
     (info "checking manifest for app: " app ", version: " ver ", main-class: " cz)
 
@@ -105,11 +99,11 @@
       m)))
 
 (defn- inspect-pod [execv ^File des]
-  (let [ app (FilenameUtils/getBaseName (CU/nice-fpath des))
+  (let [ app (FilenameUtils/getBaseName (nice-fpath des))
          mf (File. des ^String MN_FILE) ]
     (info "About to inspect app: " app)
     (info "app-dir: " des)
-    (CU/TryC
+    (TryC
         (precondDir (File. des ^String POD_INF))
         (precondDir (File. des ^String POD_CLASSES))
         (precondDir (File. des ^String POD_LIB))
@@ -132,10 +126,10 @@
 
 (defn- start-jmx [^comzotohcljc.hhh.core.sys.Element co cfg]
   (info "JMX config " cfg)
-  (CU/TryC
+  (TryC
     (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
-           port (CU/conv-long (SU/nsb (get cfg "port")) 7777)
-           ^String host (SU/nsb (get cfg "host"))
+           port (conv-long (nsb (get cfg "port")) 7777)
+           ^String host (nsb (get cfg "host"))
            ^comzotohcljc.jmx.core.JMXServer jmx (make-jmxServer host) ]
       (.setRegistryPort jmx port)
       (.start ^Startable jmx)
@@ -144,7 +138,7 @@
       (info (str "JMXserver listening on: " host " "  port)) )) )
 
 (defn- stop-jmx [^comzotohcljc.hhh.core.sys.Element co]
-  (CU/TryC
+  (TryC
     (let [ ^comzotohcljc.util.core.MuObj ctx (.getCtx co)
            ^Startable jmx (.getf ctx K_JMXSVR) ]
       (when-not (nil? jmx)
@@ -156,7 +150,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn make-execvisor "" [parObj]
-  (let [ impl (CU/make-mmap) ]
+  (let [ impl (make-mmap) ]
     (info "creating execvisor, parent = " parObj)
     (with-meta
       (reify
@@ -222,9 +216,9 @@
          jmx  (.getSection cf K_JMXMGM) ]
 
     (info "initializing component: Execvisor: " co)
-    (CU/test-nonil "conf file: components" comps)
-    (CU/test-nonil "conf file: registries" regs)
-    (CU/test-nonil "conf file: jmx mgmt" jmx)
+    (test-nonil "conf file: components" comps)
+    (test-nonil "conf file: registries" regs)
+    (test-nonil "conf file: jmx mgmt" jmx)
 
     (System/setProperty "file.encoding" "utf-8")
 
@@ -275,8 +269,8 @@
     ))
 
 (defn- make-blockmeta "" [^URL url]
-  (let [ impl (CU/make-mmap) ]
-    (.mm-s impl :id (keyword (CU/uid)))
+  (let [ impl (make-mmap) ]
+    (.mm-s impl :id (keyword (uid)))
     (.mm-s impl K_META url)
     ;; url points to block-meta file
     (with-meta
@@ -308,17 +302,17 @@
 (defmethod comp-initialize :czc.hhh.impl/BlockMeta
   [^comzotohcljc.hhh.impl.defaults.BlockMeta bk]
   (let [ ^URL url (.metaUrl bk)
-         ^comzotohcljc.util.ini.IWin32Conf cfg (WI/parse-inifile url)
+         ^comzotohcljc.util.ini.IWin32Conf cfg (parse-inifile url)
          inf (.getSection cfg "info") ]
-    (CU/test-nonil "Invalid block-meta file, no info section." inf)
+    (test-nonil "Invalid block-meta file, no info section." inf)
     (info "initializing BlockMeta: " url)
-    (let [ cz (SU/strim (.optString cfg "info" "block-type" ""))
+    (let [ cz (strim (.optString cfg "info" "block-type" ""))
            ^comzotohcljc.hhh.core.sys.Element co bk  ]
-      (when (SU/hgl? cz)
+      (when (hgl? cz)
         (.setAttr! co :id (keyword cz))
         (.setAttr! co :active true) )
-      (.setAttr! co :version (SU/strim (.optString cfg "info" "version" "")))
-      (.setAttr! co :name (SU/strim (.optString cfg "info" "name" "")))
+      (.setAttr! co :version (strim (.optString cfg "info" "version" "")))
+      (.setAttr! co :name (strim (.optString cfg "info" "name" "")))
       co)))
 
 (defmethod comp-initialize :czc.hhh.impl/BlocksRegistry

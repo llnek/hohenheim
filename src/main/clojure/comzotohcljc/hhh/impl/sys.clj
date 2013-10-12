@@ -33,7 +33,7 @@
 (import '(java.util.zip ZipFile))
 (import '(com.zotoh.frwk.io IOUtils))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.impl.ext])
@@ -41,14 +41,12 @@
        :rename {enabled? blockmeta-enabled?
                 start kernel-start
                 stop kernel-stop}])
-
-(require '[ comzotohcljc.util.core :as CU ] )
-(require '[ comzotohcljc.util.str :as SU ] )
-(require '[ comzotohcljc.util.process :as PU ] )
-(require '[ comzotohcljc.util.files :as FU ] )
-(require '[ comzotohcljc.util.mime :as MI ] )
-(require '[ comzotohcljc.util.seqnum :as SN ] )
-
+(use '[ comzotohcljc.util.core :only [make-mmap TryC nice-fpath notnil? new-random] ])
+(use '[ comzotohcljc.util.str :only [strim] ])
+(use '[ comzotohcljc.util.process :only [safe-wait] ])
+(use '[ comzotohcljc.util.files :only [unzip] ])
+(use '[ comzotohcljc.util.mime :only [setup-cache] ])
+(use '[ comzotohcljc.util.seqnum :only [next-long] ] )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* false)
@@ -58,7 +56,7 @@
 ;; Deployer
 
 (defn make-deployer "" []
-  (let [ impl (CU/make-mmap) ]
+  (let [ impl (make-mmap) ]
     (with-meta
       (reify
 
@@ -86,11 +84,11 @@
                 (FileUtils/deleteDirectory dir))))
 
         (deploy [this src]
-          (let [ app (FilenameUtils/getBaseName (CU/nice-fpath src))
+          (let [ app (FilenameUtils/getBaseName (nice-fpath src))
                  ^comzotohcljc.util.core.MuObj ctx (getCtx this)
                  des (File. ^File (.getf ctx K_PLAYDIR) ^String app) ]
             (when-not (.exists des)
-              (FU/unzip src des)))) )
+              (unzip src des)))) )
 
       { :typeid (keyword "czc.hhh.impl/Deployer") } )))
 
@@ -122,7 +120,7 @@
    cset
    ^comzotohcljc.hhh.core.sys.Element pod]
 
-  (CU/TryC
+  (TryC
     (let [ cache (.getAttr knl K_CONTAINERS)
            cid (.id ^Identifiable pod)
            app (.moniker ^comzotohcljc.hhh.impl.defaults.PODMeta pod)
@@ -131,7 +129,7 @@
                  nil
                  (make-container pod)) ]
       (debug "start-pod? cid = " cid ", app = " app " !! cset = " cset)
-      (if (CU/notnil? ctr)
+      (if (notnil? ctr)
         (do
           (.setAttr! knl K_CONTAINERS (assoc cache cid ctr))
         ;;_jmx.register(ctr,"", c.name)
@@ -144,7 +142,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn make-kernel "" []
-  (let [ impl (CU/make-mmap) ]
+  (let [ impl (make-mmap) ]
     (.mm-s impl K_CONTAINERS {} )
     (with-meta
       (reify
@@ -172,22 +170,22 @@
                  ^ComponentRegistry root (.getf ctx K_COMPS)
                  ^comzotohcljc.util.ini.IWin32Conf
                   wc (.getf ctx K_PROPS)
-                  endorsed (SU/strim (.optString wc K_APPS "endorsed" ""))
+                  endorsed (strim (.optString wc K_APPS "endorsed" ""))
                  ^comzotohcljc.hhh.core.sys.Registry
                  apps (.lookup root K_APPS)
                  cs (if (= "*" endorsed)
                       #{}
                       (into #{}
                             (filter (fn [^String s] (> (.length s) 0))
-                                    (map #(SU/strim %)
+                                    (map #(strim %)
                                          (seq (StringUtils/split endorsed ",;"))) ) )) ]
             ;; need this to prevent deadlocks amongst pods
             ;; when there are dependencies
             ;; TODO: need to handle this better
             (doseq [ [k v] (seq* apps) ]
-              (let [ r (-> (CU/new-random) (.nextInt 6)) ]
+              (let [ r (-> (new-random) (.nextInt 6)) ]
                 (if (maybe-start-pod this cs v)
-                  (PU/safe-wait (* 1000 (Math/max (int 1) r))))))) )
+                  (safe-wait (* 1000 (Math/max (int 1) r))))))) )
 
         (stop [this]
           (let [ cs (.mm-g impl K_CONTAINERS) ]
@@ -203,8 +201,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn make-podmeta "" [app ver parObj podType appid pathToPOD]
-  (let [ pid (str podType "#" (SN/next-long))
-         impl (CU/make-mmap) ]
+  (let [ pid (str podType "#" (next-long))
+         impl (make-mmap) ]
     (info "PODMeta: " app ", " ver ", " podType ", " appid ", " pathToPOD )
     (with-meta
       (reify
@@ -243,7 +241,7 @@
          rcl (.getf ctx K_ROOT_CZLR)
          ^URL url (.srcUrl ^comzotohcljc.hhh.impl.defaults.PODMeta co)
          cl  (AppClassLoader. rcl) ]
-    (.configure cl (CU/nice-fpath (File. (.toURI  url))) )
+    (.configure cl (nice-fpath (File. (.toURI  url))) )
     (.setf! ctx K_APP_CZLR cl)))
 
 (defmethod comp-compose :czc.hhh.impl/Kernel
@@ -257,7 +255,7 @@
     (precondDir base)
     ;;(precondDir (maybeDir ctx K_PODSDIR))
     (precondDir (maybeDir ctx K_PLAYDIR))
-    (MI/setup-cache (-> (File. base (str DN_CFG "/app/mime.properties"))
+    (setup-cache (-> (File. base (str DN_CFG "/app/mime.properties"))
                       (.toURI)(.toURL )))
     (comp-clone-context co ctx)))
 

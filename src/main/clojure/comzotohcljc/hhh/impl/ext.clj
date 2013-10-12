@@ -43,8 +43,7 @@
 (import '(com.zotoh.wflow Pipeline))
 
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-
+(use '[clojure.tools.logging :only [info warn error debug] ])
 ;;(use '[comzotohcljc.hhh.io.core :only (make-emitter)])
 (use '[comzotohcljc.hhh.io.core :rename {enabled? io-enabled?} ])
 (use '[comzotohcljc.hhh.io.loops])
@@ -55,7 +54,6 @@
 (use '[comzotohcljc.hhh.io.netty])
 (use '[comzotohcljc.hhh.io.socket])
 (use '[comzotohcljc.hhh.mvc.handler])
-
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.impl.defaults
        :rename {enabled? blockmeta-enabled?
@@ -64,21 +62,18 @@
 (use '[comzotohcljc.hhh.etc.misc])
 (use '[comzotohcljc.hhh.core.sys])
 
-(use '[comzotohcljc.util.core :only (MuObj) ] )
-
-(require '[ comzotohcljc.util.scheduler :as SC])
-(require '[ comzotohcljc.util.process :as PU ] )
-(require '[ comzotohcljc.util.core :as CU ] )
-(require '[ comzotohcljc.util.seqnum :as SN ] )
-(require '[ comzotohcljc.util.str :as SU ] )
-(require '[ comzotohcljc.util.meta :as MU ] )
-(require '[ comzotohcljc.crypto.codec :as CE] )
-(require '[ comzotohcljc.dbio.connect :as DC ] )
-(require '[ comzotohcljc.dbio.core :as DB ] )
-
-(require '[ comzotohcljc.net.rts :as RO])
-
-(require '[clojure.data.json :as JS])
+(use '[comzotohcljc.util.core :only [MuObj make-mmap] ])
+(use '[ comzotohcljc.util.scheduler :only [make-scheduler] ])
+(use '[ comzotohcljc.util.process :only [coroutine] ])
+(use '[ comzotohcljc.util.core :only [load-javaprops] ])
+(use '[ comzotohcljc.util.seqnum :only [next-long] ])
+(use '[ comzotohcljc.util.str :only [hgl? nsb strim nichts?] ])
+(use '[ comzotohcljc.util.meta :only [make-obj] ])
+(use '[ comzotohcljc.crypto.codec :only [pwdify] ])
+(use '[ comzotohcljc.dbio.connect :only [dbio-connect] ])
+(use '[ comzotohcljc.dbio.core :only [make-jdbc make-MetaCache make-db-pool make-Schema] ])
+(use '[ comzotohcljc.net.rts :only [load-routes] ])
+(require '[clojure.data.json :as json])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -94,8 +89,8 @@
   (dispose [_] ))
 
 (defn- make-job "" ^Scope [_container evt]
-  (let [ impl (CU/make-mmap)
-         jid (SN/next-long) ]
+  (let [ impl (make-mmap)
+         jid (next-long) ]
     (with-meta
       (reify
 
@@ -123,7 +118,7 @@
 
 (defn- make-jobcreator ""
   ^comzotohcljc.hhh.impl.ext.JobCreator [parObj]
-  (let [ impl (CU/make-mmap) ]
+  (let [ impl (make-mmap) ]
     (info "about to synthesize a job-creator...")
     (with-meta
       (reify
@@ -137,7 +132,7 @@
                  c1 (:router options)
                  job (make-job parObj evt) ]
             (try
-              (let [ p (Pipeline. job (if (SU/hgl? c0) c0 c1))
+              (let [ p (Pipeline. job (if (hgl? c0) c0 c1))
                      q (if (nil? p) (make-OrphanFlow job) p) ]
                 (.start ^Pipeline q))
               (catch Throwable e#
@@ -162,8 +157,8 @@
   (let [ eid (.id bk)
          ^comzotohcljc.hhh.core.sys.Element
          obj (if (= :czc.hhh.io/JettyIO eid)
-               (make-servlet-emitter container)
-               (make-emitter container eid nm))
+               (makeServletEmitter container)
+               (makeEmitter container eid nm))
          pkey (.getAppKey ^Container container)
          hid (:handler cfg)
          mm (meta obj) ]
@@ -181,12 +176,12 @@
 (defn- getDBAPI? ^DBAPI [^String gid cfg ^String pkey mcache]
   (let [ ^Map c (.get (DBIOLocal/getCache))
          mkey (str "jdbc." (name gid))
-         jdbc (DB/make-jdbc mkey cfg
-                            (CE/pwdify (:passwd cfg) pkey)) ]
+         jdbc (make-jdbc mkey cfg
+                            (pwdify (:passwd cfg) pkey)) ]
     (when-not (.containsKey c mkey)
-      (let [ p (DB/make-db-pool jdbc {} ) ]
+      (let [ p (make-db-pool jdbc {} ) ]
         (.put c mkey p)))
-    (DC/dbio-connect jdbc mcache {})))
+    (dbio-connect jdbc mcache {})))
 
 (defn- maybeGetDBAPI [^comzotohcljc.hhh.core.sys.Element co ^String gid]
   (let [ pkey (.getAppKey ^Container co)
@@ -206,7 +201,7 @@
       (.dispose sc))))
 
 (defn- make-app-container [pod]
-  (let [ impl (CU/make-mmap) ]
+  (let [ impl (make-mmap) ]
     (info "about to create an app-container...")
     (with-meta
       (reify
@@ -319,9 +314,9 @@
 
         (reifyOneService [this nm cfg]
           (let [ ^ComponentRegistry srg (.mm-g impl K_SVCS)
-                 svc (SU/nsb (:service cfg))
+                 svc (nsb (:service cfg))
                  b (:enabled cfg) ]
-            (if-not (or (false? b) (SU/nichts? svc))
+            (if-not (or (false? b) (nichts? svc))
               (let [ s (reifyService this svc nm cfg) ]
                 (.reg srg s)))))
 
@@ -348,7 +343,7 @@
     (comp-contextualize c ctx)
     (comp-configure c ps)
     (if (.enabled? ^comzotohcljc.hhh.impl.ext.ContainerAPI c)
-      (do (PU/coroutine (fn []
+      (do (coroutine (fn []
                           (do
                             (comp-initialize c)
                             (.start ^Startable c))) cl) c)
@@ -361,11 +356,11 @@
   (let [ ^File appDir (K_APPDIR props)
          cfgDir (File. appDir ^String DN_CONF)
          srg (make-component-registry :EventSources K_SVCS "1.0" co)
-         mf (CU/load-javaprops (File. appDir ^String MN_FILE))
-         envConf (JS/read-str (FileUtils/readFileToString
+         mf (load-javaprops (File. appDir ^String MN_FILE))
+         envConf (json/read-str (FileUtils/readFileToString
                                 (File. cfgDir "env.conf"))
                               :key-fn keyword)
-         appConf (JS/read-str (FileUtils/readFileToString
+         appConf (json/read-str (FileUtils/readFileToString
                                 (File. cfgDir "app.conf"))
                               :key-fn keyword) ]
     ;;WebPage.setup(new File(appDir))
@@ -412,7 +407,7 @@
     (info "initialized plugin: " v)))
 
 (defn- doOnePlugin ^Plugin [co ^String v ^File appDir env app]
-  (let [ ^PluginFactory pf (MU/make-obj v)
+  (let [ ^PluginFactory pf (make-obj v)
          ^Plugin p (if (instance? PluginFactory pf)
              (.createPlugin pf)
              nil) ]
@@ -433,13 +428,13 @@
   (let [ ^File appDir (.getAttr co K_APPDIR)
          env (.getAttr co K_ENVCONF)
          app (.getAttr co K_APPCONF)
-         ^String dmCZ (SU/nsb (:data-model app))
+         ^String dmCZ (nsb (:data-model app))
          ^Properties mf (.getAttr co K_MFPROPS)
-         mCZ (SU/strim (.get mf "Main-Class"))
+         mCZ (strim (.get mf "Main-Class"))
          reg (.getAttr co K_SVCS)
          jc (make-jobcreator co)
          ^comzotohcljc.util.scheduler.SchedulerAPI
-         sc (SC/make-scheduler co)
+         sc (make-scheduler co)
          cfg (:container env) ]
 
     ;; handle the plugins
@@ -453,19 +448,19 @@
 
     ;; build the user data-models or create a default one.
     (info "application data-model schema-class: " dmCZ )
-    (.setAttr! co K_MCACHE (DB/make-MetaCache
-                             (if (SU/hgl? dmCZ)
-                               (let [ sc (MU/make-obj dmCZ) ]
+    (.setAttr! co K_MCACHE (make-MetaCache
+                             (if (hgl? dmCZ)
+                               (let [ sc (make-obj dmCZ) ]
                                  (when-not (instance? Schema sc)
                                    (throw (ConfigError. (str "Invalid Schema Class " dmCZ))))
                                  sc)
-                               (DB/make-Schema [])) ))
+                               (make-Schema [])) ))
 
-    (when (SU/nichts? mCZ) (warn "no main-class defined."))
-    ;;(CU/test-nestr "Main-Class" mCZ)
+    (when (nichts? mCZ) (warn "no main-class defined."))
+    ;;(test-nestr "Main-Class" mCZ)
 
-    (when (SU/hgl? mCZ)
-      (let [ obj (MU/make-obj mCZ) ]
+    (when (hgl? mCZ)
+      (let [ obj (make-obj mCZ) ]
         (cond
           (satisfies? CljAppMain obj)
           (doCljApp co app obj)
@@ -478,8 +473,8 @@
     (let [ sf (File. appDir (str DN_CONF "/static-routes.conf"))
            rf (File. appDir (str DN_CONF "/routes.conf")) ]
       (.setAttr! co :routes
-        (vec (concat (if (.exists sf) (RO/load-routes sf) [] )
-                     (if (.exists rf) (RO/load-routes rf) [] ))) ))
+        (vec (concat (if (.exists sf) (load-routes sf) [] )
+                     (if (.exists rf) (load-routes rf) [] ))) ))
 
     (let [ svcs (:services env) ]
       (if (empty? svcs)

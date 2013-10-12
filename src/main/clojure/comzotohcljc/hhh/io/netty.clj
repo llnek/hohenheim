@@ -28,7 +28,7 @@
 (import '(javax.net.ssl SSLContext))
 (import '(io.netty.handler.codec.http
   HttpRequest HttpResponse CookieDecoder ServerCookieEncoder
-  DefaultHttpResponse HttpVersion HttpHeaders
+  DefaultHttpResponse HttpVersion HttpHeaders LastHttpContent
   HttpHeaders Cookie QueryStringDecoder))
 (import '(io.netty.channel Channel))
 (import '(io.netty.channel.group
@@ -184,7 +184,8 @@
                       nil))
                     (seq cks))))
 
-        (isKeepAlive [_] (HttpHeaders/isKeepAlive req))
+        (isKeepAlive [_] false)
+          ;;(HttpHeaders/isKeepAlive req))
 
         (hasData [_] (notnil? xdata))
         (data [_] xdata)

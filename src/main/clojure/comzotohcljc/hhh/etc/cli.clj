@@ -18,7 +18,7 @@
        :author "kenl" }
   comzotohcljc.hhh.etc.cli )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
+(use '[clojure.tools.logging :only [info warn error debug] ])
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(org.apache.commons.io.filefilter
   FileFileFilter FileFilterUtils))
@@ -27,11 +27,10 @@
 (import '(java.util UUID))
 (import '(java.io File))
 
-(require '[comzotohcljc.util.files :as FS])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.ini :as WI])
+(use '[comzotohcljc.util.files :only [unzip] ])
+(use '[comzotohcljc.util.core :only [uid is-windows?] ])
+(use '[comzotohcljc.util.ini :only [parse-inifile] ])
 (require '[clojure.data.json :as json])
-
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.etc.task])
 
@@ -53,7 +52,7 @@
 (defn runAppBg "" [^File hhhHome bg]
   (let [ prog2 (.getCanonicalPath (File. hhhHome "bin/hohenheim.bat"))
          prog (.getCanonicalPath (File. hhhHome "bin/hohenheim"))
-         pj (if (CU/is-windows?)
+         pj (if (is-windows?)
               (make-ExecTask "cmd.exe" hhhHome
                              [ "/C" "start" "/B" "/MIN" prog2 "start" ])
               (make-ExecTask prog hhhHome [ "start" "bg" ])) ]
@@ -80,7 +79,7 @@
     (debug "Unzipping demo pod: " demoId)
     (when (.exists fp)
       (.mkdirs dest)
-      (FS/unzip fp dest))))
+      (unzip fp dest))))
 
 (defn createSamples "Unzip all samples." [^File hhhHome]
   (let [ top (File. hhhHome (str "docs/samples"))
@@ -92,7 +91,7 @@
 
 (defn- post-create-app "" [^File hhhHome appId ^String appDomain]
   (let [ appDir (File. hhhHome (str "apps/" appId))
-         h2db (str (if (CU/is-windows?) "/c:/temp/" "/tmp/") (CU/uid))
+         h2db (str (if (is-windows?) "/c:/temp/" "/tmp/") (uid))
          appDomainPath (.replace appDomain "." "/") ]
     (-> (File. h2db) (.mkdirs))
     (with-local-vars [ fp nil ]
@@ -210,7 +209,7 @@
                             :key-fn keyword)
          appDir (File. hhhHome (str "apps/" appId))
          wlib (doto (File. appDir "public/vendors") (.mkdirs))
-         hf (WI/parse-inifile (File. hhhHome (str DN_CONF "/" (name K_PROPS))))
+         hf (parse-inifile (File. hhhHome (str DN_CONF "/" (name K_PROPS))))
          wlg (.optString hf "webdev" "lang" "coffee")
          buf (StringBuilder.)
          appDomainPath (.replace appDomain "." "/") ]

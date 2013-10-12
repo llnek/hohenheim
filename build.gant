@@ -712,8 +712,8 @@ def clj_Crypto() {
         classpathref: 'compilePathId') {
     sysproperty (key: 'clojure.compile.warn-on-reflection', value: true)
     sysproperty (key: 'clojure.compile.path', value: "${buildDir}")
-    arg (value: 'comzotohcljc.crypto.core')
     arg (value: 'comzotohcljc.crypto.codec')
+    arg (value: 'comzotohcljc.crypto.core')
     arg (value: 'comzotohcljc.crypto.stores')
     arg (value: 'comzotohcljc.crypto.ssl')
   }

@@ -143,6 +143,10 @@
   (if (and doit (notnil? cf))
     (.addListener cf ChannelFutureListener/CLOSE)))
 
+(defn wwrite "Write object." [^Channel ch obj]
+  ;; had to do this to work-around reflection warnings :(
+  (NetUtils/writeOnly ch obj))
+
 (defn wflush "Write object and then flush." [^Channel ch obj]
   ;; had to do this to work-around reflection warnings :(
   (NetUtils/wrtFlush ch obj))
@@ -306,7 +310,8 @@
         (.toUpperCase))
       uri
       (:is-chunked m1)
-      (:keep-alive m1) (:clen m1) (:headers m1) params)))
+      (:keep-alive m1)
+      (:clen m1) (:headers m1) params)))
 
 (defn- nioExtractRes "Extract info from response."
   ^comzotohcljc.net.comms.HTTPMsgInfo

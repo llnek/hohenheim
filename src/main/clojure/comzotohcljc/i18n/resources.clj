@@ -32,13 +32,13 @@
 
 (defmulti load-resource "Load properties file with localized strings." class)
 
-(defmethod load-resource File ""
+(defmethod load-resource File
   ^ResourceBundle
   [^File aFile]
   (load-resource (-> aFile (.toURI) (.toURL))))
 
-(defmethod load-resource URL ""
-  ^ResourceBundle 
+(defmethod load-resource URL
+  ^ResourceBundle
   [^URL url]
   (with-open [ inp (.openStream url) ]
     (PropertyResourceBundle. inp)))

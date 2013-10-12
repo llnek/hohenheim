@@ -152,7 +152,7 @@
         (let [ pkey (.mm-g impl :appKey)
                cfg (get (.mm-g impl :cfg) (keyword "_"))
                j (make-jdbc (uid) cfg (pwdify (:passwd cfg) pkey)) ]
-          (apply-authPlugin-ddl j)
+          (applyAuthPluginDDL j)
           (init-shiro (.mm-g impl :appDir)
                       (.mm-g impl :appKey))))
       (start [_]
@@ -186,11 +186,11 @@
         (cond
           (= "init-db" cmd)
           (let []
-            (apply-authPlugin-ddl j))
+            (applyAuthPluginDDL j))
 
           (= "gen-sql" cmd)
           (if (> (count args) 3)
-            (export-authPlugin-ddl t (File. ^String (nth args 3))))
+            (exportAuthPluginDDL t (File. ^String (nth args 3))))
 
           :else
           nil)) )))

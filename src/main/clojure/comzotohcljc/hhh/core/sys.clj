@@ -22,8 +22,7 @@
 (import '(com.zotoh.frwk.core
   Hierarchial Identifiable Versioned))
 
-(use '[comzotohcljc.util.core :only (MuObj)])
-(require '[comzotohcljc.util.core :as CU])
+(use '[comzotohcljc.util.core :only [MuObj make-mmap] ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -75,7 +74,7 @@
 
 
 (defn make-context "" ^comzotohcljc.util.core.MuObj []
-  (let [ impl (CU/make-mmap) ]
+  (let [ impl (make-mmap) ]
     (reify MuObj
       (setf! [_ k v] (.mm-s impl k v) )
       (seq* [_] (seq (.mm-m* impl)))

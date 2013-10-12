@@ -18,7 +18,7 @@
        :author "kenl" }
   comzotohcljc.hhh.mvc.tpls)
 
-(import '(io.netty.handler.codec.http 
+(import '(io.netty.handler.codec.http
   HttpMethod HttpHeaders HttpResponseStatus
   HttpRequest HttpResponse))
 (import '(io.netty.handler.stream
@@ -26,18 +26,18 @@
 (import '(io.netty.channel Channel))
 
 (import '(org.apache.commons.io FileUtils))
-(import '(com.zotoh.hohenheim.mvc 
+(import '(com.zotoh.hohenheim.mvc
   WebContent WebAsset
   HTTPRangeInput AssetCache))
 (import '(java.io RandomAccessFile File))
 (import '(java.util HashMap))
 (import '(com.zotoh.frwk.net NetUtils))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-(require '[comzotohcljc.netty.comms :as NE])
-(require '[comzotohcljc.util.mime :as MM])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.io :as IO])
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.netty.comms :only [wflush closeCF] ])
+(use '[comzotohcljc.util.mime :only [guess-contenttype] ])
+(use '[comzotohcljc.util.core :only [Try! notnil? nice-fpath] ])
+(use '[comzotohcljc.util.io :only [streamify] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -52,12 +52,12 @@
   (let [ f (File. appDir fname) ]
     (if (.canRead f)
       (make-webcontent
-        (MM/guess-contenttype f "utf-8")
+        (guess-contenttype f "utf-8")
         (FileUtils/readFileToByteArray f))
       nil)))
 
 (defn- maybeCache [^File fp]
-  (let [ ^String fpath (.toLowerCase (CU/nice-fpath fp)) ]
+  (let [ ^String fpath (.toLowerCase (nice-fpath fp)) ]
     (or (.endsWith fpath ".css")
         (.endsWith fpath ".gif")
         (.endsWith fpath ".jpg")
@@ -66,7 +66,7 @@
         (.endsWith fpath ".js"))))
 
 (defn- make-web-asset [^File file]
-  (let [ ct (MM/guess-contenttype file "utf-8" "text/plain")
+  (let [ ct (guess-contenttype file "utf-8" "text/plain")
          ts (.lastModified file)
          bits (FileUtils/readFileToByteArray file) ]
     (reify
@@ -93,7 +93,7 @@
 
 (defn- getAsset [^File file]
   (let [ cache (AssetCache/get)
-         fp (CU/nice-fpath file)
+         fp (nice-fpath file)
          ^WebAsset wa (.get cache fp)
          ^File cf (if (nil? wa) nil (.getFile wa)) ]
     (if (or (nil? cf)
@@ -123,14 +123,14 @@
     (with-local-vars [raf nil clen 0 inp nil ct ""]
       (if (nil? asset)
         (do
-          (var-set ct (MM/guess-contenttype file "utf-8" "text/plain"))
+          (var-set ct (guess-contenttype file "utf-8" "text/plain"))
           (var-set raf (RandomAccessFile. file "r"))
           (var-set clen (.length ^RandomAccessFile @raf))
           (var-set inp (getFileInput @raf @ct req rsp)))
         (do
           (var-set ct (.contentType asset))
           (var-set clen (.size asset))
-          (var-set inp (ChunkedStream. (IO/streamify (.getBytes asset))))) )
+          (var-set inp (ChunkedStream. (streamify (.getBytes asset))))) )
       (debug "serving file: " (.getName file)
              " with clen= " @clen
              ", ctype= " @ct)
@@ -141,19 +141,19 @@
         (HttpHeaders/setHeader rsp "Content-Type" @ct)
         (if (= (.getMethod req) HttpMethod/HEAD)
           (try
-            (NE/wflush ch rsp)
+            (wflush ch rsp)
             (finally
-              (CU/Try! (when (CU/notnil? @raf)(.close ^RandomAccessFile @raf)))
+              (Try! (when (notnil? @raf)(.close ^RandomAccessFile @raf)))
               (var-set raf nil)))
-          (NE/closeCF
+          (closeCF
             (not (HttpHeaders/isKeepAlive req))
             (do
-              (NE/wflush ch rsp)
-              (NE/wflush ch @inp))) )
+              (wflush ch rsp)
+              (wflush ch @inp))) )
         (catch Throwable e#
           (error e# "")
-          (CU/Try! (when (CU/notnil? @raf)(.close ^RandomAccessFile @raf)))
-          (CU/Try! (NetUtils/closeChannel ch))) ) )) )
+          (Try! (when (notnil? @raf)(.close ^RandomAccessFile @raf)))
+          (Try! (NetUtils/closeChannel ch))) ) )) )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

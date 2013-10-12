@@ -19,8 +19,6 @@
 
   comzotohcljc.hhh.etc.cmdline )
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(com.zotoh.hohenheim.etc CmdHelpError))
 (import '(org.apache.commons.io FileUtils))
@@ -28,17 +26,20 @@
 (import '(java.io File))
 (import '(com.zotoh.frwk.io IOUtils))
 
-(require '[comzotohcljc.hhh.core.climain :as CLI])
-(require '[comzotohcljc.hhh.etc.cli :as CI])
-(require '[comzotohcljc.i18n.resources :as RC])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.dates :as DU])
-(require '[comzotohcljc.util.meta :as MU])
-(require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.cmdline :as CQ])
-(require '[comzotohcljc.crypto.codec :as CE])
-(require '[comzotohcljc.crypto.core :as CC])
-
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.hhh.core.climain :only [start-main] ])
+(use '[comzotohcljc.hhh.etc.cli
+       :only [createWeb createJetty createBasic
+              antBuildApp bundleApp runAppBg
+              createSamples createDemo] ])
+(use '[comzotohcljc.i18n.resources :only [get-string] ])
+(use '[comzotohcljc.util.core :only [nice-fpath is-windows? flatten-nil conv-long rc-str] ])
+(use '[comzotohcljc.util.dates :only [add-months make-cal] ])
+(use '[comzotohcljc.util.meta :only [] ])
+(use '[comzotohcljc.util.str :only [nsb hgl? strim] ])
+(use '[comzotohcljc.util.cmdline :only [make-CmdSeqQ cli-converse] ])
+(use '[comzotohcljc.crypto.codec :only [create-strong-pwd pwdify] ])
+(use '[comzotohcljc.crypto.core :only [assert-jce PEM_CERT make-ssv1PKCS12 make-csrreq] ])
 (use '[comzotohcljc.hhh.core.constants])
 
 
@@ -53,7 +54,7 @@
 (defn- getHomeDir ^File [] *HOHENHEIM-HOME-DIR*)
 
 (defn- getBuildFilePath ^String []
-  (CU/nice-fpath (File. (File. (getHomeDir) (str DN_CFG "/app")) "ant.xml")))
+  (nice-fpath (File. (File. (getHomeDir) (str DN_CFG "/app")) "ant.xml")))
 
 (defn- onCreateApp [ & args]
   (let [ hhh (getHomeDir)
@@ -68,9 +69,9 @@
     (if (nil? id)
       (throw (CmdHelpError.))
       (case (nth args 1)
-        ("mvc" "web") (CI/createWeb hhh id app)
-        "jetty" (CI/createJetty hhh id app)
-        "basic" (CI/createBasic hhh id app)
+        ("mvc" "web") (createWeb hhh id app)
+        "jetty" (createJetty hhh id app)
+        "basic" (createBasic hhh id app)
         (throw (CmdHelpError.)))) ))
 
 (defn- onCreate [ & args]
@@ -82,27 +83,27 @@
   (if (>= (count args) 2)
     (let [ appId (nth args 1)
            taskId (if (> (count args) 2) (nth args 2) "devmode") ]
-      (CI/antBuildApp (getHomeDir) appId taskId))
+      (antBuildApp (getHomeDir) appId taskId))
     (throw (CmdHelpError.))))
 
 (defn- onPodify [ & args]
   (if (> (count args) 1)
-    (CI/bundleApp (getHomeDir) (nth args 1))
+    (bundleApp (getHomeDir) (nth args 1))
     (throw (CmdHelpError.))))
 
 (defn- onTest [ & args]
   (if (> (count args) 1)
-    (CI/antBuildApp (getHomeDir) (nth args 1) "test")
+    (antBuildApp (getHomeDir) (nth args 1) "test")
     (throw (CmdHelpError.))))
 
 (defn- onStart [ & args]
   (let [ s2 (if (> (count args) 1) (nth args 1) "") ]
     (cond
-      (and (= s2 "bg") (CU/is-windows?))
-      (CI/runAppBg (getHomeDir) true)
+      (and (= s2 "bg") (is-windows?))
+      (runAppBg (getHomeDir) true)
 
       :else
-      (CLI/start-main (CU/nice-fpath (getHomeDir))))))
+      (start-main (nice-fpath (getHomeDir))))))
 
 (defn- onDebug [ & args]
   (onStart args))
@@ -111,50 +112,50 @@
   (if (> (count args) 1)
     (let [ s (nth args 1) h (getHomeDir) ]
       (if (= "samples" s)
-        (CI/createSamples h)
-        (CI/createDemo h s)))
+        (createSamples h)
+        (createDemo h s)))
     (throw (CmdHelpError.))))
 
 (defn- generatePassword [len]
-  (println (SU/nsb (CE/create-strong-pwd len))))
+  (println (nsb (create-strong-pwd len))))
 
 (defn- make-csr-qs [^ResourceBundle rcb]
   { "fname"
-    (CQ/make-CmdSeqQ "fname" (RC/get-string rcb "cmd.save.file")
+    (make-CmdSeqQ "fname" (get-string rcb "cmd.save.file")
                    "" "csr-req" true
                    (fn [a ^Properties ps] (do (.put ps "fn" a) "")))
 
     "size"
-    (CQ/make-CmdSeqQ "size" (RC/get-string rcb "cmd.key.size")
+    (make-CmdSeqQ "size" (get-string rcb "cmd.key.size")
                    "" "1024" true
                    (fn [a ^Properties ps] (do (.put ps "size" a) "fname")))
     "c"
-    (CQ/make-CmdSeqQ "c" (RC/get-string rcb "cmd.dn.c")
+    (make-CmdSeqQ "c" (get-string rcb "cmd.dn.c")
                    "" "US" true
                    (fn [a ^Properties ps] (do (.put ps "c" a) "size")))
 
     "st"
-    (CQ/make-CmdSeqQ "st" (RC/get-string rcb "cmd.dn.st")
+    (make-CmdSeqQ "st" (get-string rcb "cmd.dn.st")
                    "" "" true
                    (fn [a ^Properties ps] (do (.put ps "st" a) "c")))
 
     "loc"
-    (CQ/make-CmdSeqQ "loc" (RC/get-string rcb "cmd.dn.loc")
+    (make-CmdSeqQ "loc" (get-string rcb "cmd.dn.loc")
                    "" "" true
                    (fn [a ^Properties ps] (do (.put ps "l" a) "st")))
 
     "o"
-    (CQ/make-CmdSeqQ "o" (RC/get-string rcb "cmd.dn.org")
+    (make-CmdSeqQ "o" (get-string rcb "cmd.dn.org")
                    "" "" true
                    (fn [a ^Properties ps] (do (.put ps "o" a) "loc")))
 
     "ou"
-    (CQ/make-CmdSeqQ "ou" (RC/get-string rcb "cmd.dn.ou")
+    (make-CmdSeqQ "ou" (get-string rcb "cmd.dn.ou")
                    "" "" true
                    (fn [a ^Properties ps] (do (.put ps "ou" a) "o")))
 
     "cn"
-    (CQ/make-CmdSeqQ "cn" (RC/get-string rcb "cmd.dn.cn")
+    (make-CmdSeqQ "cn" (get-string rcb "cmd.dn.cn")
                    "" "" true
                    (fn [a ^Properties ps] (do (.put ps "cn" a) "ou")))
   } )
@@ -163,22 +164,22 @@
 
   {
     "fname"
-    (CQ/make-CmdSeqQ "fname" (RC/get-string rcb "cmd.save.file")
+    (make-CmdSeqQ "fname" (get-string rcb "cmd.save.file")
                      "" "test.p12" true
                      (fn [a ^Properties ps] (do (.put ps "fn" a) "")))
 
     "pwd"
-    (CQ/make-CmdSeqQ "pwd" (RC/get-string rcb "cmd.key.pwd")
+    (make-CmdSeqQ "pwd" (get-string rcb "cmd.key.pwd")
                      "" "" true
                      (fn [a ^Properties ps] (do (.put ps "pwd" a) "fname")))
 
     "duration"
-    (CQ/make-CmdSeqQ "duration" (RC/get-string rcb "cmd.key.duration")
+    (make-CmdSeqQ "duration" (get-string rcb "cmd.key.duration")
                      "" "12" true
                      (fn [a ^Properties ps] (do (.put ps "months" a) "pwd")))
 
     "size"
-    (CQ/make-CmdSeqQ "size" (RC/get-string rcb "cmd.key.size")
+    (make-CmdSeqQ "size" (get-string rcb "cmd.key.size")
                    "" "1024" true
                    (fn [a ^Properties ps] (do (.put ps "size" a) "duration")))
 
@@ -188,41 +189,41 @@
 (defn- keyfile []
   (let [ csr (make-csr-qs *HOHENHEIM-RSBUNDLE*)
          k (merge csr (make-key-qs *HOHENHEIM-RSBUNDLE*))
-         rc (CQ/cli-converse k "cn") ]
+         rc (cli-converse k "cn") ]
     (when-not (nil? rc)
-      (let [ dn (clojure.string/join "," (CU/flatten-nil (map (fn [k]
+      (let [ dn (clojure.string/join "," (flatten-nil (map (fn [k]
                                    (let [ v (get rc k) ]
-                                     (if (SU/hgl? v)
+                                     (if (hgl? v)
                                       (str (.toUpperCase (name k)) "=" v)
                                      nil)))
                                    [ :c :st :l :o :ou :cn ])) )
              ff (File. ^String (:fn rc))
              now (Date.) ]
         (println (str "DN entered: " dn))
-        (CC/make-ssv1PKCS12
+        (make-ssv1PKCS12
           now
-          (.getTime (DU/add-months (DU/make-cal now) (CU/conv-long (:months rc) 12)))
+          (.getTime (add-months (make-cal now) (conv-long (:months rc) 12)))
           dn
-          (CE/pwdify (:pwd rc))
-          (CU/conv-long (:size rc) 1024)
+          (pwdify (:pwd rc))
+          (conv-long (:size rc) 1024)
           ff)
         (println (str "Wrote file: " ff))))))
 
 
         (defn- csrfile []
   (let [ csr (make-csr-qs *HOHENHEIM-RSBUNDLE*)
-         rc (CQ/cli-converse csr "cn") ]
+         rc (cli-converse csr "cn") ]
     (when-not (nil? rc)
-      (let [ dn (clojure.string/join "," (CU/flatten-nil (map (fn [k]
+      (let [ dn (clojure.string/join "," (flatten-nil (map (fn [k]
                                    (let [ v (get rc k) ]
-                                     (if (SU/hgl? v)
+                                     (if (hgl? v)
                                       (str (.toUpperCase (name k)) "=" v)
                                      nil)))
                                    [ :c :st :l :o :ou :cn ])) )
-             [req pkey] (CC/make-csrreq
-                          (CU/conv-long (:size rc) 1024)
+             [req pkey] (make-csrreq
+                          (conv-long (:size rc) 1024)
                           dn
-                          CC/PEM_CERT ) ]
+                          PEM_CERT ) ]
         (println (str "DN entered: " dn))
         (let [ ff (File. (str (:fn rc) ".key")) ]
           (FileUtils/writeByteArrayToFile ff pkey)
@@ -243,7 +244,7 @@
       (throw (CmdHelpError.)))))
 
 (defn- genHash [text]
-  (let [ ^comzotohcljc.crypto.codec.Password p (CE/pwdify text) ]
+  (let [ ^comzotohcljc.crypto.codec.Password p (pwdify text) ]
     (println (.hashed p))))
 
 (defn- onHash [ & args]
@@ -252,7 +253,7 @@
     (throw (CmdHelpError.))))
 
 (defn- encrypt [pkey text]
-  (let [ ^comzotohcljc.crypto.codec.Password p (CE/pwdify text pkey) ]
+  (let [ ^comzotohcljc.crypto.codec.Password p (pwdify text pkey) ]
     (println (.encoded p))))
 
 (defn- onEncrypt [ & args]
@@ -261,7 +262,7 @@
     (throw (CmdHelpError.))))
 
 (defn- decrypt [pkey secret]
-  (let [ ^comzotohcljc.crypto.codec.Password p (CE/pwdify secret pkey) ]
+  (let [ ^comzotohcljc.crypto.codec.Password p (pwdify secret pkey) ]
     (println (.text p))))
 
 (defn- onDecrypt [ & args]
@@ -271,12 +272,12 @@
 
 (defn- onTestJCE [ & args]
   (do
-    (CC/assert-jce)
+    (assert-jce)
     (println "JCE is OK.")))
 
 (defn- onVersion [ & args]
   (let [ s (FileUtils/readFileToString (File. (getHomeDir) "VERSION") "utf-8") ]
-    (if (SU/hgl? s)
+    (if (hgl? s)
       (println s)
       (println "Unknown version."))))
 
@@ -289,7 +290,7 @@
     (doseq [ f (seq fs) ]
       (doto out
         (.append (str "<classpathentry  kind=\"lib\" path=\""
-                      (CU/nice-fpath f) "\"/>" ))
+                      (nice-fpath f) "\"/>" ))
         (.append sep)))))
 
 (defn- genEclipseProj [app]
@@ -301,19 +302,19 @@
     (.mkdirs ec)
     (FileUtils/cleanDirectory ec)
     (FileUtils/writeStringToFile (File. ec ".project")
-      (-> (CU/rc-str (str "com/zotoh/hohenheim/eclipse/" lang "/project.txt") "utf-8")
+      (-> (rc-str (str "com/zotoh/hohenheim/eclipse/" lang "/project.txt") "utf-8")
           (StringUtils/replace "${APP.NAME}" app)
           (StringUtils/replace (str "${" ulang ".SRC}")
-               (CU/nice-fpath (File. cwd (str "src/main/" lang))))
+               (nice-fpath (File. cwd (str "src/main/" lang))))
           (StringUtils/replace "${TEST.SRC}"
-               (CU/nice-fpath (File. cwd (str "src/test/" lang)))))
+               (nice-fpath (File. cwd (str "src/test/" lang)))))
       "utf-8")
     (scanJars (File. (getHomeDir) ^String DN_DIST) sb)
     (scanJars (File. (getHomeDir) ^String DN_LIB) sb)
     (scanJars (File. cwd ^String POD_CLASSES) sb)
     (scanJars (File. cwd ^String POD_LIB) sb)
     (FileUtils/writeStringToFile (File. ec ".classpath")
-      (-> (CU/rc-str (str "com/zotoh/hohenheim/eclipse/" lang "/classpath.txt") "utf-8")
+      (-> (rc-str (str "com/zotoh/hohenheim/eclipse/" lang "/classpath.txt") "utf-8")
           (StringUtils/replace "${CLASS.PATH.ENTRIES}" (.toString sb)))
       "utf-8")))
 

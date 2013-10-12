@@ -25,6 +25,7 @@
 (import '(io.netty.channel Channel ChannelFuture ChannelFutureListener))
 (import '(io.netty.handler.codec.http
   HttpResponse HttpHeaders HttpHeaders$Names HttpVersion
+  LastHttpContent
   ServerCookieEncoder DefaultHttpResponse))
 (import '(java.nio.channels ClosedChannelException))
 (import '(java.io OutputStream IOException))
@@ -46,7 +47,7 @@
   TextWebSocketFrame))
 
 (use '[clojure.tools.logging :only [info warn error debug] ])
-(use '[comzotohcljc.netty.comms :only [HTTP-CODES wflush makeHttpReply] ])
+(use '[comzotohcljc.netty.comms :only [HTTP-CODES wwrite wflush makeHttpReply] ])
 (use '[comzotohcljc.util.core :only [make-mmap stringify notnil? Try!] ])
 (use '[comzotohcljc.util.str :only [nsb] ])
 (use '[comzotohcljc.hhh.io.core])
@@ -158,10 +159,11 @@
               (TextWebSocketFrame. (nsb (stringify bits)))) ]
     (wflush ch f)))
 
-(defn- netty-reply [^comzotohcljc.util.core.MuObj res
-                    ^Channel ch
-                    ^HTTPEvent evt
-                    src]
+
+(defn- netty-reply "" [^comzotohcljc.util.core.MuObj res
+                       ^Channel ch
+                       ^HTTPEvent evt
+                       src]
   (let [ cks (cookiesToNetty (.getf res :cookies))
          code (.getf res :code)
          rsp (makeHttpReply code)
@@ -185,21 +187,16 @@
                               :else (XData. data))) ]
           (var-set clen (if (.hasContent dd) (.size dd) 0))
           (var-set xd dd)
-          (HttpHeaders/setContentLength rsp @clen)) )
-      (try
-          (let [ cf (wflush ch rsp) ]
-            (when (= @clen 0) (maybeClose evt cf)))
-        (catch ClosedChannelException e#
-          (warn "ClosedChannelException thrown while flushing headers"))
-        (catch Throwable t# (error t# "") ))
+          ))
+      (HttpHeaders/setContentLength rsp @clen)
+      (wwrite ch rsp)
       (when (> @clen 0)
-        (try
-          (maybeClose evt (wflush ch (ChunkedStream. (.stream ^XData @xd))))
-          (catch ClosedChannelException e#
-            (warn "ClosedChannelException thrown while flushing body"))
-          (catch Throwable t# (error t# "") )))
-      )))
+        (wwrite ch (ChunkedStream. (.stream ^XData @xd))))
+      (let [ ^ChannelFuture wf (wflush ch LastHttpContent/EMPTY_LAST_CONTENT) ]
+        (when-not (.isKeepAlive evt)
+          (.addListener wf ChannelFutureListener/CLOSE)))
 
+      )))
 
 (defn make-netty-trigger [^Channel ch evt src]
   (reify AsyncWaitTrigger

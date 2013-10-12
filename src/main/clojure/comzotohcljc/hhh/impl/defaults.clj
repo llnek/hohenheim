@@ -30,26 +30,24 @@
   ConfigError))
 (import '(java.io File))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-(use '[ comzotohcljc.util.core :only (MuObj) ] )
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[ comzotohcljc.util.core :only [MuObj] ] )
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.core.sys])
-
-(require '[ comzotohcljc.util.files :as FU ] )
-(require '[ comzotohcljc.util.core :as CU ] )
-(require '[ comzotohcljc.util.str :as SU ] )
+(use '[ comzotohcljc.util.files :only [file-read? dir-readwrite? ] ] )
+(use '[ comzotohcljc.util.core :only [test-cond make-mmap test-nestr] ] )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* false)
 
 (defn precondDir "" [d]
-  (CU/test-cond (str "Directory " d " must be read-writable.")
-                (FU/dir-readwrite? d)))
+  (test-cond (str "Directory " d " must be read-writable.")
+                (dir-readwrite? d)))
 
 (defn precondFile "" [f]
-  (CU/test-cond (str "File " f " must be readable.")
-                (FU/file-read? f)))
+  (test-cond (str "File " f " must be readable.")
+                (file-read? f)))
 
 (defn maybeDir "" ^File [^comzotohcljc.util.core.MuObj m kn]
   (let [ v (.getf m kn) ]
@@ -89,10 +87,10 @@
 
 (defn make-component-registry "" [regoType regoId ver parObj]
 
-  (let [ impl (CU/make-mmap) ]
-    (CU/test-cond "registry type" (keyword? regoType))
-    (CU/test-cond "registry id" (keyword? regoId))
-    (CU/test-nestr "registry version" ver)
+  (let [ impl (make-mmap) ]
+    (test-cond "registry type" (keyword? regoType))
+    (test-cond "registry id" (keyword? regoId))
+    (test-nestr "registry version" ver)
     (.mm-s impl :cache {} )
     (with-meta
       (reify

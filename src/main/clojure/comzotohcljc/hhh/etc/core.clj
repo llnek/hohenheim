@@ -20,17 +20,16 @@
   comzotohcljc.hhh.etc.core
   (:gen-class))
 
-(use '[clojure.tools.logging :only (info debug)])
-
-(require '[comzotohcljc.hhh.etc.cmdline :as CL])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.files :as FU])
-(require '[comzotohcljc.i18n.resources :as LU])
-
 (import '(com.zotoh.hohenheim.etc CmdHelpError))
 (import '(java.util Locale))
 (import '(java.io File))
+
+(use '[clojure.tools.logging :only [info debug] ])
+(use '[comzotohcljc.hhh.etc.cmdline :only [get-commands eval-command] ])
+(use '[comzotohcljc.util.core :only [test-cond] ])
+(use '[comzotohcljc.util.str :only [make-string] ])
+(use '[comzotohcljc.util.files :only [dir-read?] ])
+(use '[comzotohcljc.i18n.resources :only [get-resource] ])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -64,13 +63,13 @@
     (print (String/format fmt (into-array Object [k v]) ))))
 
 (defn- usage []
- (println (SU/make-string \= 78))
+ (println (make-string \= 78))
   (println "> hohenheim <commands & options>")
   (println "> -----------------")
   (drawHelpLines "> %-35s %s\n" CMDLINE-INFO)
   (println ">")
   (println "> help - show standard commands")
-  (println (SU/make-string \= 78))
+  (println (make-string \= 78))
   )
 
 
@@ -80,17 +79,17 @@
 ;;mkCZldrs(home)
 (defn- parseArgs [rcb & args]
   (let [ h (File. ^String (first args)) ]
-    (CU/test-cond (str "Cannot access Hohenheim home " h) (FU/dir-read? h))
-      (if (not (contains? (CL/get-commands) (keyword (nth args 1))))
+    (test-cond (str "Cannot access Hohenheim home " h) (dir-read? h))
+      (if (not (contains? (get-commands) (keyword (nth args 1))))
         false
-        (fn [] (apply CL/eval-command h rcb (drop 1 args))))))
+        (fn [] (apply eval-command h rcb (drop 1 args))))))
 
 (defn -main "Main Entry" [& args]
   ;;(debug "Hohenheim: Main Entry")
   ;; for security, don't just eval stuff
   ;;(alter-var-root #'*read-eval* (constantly false))
   (let [ rcpath (str "comzotohcljc/hhh/etc/Resources")
-         rcb (LU/get-resource rcpath (Locale/getDefault)) ]
+         rcb (get-resource rcpath (Locale/getDefault)) ]
     (if (< (count args) 2)
       (usage)
       (let [ rc (apply parseArgs rcb args) ]

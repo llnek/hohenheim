@@ -25,8 +25,6 @@
 (import '(com.zotoh.hohenheim.io IOEvent HTTPEvent HTTPResult))
 (import '(com.zotoh.frwk.core Startable))
 
-(require '[comzotohcljc.net.comms :as NC])
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Internal flows
 

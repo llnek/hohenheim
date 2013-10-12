@@ -26,13 +26,11 @@
 (import '(com.zotoh.hohenheim.io HTTPEvent IOSession Emitter))
 (import '(com.zotoh.hohenheim.core Container))
 
-(use '[clojure.tools.logging :only (info warn error debug)])
-(use '[comzotohcljc.util.core :only (MuObj) ])
-
-(require '[comzotohcljc.crypto.core :as CE])
-(require '[comzotohcljc.util.core :as CU])
-(require '[comzotohcljc.util.str :as SU])
-(require '[comzotohcljc.util.guids :as GU])
+(use '[clojure.tools.logging :only [info warn error debug] ])
+(use '[comzotohcljc.util.core :only [MuObj conv-long make-mmap bytesify] ])
+(use '[comzotohcljc.crypto.core :only [gen-mac] ])
+(use '[comzotohcljc.util.str :only [nsb hgl?] ])
+(use '[comzotohcljc.util.guids :only [new-uuid] ])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -61,27 +59,27 @@
 (defn- resurrect [^comzotohcljc.hhh.mvc.ios.WebSession mvs
                   ^HTTPEvent evt]
   (let [ ctr (.container ^Emitter (.emitter evt))
-         pkey (-> ctr (.getAppKey)(CU/bytesify))
+         pkey (-> ctr (.getAppKey)(bytesify))
          ck (.getCookie evt SESSION_COOKIE)
-         cookie (SU/nsb (if-not (nil? ck) (.getValue ck)))
+         cookie (nsb (if-not (nil? ck) (.getValue ck)))
          pos (.indexOf cookie (int \-))
          [rc1 rc2] (if (< pos 0)
                      ["" ""]
                      [(.substring cookie 0 pos)
                       (.substring cookie (+ pos 1) )] ) ]
-    (when (and (SU/hgl? rc1)
-             (SU/hgl? rc2)
-             (= (CE/gen-mac pkey rc2) rc1))
+    (when (and (hgl? rc1)
+               (hgl? rc2)
+               (= (gen-mac pkey rc2) rc1))
       (let [ ss (CoreUtils/splitNull (URLDecoder/decode rc2 "utf-8")) ]
         (doseq [ s (seq ss) ]
           (let [ [n v] (StringUtils/split ^String s ":") ]
             (.setAttribute mvs n v)))))
-    (let [ ts (SU/nsb (.getAttribute mvs TS_FLAG))
+    (let [ ts (nsb (.getAttribute mvs TS_FLAG))
            ^comzotohcljc.hhh.core.sys.Element
            netty (.emitter evt)
            idleSecs (.getAttr netty :cacheMaxAgeSecs)
-           expired (if (SU/hgl? ts)
-                     (< (CU/conv-long ts 0) (System/currentTimeMillis))
+           expired (if (hgl? ts)
+                     (< (conv-long ts 0) (System/currentTimeMillis))
                      (and (number? idleSecs) (> idleSecs 0))) ]
       (if (and expired (number? idleSecs) (> idleSecs 0))
         (.setAttribute mvs TS_FLAG (+ (System/currentTimeMillis)
@@ -92,8 +90,8 @@
 
 (defn make-ws-session []
   (let [ now (System/currentTimeMillis)
-         impl (CU/make-mmap) ]
-    (.mm-s impl SSID_FLAG (GU/new-uuid))
+         impl (make-mmap) ]
+    (.mm-s impl SSID_FLAG (new-uuid))
     (.mm-s impl :createTS now)
     (.mm-s impl :lastTS now)
     (.mm-s impl :valid false)
@@ -111,8 +109,8 @@
 
 (defn make-session []
   (let [ now (System/currentTimeMillis)
-         impl (CU/make-mmap) ]
-    (.mm-s impl SSID_FLAG (GU/new-uuid))
+         impl (make-mmap) ]
+    (.mm-s impl SSID_FLAG (new-uuid))
     (.mm-s impl :createTS now)
     (.mm-s impl :lastTS now)
     (.mm-s impl :valid false)
