@@ -46,7 +46,7 @@
 (use '[comzotohcljc.hhh.core.sys])
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.mvc.tpls :only [getLocalFile replyFileAsset] ])
-(use '[comzotohcljc.netty.comms :only [sendRedirect make-routeCracker
+(use '[comzotohcljc.netty.comms :only [sendRedirect makeRouteCracker
                                        wwrite
                                        makeHttpReply wflush closeCF] ])
 (use '[comzotohcljc.util.str :only [hgl? nsb] ])
@@ -205,7 +205,7 @@
   (let [ ^HTTPEvent evt (ioes-reify-event co ch req xdata)
          ^comzotohcljc.hhh.core.sys.Element
          ctr (.container co)
-         rcc (make-routeCracker (.getAttr ctr :routes))
+         rcc (makeRouteCracker (.getAttr ctr :routes))
          [r1 ^comzotohcljc.net.rts.RouteInfo r2 r3 r4]
          (.crack rcc msgInfo) ]
     (cond

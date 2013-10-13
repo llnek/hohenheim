@@ -59,7 +59,7 @@
 (use '[comzotohcljc.crypto.ssl :only [make-sslContext] ])
 (use '[comzotohcljc.netty.comms :only [nioServerBootstrap
                                        makeChannelGroup finzServer
-                                       makeServerPipe make-routeCracker] ])
+                                       makeServerPipe makeRouteCracker] ])
 (use '[comzotohcljc.util.seqnum :only [next-long] ])
 (use '[comzotohcljc.util.mime :only [get-charset] ])
 (use '[comzotohcljc.util.str :only [hgl? nsb strim nichts?] ])
@@ -303,7 +303,7 @@
           (.childHandler (makeServerPipe
                            ctx
                            (make-service-io co reqcb)
-                           (make-routeCracker routes) )))
+                           (makeRouteCracker routes) )))
     (.setAttr! co :netty
       (comzotohcljc.netty.comms.NettyServer. bs nil))
     co))
