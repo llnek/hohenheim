@@ -52,7 +52,10 @@
 
 
 (defn make-sslClientCtx "Make a client-side SSLContext."
+
+  ^SSLContext
   [ssl]
+
   (if (not ssl)
     nil
     (let [ ctx (SSLContext/getInstance "TLS") ]

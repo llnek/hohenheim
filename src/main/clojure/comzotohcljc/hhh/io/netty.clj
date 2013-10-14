@@ -56,10 +56,8 @@
 (use '[comzotohcljc.hhh.io.http])
 (use '[comzotohcljc.hhh.io.triggers])
 (use '[comzotohcljc.util.core :only [MuObj make-mmap notnil? conv-long] ])
-(use '[comzotohcljc.crypto.ssl :only [make-sslContext] ])
-(use '[comzotohcljc.netty.comms :only [nioServerBootstrap
-                                       makeChannelGroup finzServer
-                                       makeServerPipe makeRouteCracker] ])
+(use '[comzotohcljc.netty.comms :only [ makeServerNetty finzServer
+                                       makeRouteCracker] ])
 (use '[comzotohcljc.util.seqnum :only [next-long] ])
 (use '[comzotohcljc.util.mime :only [get-charset] ])
 (use '[comzotohcljc.util.str :only [hgl? nsb strim nichts?] ])
@@ -283,29 +281,23 @@
 
 (defn- make-service-io [^comzotohcljc.hhh.io.core.EmitterAPI co reqcb]
   (reify comzotohcljc.netty.comms.NettyServiceIO
-    (before-send [_ ch msg] nil)
     (onerror [_ ch msginfo exp]  nil)
+    (presend [_ ch msg] nil)
     (onreq [_ ch req msginfo xdata]
       (reqcb co ch req msginfo xdata))
     (onres [_ ch rsp msginfo xdata] nil)) )
 
 (defn- init-netty
   [^comzotohcljc.hhh.core.sys.Element co reqcb]
-  (let [ ^ServerBootstrap bs (nioServerBootstrap)
-         file (.getAttr co :serverKey)
-         ssl (notnil? file)
-         pwd (.getAttr co :pwd)
-         ^comzotohcljc.hhh.core.sys.Element
+  (let [ ^comzotohcljc.hhh.core.sys.Element
          ctr (.parent ^Hierarchial co)
-         routes (.getAttr ctr :routes)
-         ctx (if ssl (make-sslContext file pwd)) ]
-    (doto bs
-          (.childHandler (makeServerPipe
-                           ctx
-                           (make-service-io co reqcb)
-                           (makeRouteCracker routes) )))
-    (.setAttr! co :netty
-      (comzotohcljc.netty.comms.NettyServer. bs nil))
+         options { :serverkey (.getAttr co :serverKey)
+                   :forwardBadRoutes true
+                   :passwd (.getAttr co :pwd)
+                   :usercb (make-service-io co reqcb)
+                   :rtcObj (makeRouteCracker (.getAttr ctr :routes)) }
+         nes (makeServerNetty options) ]
+    (.setAttr! co :netty nes)
     co))
 
 (defmethod ioes-start :czc.hhh.io/NettyIO
@@ -319,11 +311,9 @@
               (InetAddress/getLocalHost)
               (InetAddress/getByName host))
          c (.bind bs (InetSocketAddress. ip port))
-         cg (makeChannelGroup) ]
+         ^ChannelGroup cg (:cgroup nes) ]
 ;;    c.getConfig().setConnectTimeoutMillis(millis)
     (.add cg (.channel c))
-    (.setAttr! co :netty
-      (comzotohcljc.netty.comms.NettyServer. (.server nes) cg))
     (debug "netty-io running on port: " port ", host: " host ", ip: " ip)
     (ioes-started co)))
 

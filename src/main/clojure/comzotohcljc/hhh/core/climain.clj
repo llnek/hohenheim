@@ -168,17 +168,16 @@
     (makeMemHttpd
       "127.0.0.1"
       port
-      (reify NettyServiceIO
-        (before-send [_ ch msg] nil)
-        (onerror [_ ch msginfo evt] nil)
-        (onreq [_ ch req msginfo xdata]
-          (Try!
-            (.addListener
-              ^ChannelFuture (wflush ch (makeFullHttpReply 200))
-              ChannelFutureListener/CLOSE))
-          (stop-cli ctx))
-        (onres [_ ch rsp msginfo xdata] nil))
-      {} )))
+      { :usercb (reify NettyServiceIO
+                  (onerror [_ ch msginfo evt] nil)
+                  (presend [_ ch msg] nil)
+                  (onreq [_ ch req msginfo xdata]
+                    (Try!
+                      (.addListener
+                        ^ChannelFuture (wflush ch (makeFullHttpReply 200))
+                        ChannelFutureListener/CLOSE))
+                    (stop-cli ctx))
+                  (onres [_ ch rsp msginfo xdata] nil)) } )))
 
 (defn- hookShutdown [^comzotohcljc.util.core.MuObj ctx]
   (let [ cli (.getf ctx K_CLISH) ]

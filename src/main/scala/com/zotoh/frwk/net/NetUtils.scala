@@ -67,11 +67,12 @@ object NetUtils {
   def getPipeline(ctx:ChannelHandlerContext) : ChannelPipeline = ctx.pipeline()
   def getPipeline(ch:Channel) : ChannelPipeline = ch.pipeline()
   def wrtFlush(ch:Channel, obj:Any) = ch.writeAndFlush(obj)
+  def flush(ch:Channel) { ch.flush() }
   def writeOnly(ch:Channel, obj:Any) = ch.write(obj)
   def closeChannel(ch:Channel) {
     ch.close()
   }
-  
+
   def sockItDown(cbuf:ByteBuf, out:OutputStream, lastSum:Long ) = {
     val cnt= if (cbuf==null) 0 else cbuf.readableBytes()
     if (cnt > 0) {

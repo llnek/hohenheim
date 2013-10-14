@@ -107,10 +107,10 @@
           (HttpHeaders/setHeader ^HttpMessage @rsp "content-type" (.contentType rc))
           (var-set bits (.body rc)))
         (HttpHeaders/setContentLength @rsp
-                                      (if (nil? @bits) 0 (alength @bits)))
+                                      (if (nil? @bits) 0 (alength ^bytes @bits)))
         (wwrite ch @rsp)
         (when-not (nil? @bits)
-          (wwrite ch (Unpooled/wrappedBuffer @bits)))
+          (wwrite ch (Unpooled/wrappedBuffer ^bytes @bits)))
         (closeCF true (wflush ch LastHttpContent/EMPTY_LAST_CONTENT)))
       (catch Throwable e#
         (NetUtils/closeChannel ch)))))
