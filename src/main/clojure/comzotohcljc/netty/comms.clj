@@ -37,7 +37,10 @@
 (import '(io.netty.util.concurrent GlobalEventExecutor))
 (import '(io.netty.channel.nio NioEventLoopGroup))
 (import '(io.netty.buffer ByteBuf ByteBufHolder Unpooled))
-
+(import '(io.netty.handler.codec.http.multipart
+  DefaultHttpDataFactory FileUpload HttpPostRequestDecoder
+  HttpPostRequestDecoder$EndOfDataDecoderException
+  InterfaceHttpData InterfaceHttpData$HttpDataType))
 (import '(io.netty.handler.stream
   ChunkedWriteHandler ChunkedStream))
 (import '(io.netty.channel.socket.nio
@@ -55,7 +58,7 @@
   HttpHeaders$Values HttpHeaders$Names
   HttpMessage HttpRequest HttpResponse HttpResponseStatus
   DefaultFullHttpResponse DefaultHttpResponse QueryStringDecoder
-  HttpMethod
+  HttpMethod HttpObject
   DefaultHttpRequest HttpServerCodec HttpClientCodec
   HttpResponseEncoder))
 (import '(io.netty.handler.ssl SslHandler))
@@ -571,6 +574,86 @@
                        :ok (fn [_] (wsSSL ctx)) })))
     ))
 
+(defn- new-data-fac "" ^DefaultHttpDataFactory []
+  (DefaultHttpDataFactory. (com.zotoh.frwk.io.IOUtils/streamLimit)))
+
+(defn- maybe-multipart [^Channel ch ^HttpRequest req msginfo]
+  (let [ ct (-> (nsb (HttpHeaders/getHeader req "content-type"))
+                (.toLowerCase))
+         attObj (ga-map ch)
+         md (:method msginfo) ]
+    ;; multipart form
+    (if (and (or (= "POST" md) (= "PUT" md) (= "PATCH" md))
+             (>= (.indexOf ct "multipart/form-data") 0))
+      (let [ rc (HttpPostRequestDecoder. (new-data-fac) req) ]
+        (sa-map! ch (-> attObj (assoc :decoder rc)))
+        rc)
+      nil)
+    ))
+
+(defn- process-multi-part "" [^Channel ch ^InterfaceHttpData data]
+  (cond
+    (= (.getHttpDataType data) InterfaceHttpData$HttpDataType/Attribute)
+    (try
+      (let [^io.netty.handler.codec.http.multipart.Attribute attr data
+            nv (.getValue attr)
+            nm (.getName attr) ]
+        )
+      (catch Throwable e#
+        (error e# "")
+        (reply-xxx ch 400)))
+
+    (= (.getHttpDataType data) InterfaceHttpData$HttpDataType/FileUpload)
+    (try
+      (let [ ^FileUpload fu data ]
+
+        ))
+
+    :else nil))
+
+(defn- maybe-last-req [ ^ChannelHandlerContext ctx req]
+  (when (instance? LastHttpContent req)
+    (nioComplete ctx req)))
+
+(defn- nio-req-decode "" [^ChannelHandlerContext ctx ^HttpObject req]
+  (let [ ch (.channel ctx) 
+         attObj (ga-map ch)
+         ^HttpPostRequestDecoder c (:decoder attObj) ]
+    (when (and (notnil? c)
+               (instance? HttpContent req))
+      (try
+        (.offer c ^HttpContent req)
+        (while (.hasNext c)
+          (let [ ^InterfaceHttpData data (.next c) ]
+            (when-not (nil? data)
+              (try
+                (process-multi-part ch data)
+                (finally
+                  (.release data))))))
+        (maybe-last-req ctx req)
+        (catch HttpPostRequestDecoder$EndOfDataDecoderException _ (maybe-last-req ctx req))
+            ;;END OF CONTENT CHUNK BY CHUNK
+        (catch Throwable e#
+          (error e# "")
+          (reply-xxx 400)))
+    )))
+
+(defn- nio-request-cont "" [^ChannelHandlerContext ctx ^HttpRequest req]
+  (let [ ch (.channel ctx)
+         attObj (ga-map ch)
+         msginfo (:info attObj) ]
+    (try
+      (let [ rc (maybe-multipart ch req msginfo) ]
+        (if (nil? rc)
+          (when (and (not (:is-chunked msginfo))
+                     (instance? ByteBufHolder req))
+            (nioSockitDown ctx (.content ^ByteBufHolder req)))
+          (nio-req-decode ctx req)))
+      (catch Throwable e#
+        (error e# "")
+        (reply-xxx 400)))
+    ))
+
 (defn- nioPRequest "Handle a request."
   [^ChannelHandlerContext ctx ^HttpRequest req options]
   (nioCfgCtx ctx (:usercb options))
@@ -593,9 +676,7 @@
         (nioWSock ctx req)
         (do
           (when (HttpHeaders/is100ContinueExpected req) (contWith100 ctx))
-          (when (and (not (:is-chunked msginfo))
-                     (instance? ByteBufHolder req))
-            (nioSockitDown ctx (.content ^ByteBufHolder req)))))
+          (nio-request-cont ctx req)))
       (do
         (warn "route not matched - ignoring request.")
         (if (true? (:forwardBadRoutes options))
@@ -633,7 +714,7 @@
       :else
       (nioPError ctx (IOException. (str "error code: " c))))))
 
-(defn- nioChunk "handle a chunk - part of a message"
+(defn- nio-basic-chunk "handle a chunk - part of a message"
   [^ChannelHandlerContext ctx ^HttpContent msg]
   (let [ done (try
                   (nioSockitDown ctx (.content msg))
@@ -641,6 +722,15 @@
                 (catch Throwable e#
                     (do (nioFinz ctx) (throw e#)))) ]
     (if done (nioComplete ctx msg) nil)))
+
+(defn- nioChunk "handle a chunk - part of a message"
+  [^ChannelHandlerContext ctx ^HttpContent msg]
+  (let [ ch (.channel ctx)
+         attObj (ga-map ch)
+         dc (:decoder attObj) ]
+    (if (nil? dc)
+      (nio-basic-chunk ctx msg)
+      (nio-req-decode ctx msg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; make some servers

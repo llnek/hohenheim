@@ -28,6 +28,7 @@
 (import '(java.util.regex Pattern Matcher))
 (import '(java.util Properties))
 (import '(javax.mail Message))
+(import '(com.zotoh.frwk.mime MimeFileTypes))
 
 (use '[comzotohcljc.util.core :only [bytesify Try! into-map] ])
 (use '[comzotohcljc.util.meta :only [bytes-class] ])
@@ -117,6 +118,7 @@
 
 (def ^:private _extRegex (Pattern/compile "^.*\\.([^.]+)$"))
 (def ^:private _mime_cache (atom {}))
+(def ^:private _mime_types (atom nil))
 
 
 (defn- is-pkcs7mime? ""
@@ -206,7 +208,8 @@
   (with-open [ inp (.openStream fileUrl) ]
     (let [ ps (Properties.) ]
       (.load ps inp)
-      (reset! _mime_cache (into-map ps)))))
+      (reset! _mime_types (MimeFileTypes/makeMimeFileTypes ps))
+      (reset! _mime_cache (into-map ps))) ))
 
 
 (def ^:private mime-eof nil)
