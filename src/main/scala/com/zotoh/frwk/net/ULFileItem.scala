@@ -65,10 +65,29 @@ class ULFileItem extends FileItem with Serializable {
     _filename= fileName
   }
 
+  def this(field:String, contentType:String, fileName:String, file:XData)   {
+    this()
+    _ctype= nsb(contentType)
+    _field= field
+    _ff= false
+    _filename= fileName
+    _ds=file
+  }
+
+  def this(field:String, value:Array[Byte]) {
+    this()
+    _ctype= ""
+    _field= field
+    _ff= true
+    _filename= ""
+    _os=iniz()
+    _os.write(value)
+  }
+
   override def delete()  {
     IOU.closeQuietly(_os)
     if (_ds!=null) {
-      _ds.setDeleteFile(true)
+      ;;_ds.setDeleteFile(true)
       _ds.destroy()
     }
     _ds=null
@@ -145,6 +164,7 @@ class ULFileItem extends FileItem with Serializable {
       try {
         val t= newTempFile(true)
         _ds.resetContent( t._1)
+        _ds.setDeleteFile(true)
         _os = t._2
       } catch {
         case e:Throwable => tlog.error("", e)

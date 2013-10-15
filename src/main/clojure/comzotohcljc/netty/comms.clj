@@ -26,11 +26,12 @@
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.io IOException ByteArrayOutputStream
   File OutputStream InputStream))
-(import '(java.util HashMap))
+(import '(java.util HashMap Properties ArrayList))
 (import '(java.net URI URL InetSocketAddress))
 (import '(java.util.concurrent Executors))
 (import '(javax.net.ssl SSLEngine SSLContext))
 (import '(javax.net.ssl X509TrustManager TrustManager))
+(import '( com.zotoh.frwk.net ULFileItem))
 
 (import '(io.netty.bootstrap Bootstrap ServerBootstrap))
 (import '(io.netty.util AttributeKey Attribute))
@@ -437,6 +438,55 @@
          os (:os attObj) ]
     (IOUtils/closeQuietly ^OutputStream os) ))
 
+(defn- process-multi-part "" [^Channel ch ^InterfaceHttpData data ^ArrayList items]
+  (cond
+    (= (.getHttpDataType data) InterfaceHttpData$HttpDataType/Attribute)
+    (let [^io.netty.handler.codec.http.multipart.Attribute attr data
+           nm (nsb (.getName attr))
+           nv (.get attr) ]
+      (.add items (ULFileItem. nm nv)))
+    (= (.getHttpDataType data) InterfaceHttpData$HttpDataType/FileUpload)
+    (let [ ^FileUpload fu data
+           nm (nsb (.getName fu)) ]
+      (when-not (.isCompleted fu)
+        (throw (IOException. "checking uploaded file - incomplete.")))
+      (.add items (ULFileItem. nm (.getContentType fu)
+                                     (.getFilename fu)
+                                     (if (.isInMemory fu)
+                                       (XData. (.get fu))
+                                       (XData. (.getFile fu))))))
+    :else nil))
+
+(defn- parse-decoder [^ChannelHandlerContext ctx]
+  (let [ ch (.channel ctx) attObj (ga-map ch)
+         ^XData xdata (:xs attObj)
+         info (:info attObj)
+         dir (:dir attObj)
+
+         ^comzotohcljc.netty.comms.NettyServiceIO
+         usercb (:cb attObj)
+
+         ^HttpPostRequestDecoder
+         dc (:decoder attObj)
+
+         items (ArrayList.) ]
+
+    (with-local-vars [err false]
+      (while (and (not @err) (.hasNext dc))
+        (let [ data (.next dc) ]
+          (when-not (nil? data)
+            (try
+              (process-multi-part ch data items)
+              (catch HttpPostRequestDecoder$EndOfDataDecoderException _ nil)
+              (catch Throwable e#
+                (var-set err true)
+                (error e# "")
+                (reply-xxx ch 400))))))
+      (when-not @err
+        (.resetContent xdata items)
+        (.onreq usercb ch dir info xdata))
+      )))
+
 (defn- nioComplete "" [^ChannelHandlerContext ctx msg]
   (nioFinz ctx)
   (let [ ch (.channel ctx) attObj (ga-map ch)
@@ -446,6 +496,9 @@
 
          ^comzotohcljc.netty.comms.NettyServiceIO
          usercb (:cb attObj)
+
+         ^HttpPostRequestDecoder
+         dc (:decoder attObj)
 
          os (:os attObj)
          clen (:clen attObj) ]
@@ -459,7 +512,9 @@
         (.onres usercb ch dir info xdata))
 
       (instance? HttpRequest dir)
-      (do (.onreq usercb ch dir info xdata))
+      (if (nil? dc)
+        (.onreq usercb ch dir info xdata)
+        (parse-decoder ctx))
 
       (instance? WebSocketFrame msg)
       (do (.onreq usercb ch msg info xdata))
@@ -577,68 +632,42 @@
 (defn- new-data-fac "" ^DefaultHttpDataFactory []
   (DefaultHttpDataFactory. (com.zotoh.frwk.io.IOUtils/streamLimit)))
 
-(defn- maybe-multipart [^Channel ch ^HttpRequest req msginfo]
+(defn- maybe-multipart "" ^HttpPostRequestDecoder [^Channel ch ^HttpRequest req msginfo]
   (let [ ct (-> (nsb (HttpHeaders/getHeader req "content-type"))
                 (.toLowerCase))
          attObj (ga-map ch)
          md (:method msginfo) ]
     ;; multipart form
     (if (and (or (= "POST" md) (= "PUT" md) (= "PATCH" md))
-             (>= (.indexOf ct "multipart/form-data") 0))
+             (or (>= (.indexOf ct "multipart/form-data") 0)
+                 (>= (.indexOf ct "application/x-www-form-urlencoded") 0)))
       (let [ rc (HttpPostRequestDecoder. (new-data-fac) req) ]
         (sa-map! ch (-> attObj (assoc :decoder rc)))
         rc)
       nil)
     ))
 
-(defn- process-multi-part "" [^Channel ch ^InterfaceHttpData data]
-  (cond
-    (= (.getHttpDataType data) InterfaceHttpData$HttpDataType/Attribute)
-    (try
-      (let [^io.netty.handler.codec.http.multipart.Attribute attr data
-            nv (.getValue attr)
-            nm (.getName attr) ]
-        )
-      (catch Throwable e#
-        (error e# "")
-        (reply-xxx ch 400)))
-
-    (= (.getHttpDataType data) InterfaceHttpData$HttpDataType/FileUpload)
-    (try
-      (let [ ^FileUpload fu data ]
-
-        ))
-
-    :else nil))
-
 (defn- maybe-last-req [ ^ChannelHandlerContext ctx req]
   (when (instance? LastHttpContent req)
     (nioComplete ctx req)))
 
 (defn- nio-req-decode "" [^ChannelHandlerContext ctx ^HttpObject req]
-  (let [ ch (.channel ctx) 
+  (let [ ch (.channel ctx)
          attObj (ga-map ch)
          ^HttpPostRequestDecoder c (:decoder attObj) ]
     (when (and (notnil? c)
                (instance? HttpContent req))
-      (try
-        (.offer c ^HttpContent req)
-        (while (.hasNext c)
-          (let [ ^InterfaceHttpData data (.next c) ]
-            (when-not (nil? data)
-              (try
-                (process-multi-part ch data)
-                (finally
-                  (.release data))))))
-        (maybe-last-req ctx req)
-        (catch HttpPostRequestDecoder$EndOfDataDecoderException _ (maybe-last-req ctx req))
-            ;;END OF CONTENT CHUNK BY CHUNK
-        (catch Throwable e#
-          (error e# "")
-          (reply-xxx 400)))
-    )))
+      (with-local-vars [ err false]
+        (try
+            (.offer c ^HttpContent req)
+          (catch HttpPostRequestDecoder$EndOfDataDecoderException _ nil)
+          (catch Throwable e#
+            (var-set err true)
+            (error e# "")
+            (reply-xxx 400)))
+        (if-not @err (maybe-last-req ctx req))))))
 
-(defn- nio-request-cont "" [^ChannelHandlerContext ctx ^HttpRequest req]
+(defn- nio-request "" [^ChannelHandlerContext ctx ^HttpRequest req]
   (let [ ch (.channel ctx)
          attObj (ga-map ch)
          msginfo (:info attObj) ]
@@ -676,7 +705,7 @@
         (nioWSock ctx req)
         (do
           (when (HttpHeaders/is100ContinueExpected req) (contWith100 ctx))
-          (nio-request-cont ctx req)))
+          (nio-request ctx req)))
       (do
         (warn "route not matched - ignoring request.")
         (if (true? (:forwardBadRoutes options))
@@ -752,7 +781,7 @@
     (debug "netty-xxx-server: running on host " host ", port " port)
     rc))
 
-(defn makeMemHttpd "Make an in-memory http server." 
+(defn makeMemHttpd "Make an in-memory http server."
 
   ^NettyServer
   [^String host port options]

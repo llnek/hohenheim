@@ -83,9 +83,7 @@ object XData {
       case fa:Array[File] => if (fa.length > 0) _data= fa(0)
       case f:File => _data = f
       case s:String => _data = s
-      case _ => if (obj != null) {
-        throw new IOException("Unsupported object: " + obj.getClass().getName() )
-      }
+      case _ => _data= obj
     }
     setDeleteFile(delIfFile)
   }
