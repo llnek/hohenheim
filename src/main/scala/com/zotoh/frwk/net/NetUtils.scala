@@ -19,10 +19,10 @@
 
 package com.zotoh.frwk.net
 
-import io.netty.channel.{ChannelFutureListener,ChannelPipeline}
-import io.netty.channel.{ChannelHandlerContext,ChannelFuture,Channel}
-import io.netty.buffer.ByteBuf
+import org.jboss.netty.channel.{ChannelFutureListener,ChannelPipeline}
+import org.jboss.netty.channel.{ChannelHandlerContext,ChannelFuture,Channel}
 import java.io.{OutputStream}
+import org.jboss.netty.buffer.ChannelBuffer
 import org.slf4j._
 import com.zotoh.frwk.io.{IOUtils,XData}
 import org.apache.http.impl.client.{DefaultRedirectStrategy, AbstractHttpClient}
@@ -64,16 +64,16 @@ object NetUtils {
       }
   }
 
-  def getPipeline(ctx:ChannelHandlerContext) : ChannelPipeline = ctx.pipeline()
-  def getPipeline(ch:Channel) : ChannelPipeline = ch.pipeline()
-  def wrtFlush(ch:Channel, obj:Any) = ch.writeAndFlush(obj)
-  def flush(ch:Channel) { ch.flush() }
+  def getPipeline(ctx:ChannelHandlerContext) : ChannelPipeline = ctx.getPipeline()
+  def getPipeline(ch:Channel) : ChannelPipeline = ch.getPipeline()
+  def wrtFlush(ch:Channel, obj:Any) = ch.write(obj)
+  //def flush(ch:Channel) { ch.flush() }
   def writeOnly(ch:Channel, obj:Any) = ch.write(obj)
   def closeChannel(ch:Channel) {
     ch.close()
   }
 
-  def sockItDown(cbuf:ByteBuf, out:OutputStream, lastSum:Long ) = {
+  def sockItDown(cbuf:ChannelBuffer, out:OutputStream, lastSum:Long ) = {
     val cnt= if (cbuf==null) 0 else cbuf.readableBytes()
     if (cnt > 0) {
       val bits= new Array[Byte](4096)

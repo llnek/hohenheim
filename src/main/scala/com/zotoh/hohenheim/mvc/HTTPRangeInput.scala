@@ -26,13 +26,12 @@ import scala.collection.mutable
 import java.io.{IOException, RandomAccessFile}
 import java.util.{Arrays,Comparator}
 
-import io.netty.handler.codec.http.HttpRequest
-import io.netty.handler.codec.http.HttpResponse
-import io.netty.handler.codec.http.HttpResponseStatus
-import io.netty.handler.stream.ChunkedInput
-import io.netty.buffer.{ByteBuf,Unpooled}
-import io.netty.handler.codec.http.HttpHeaders
-import io.netty.channel.ChannelHandlerContext
+import org.jboss.netty.handler.codec.http.HttpRequest
+import org.jboss.netty.handler.codec.http.HttpResponse
+import org.jboss.netty.handler.codec.http.HttpResponseStatus
+import org.jboss.netty.handler.stream.ChunkedInput
+import org.jboss.netty.buffer.ChannelBuffers._
+
 import com.zotoh.frwk.util.CoreUtils
 import org.slf4j._
 
@@ -94,12 +93,12 @@ class ByteRange(private val _file:RandomAccessFile,
 }
 
 object HTTPRangeInput {
-  def accepts(req:HttpRequest) = req.headers().contains("range")
+  def accepts(req:HttpRequest) = req.containsHeader("range")
 }
 
 class HTTPRangeInput(private val _file:RandomAccessFile,
   private val _contentType:String,
-  private val _req:HttpRequest) extends ChunkedInput[ByteBuf] {
+  private val _req:HttpRequest) extends ChunkedInput {
 
   private val _log= LoggerFactory.getLogger(classOf[HTTPRangeInput])
   def tlog() = _log
@@ -112,27 +111,27 @@ class HTTPRangeInput(private val _file:RandomAccessFile,
   initRanges()
 
   def prepareNettyResponse(rsp:HttpResponse) {
-    HttpHeaders.addHeader(rsp,"accept-ranges", "bytes")
+    rsp.addHeader("accept-ranges", "bytes")
     if (_unsatisfiable) {
       rsp.setStatus(HttpResponseStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
-      HttpHeaders.setHeader(rsp, "content-range", "bytes " + "0-" + (_clen-1) + "/" + _clen)
-      HttpHeaders.setHeader(rsp, "content-length", 0)
+      rsp.setHeader("content-range", "bytes " + "0-" + (_clen-1) + "/" + _clen)
+      rsp.setHeader("content-length", 0)
     } else {
       rsp.setStatus(HttpResponseStatus.PARTIAL_CONTENT)
       if(_ranges.length == 1) {
         val r= _ranges(0)
-        HttpHeaders.setHeader(rsp, "content-range", "bytes " + r.start + "-" + r.end + "/" + _clen)
+        rsp.setHeader("content-range", "bytes " + r.start + "-" + r.end + "/" + _clen)
       } else {
-        HttpHeaders.setHeader(rsp, "content-type", "multipart/byteranges; boundary="+ "DEFAULT_SEPARATOR")
+        rsp.setHeader("content-type", "multipart/byteranges; boundary="+ "DEFAULT_SEPARATOR")
       }
       val len = _ranges.foldLeft(0L) { (rc, r) =>
         rc + r.computeTotalLengh
       }
-      HttpHeaders.setHeader(rsp, "content-length", len.toString )
+      rsp.setHeader("content-length", len.toString )
     }
   }
 
-  override def readChunk(ctx:ChannelHandlerContext) = {
+  override def nextChunk() = {
 
     val buff= new Array[Byte]( _chunkSize )
     var count = 0
@@ -145,10 +144,10 @@ class HTTPRangeInput(private val _file:RandomAccessFile,
           _currentByteRange += 1
       }
     }
-    if (count == 0) null else Unpooled.copiedBuffer(buff)
+    if (count == 0) null else wrappedBuffer(buff)
   }
 
-  private def hasNextChunk() = {
+  override def hasNextChunk() = {
     _currentByteRange < _ranges.size && _ranges(_currentByteRange).remaining() > 0
   }
 
@@ -162,7 +161,7 @@ class HTTPRangeInput(private val _file:RandomAccessFile,
     try {
       val ranges = mutable.ArrayBuffer[ (Long,Long) ]()
       // strip off "bytes="
-      val s = CoreUtils.nsb(HttpHeaders.getHeader(_req,"range") )
+      val s = CoreUtils.nsb(_req.getHeader("range") )
       val pos= s.indexOf("bytes=")
       val rvs= if (pos == -1) null else {
         s.substring(pos+6).trim().split(",")

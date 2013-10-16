@@ -34,28 +34,27 @@
 (import '(javax.net.ssl X509TrustManager TrustManager))
 (import '( com.zotoh.frwk.net ULFileItem))
 
-(import '(io.netty.bootstrap Bootstrap ServerBootstrap))
-(import '(io.netty.util AttributeKey Attribute))
-(import '(io.netty.util.concurrent GlobalEventExecutor))
-(import '(io.netty.channel.nio NioEventLoopGroup))
-(import '(io.netty.buffer ByteBuf ByteBufHolder Unpooled))
-(import '(io.netty.handler.codec.http.multipart
+(import '(org.jboss.netty.bootstrap ClientBootstrap ServerBootstrap))
+
+(import '(org.jboss.netty.channel.nio NioEventLoopGroup))
+(import '(org.jboss.netty.buffer ByteBuf ByteBufHolder Unpooled))
+(import '(org.jboss.netty.handler.codec.http.multipart
   DefaultHttpDataFactory FileUpload HttpPostRequestDecoder
   HttpPostRequestDecoder$EndOfDataDecoderException
   InterfaceHttpData InterfaceHttpData$HttpDataType))
-(import '(io.netty.handler.stream
+(import '(org.jboss.netty.handler.stream
   ChunkedWriteHandler ChunkedStream))
-(import '(io.netty.channel.socket.nio
+(import '(org.jboss.netty.channel.socket.nio
   NioServerSocketChannel NioSocketChannel))
-(import '(io.netty.channel
+(import '(org.jboss.netty.channel
   ChannelHandlerContext Channel SimpleChannelInboundHandler
   ChannelFutureListener ChannelFuture ChannelInitializer
   ChannelPipeline ChannelHandler ChannelOption))
-(import '(io.netty.channel.socket SocketChannel))
-(import '(io.netty.channel.group
+(import '(org.jboss.netty.channel.socket SocketChannel))
+(import '(org.jboss.netty.channel.group
   ChannelGroupFuture ChannelGroup ChannelGroupFutureListener
   DefaultChannelGroup))
-(import '(io.netty.handler.codec.http
+(import '(org.jboss.netty.handler.codec.http
   HttpHeaders HttpVersion HttpContent LastHttpContent
   HttpHeaders$Values HttpHeaders$Names
   HttpMessage HttpRequest HttpResponse HttpResponseStatus
@@ -63,8 +62,8 @@
   HttpMethod HttpObject
   DefaultHttpRequest HttpServerCodec HttpClientCodec
   HttpResponseEncoder))
-(import '(io.netty.handler.ssl SslHandler))
-(import '(io.netty.handler.codec.http.websocketx
+(import '(org.jboss.netty.handler.ssl SslHandler))
+(import '(org.jboss.netty.handler.codec.http.websocketx
   WebSocketFrame
   WebSocketServerHandshaker
   WebSocketServerHandshakerFactory
@@ -111,7 +110,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrecord NettyServer  [^ServerBootstrap server ^ChannelGroup cgroup ] )
-(defrecord NettyClient  [^Bootstrap client ^ChannelGroup cgroup ] )
+(defrecord NettyClient  [^ClientBootstrap client ^ChannelGroup cgroup ] )
 
 (defmulti ^:private addListener "" (fn [a & more ] (class a)))
 
@@ -128,25 +127,18 @@
   (hasRoutes? [_])
   (crack [_ msgInfo] ))
 
-(def ^:private ATTR-KEY (AttributeKey. "attObj"))
-
 (defn sa-map! "Set attachment object from the channel."
   [^Channel ch obj]
-  (-> (.attr ch ATTR-KEY) (.set obj)))
+  (.setAttachment ch obj))
 
 (defn ga-map "Get attachment object from the channel."
   [^Channel ch]
-  (let [ rc (-> (.attr ch ATTR-KEY) (.get)) ]
-  (if (nil? rc) {} rc)))
+  (let [ rc (.getAttachment ch) ]
+    (if (nil? rc) {} rc)))
 
 (defn kill9 "Clean up resources used by a netty server."
   [^ServerBootstrap bs]
-  (let [ gc (.childGroup bs)
-         gp (.group bs) ]
-    (when-not (nil? gp)
-      (Try! (.shutdownGracefully gp)))
-    (when-not (nil? gc)
-      (Try! (.shutdownGracefully gc))) ))
+  (.releaseExternalResources bs))
 
 (defn finzServer "Bring down a netty server."
   [ { server :server cg :cgroup } ]
@@ -154,16 +146,6 @@
     (kill9 server)
     (-> (.close ^ChannelGroup cg)
         (addListener { :done (fn [_] (kill9 server)) }))))
-
-(defn makeFullHttpReply "Make a netty http-response object."
-  (^HttpResponse [status ^ByteBuf obj]
-    (DefaultFullHttpResponse. HttpVersion/HTTP_1_1
-                              (get HTTP-CODES status)
-                              obj))
-  (^HttpResponse [] (makeFullHttpReply 200))
-  (^HttpResponse [status]
-    (DefaultFullHttpResponse. HttpVersion/HTTP_1_1
-                          (get HTTP-CODES status))))
 
 (defn makeHttpReply "Make a netty http-response object."
   (^HttpResponse [] (makeHttpReply 200))
@@ -176,20 +158,12 @@
   (if (and doit (notnil? cf))
     (.addListener cf ChannelFutureListener/CLOSE)))
 
-(defn wwrite "Write object." ^ChannelFuture [^Channel ch obj]
-  ;; had to do this to work-around reflection warnings :(
-  (NetUtils/writeOnly ch obj))
-
-(defn wflush "Write object and then flush." ^ChannelFuture [^Channel ch obj]
-  ;; had to do this to work-around reflection warnings :(
-  (NetUtils/wrtFlush ch obj))
-
 (defn sendRedirect "Redirect a request."
   [^Channel ch perm ^String targetUrl]
-  (let [ rsp (makeFullHttpReply (if perm 301 307)) ]
+  (let [ rsp (makeHttpReply (if perm 301 307)) ]
     (debug "redirecting to -> " targetUrl)
     (HttpHeaders/setHeader rsp  "location" targetUrl)
-    (closeCF true (wflush ch rsp))))
+    (closeCF true (.write ch rsp))))
 
 (defn makeNilServiceIO "Reify a no-op service-io object."
   ^comzotohcljc.netty.comms.NettyServiceIO
@@ -283,7 +257,7 @@
     (let [ gp (NioEventLoopGroup.) gc (NioEventLoopGroup.)
            bs (doto (ServerBootstrap.)
                     (.group gp gc)
-                    (.channel io.netty.channel.socket.nio.NioServerSocketChannel)
+                    (.channel org.jboss.netty.channel.socket.nio.NioServerSocketChannel)
                     (.option ChannelOption/SO_REUSEADDR true)
                     (.childOption ChannelOption/SO_RCVBUF (int (* 2 1024 1024)))
                     (.childOption ChannelOption/TCP_NODELAY true))
@@ -326,7 +300,7 @@
           opts (:netty options)
           bs (doto (Bootstrap.)
                    (.group g)
-                   (.channel io.netty.channel.socket.nio.NioSocketChannel)
+                   (.channel org.jboss.netty.channel.socket.nio.NioSocketChannel)
                    (.option ChannelOption/TCP_NODELAY true)
                    (.option ChannelOption/SO_KEEPALIVE true))
           cg (DefaultChannelGroup. (uid) GlobalEventExecutor/INSTANCE) ]
@@ -452,7 +426,7 @@
   (debug "multi-part data = " (type data))
   (cond
     (= (.getHttpDataType data) InterfaceHttpData$HttpDataType/Attribute)
-    (let [^io.netty.handler.codec.http.multipart.Attribute attr data
+    (let [^org.jboss.netty.handler.codec.http.multipart.Attribute attr data
            nm (nsb (.getName attr))
            ^bytes nv (.get attr) ]
       (debug "multi-part attribute value-string = " (String. nv "utf-8"))
