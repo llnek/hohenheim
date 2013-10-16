@@ -147,6 +147,20 @@ class ULFileItem extends FileItem with Serializable {
     super.finalize()
   }
 
+  override def toString() = {
+    val s= "field name= " + getFieldName() + "\n" +  
+    "formfield= " + isFormField() + "\n" + 
+    "filename= " + getName() + "\n"  
+    
+    val s2= if (_ds != null) {
+      "filepath = " + _ds.filePath
+    } else {
+      "field-value = " + getString()
+    }
+    
+    s+s2 + "\n"    
+  }
+  
   private def maybeGetBits() = {
     _os match {
       case baos:ByteArrayOS => _fieldBits= baos.toByteArray()

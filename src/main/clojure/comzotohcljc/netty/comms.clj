@@ -21,12 +21,13 @@
 
 (use '[clojure.tools.logging :only [info warn error debug] ])
 
+(import '(java.nio.charset Charset))
 (import '(java.lang.reflect Field))
 (import '(org.apache.commons.io IOUtils FileUtils))
 (import '(org.apache.commons.lang3 StringUtils))
 (import '(java.io IOException ByteArrayOutputStream
   File OutputStream InputStream))
-(import '(java.util HashMap Properties ArrayList))
+(import '(java.util Map$Entry HashMap Properties ArrayList))
 (import '(java.net URI URL InetSocketAddress))
 (import '(java.util.concurrent Executors))
 (import '(javax.net.ssl SSLEngine SSLContext))
@@ -230,7 +231,7 @@
       (.flush ^ChannelHandlerContext ctx))
 
     (channelRead0 [ctx msg]
-      (debug "pipeline-entering with msg: " (type msg))
+      ;;(debug "pipeline-entering with msg: " (type msg))
       (cond
         (instance? LastHttpContent msg)
         (nioChunk ctx msg)
@@ -381,8 +382,12 @@
 
 (defn- reply-xxx "" [^Channel ch status]
   (let [ rsp (makeFullHttpReply status)
-         info (:info (ga-map ch))
+         attObj (ga-map ch)
+         ^HttpPostRequestDecoder dc (:decoder attObj)
+         info (:info attObj)
          kalive (if (nil? info) false (:keep-alive info)) ]
+    (when-not (nil? dc)
+      (Try! (.destroy dc)))
     ;;(HttpHeaders/setTransferEncodingChunked res)
     (HttpHeaders/setContentLength rsp 0)
     (->> (wflush ch rsp) (closeCF kalive))))
@@ -411,18 +416,20 @@
          uri (.path decr)
          m1 (nioExtractMsg req)
          mo (strim (HttpHeaders/getHeader req "X-HTTP-Method-Override"))
-         params (persistent! (reduce (fn [sum en]
-                                       (assoc! sum (nsb (first en)) (vec (nth en 1))))
-                                     (transient {}) (.parameters decr))) ]
-    (debug "basic request info: " m1)
-    (comzotohcljc.net.comms.HTTPMsgInfo.
-      (:protocol m1)
-      (-> (if (= "websocket" ws) "WS" (if (hgl? mo) mo md))
-        (.toUpperCase))
-      uri
-      (:is-chunked m1)
-      (:keep-alive m1)
-      (:clen m1) (:headers m1) params)))
+         params (persistent! (reduce (fn [sum ^Map$Entry en]
+                                       (assoc! sum (nsb (.getKey en)) (vec (.getValue en))))
+                                     (transient {})
+                                     (.parameters decr)))
+         mi (comzotohcljc.net.comms.HTTPMsgInfo.
+              (:protocol m1)
+              (-> (if (= "websocket" ws) "WS" (if (hgl? mo) mo md))
+                (.toUpperCase))
+              uri
+              (:is-chunked m1)
+              (:keep-alive m1)
+              (:clen m1) (:headers m1) params) ]
+    (debug "request message info: " mi)
+    mi))
 
 (defn- nioExtractRes "Extract info from response."
   ^comzotohcljc.net.comms.HTTPMsgInfo
@@ -438,18 +445,24 @@
          os (:os attObj) ]
     (IOUtils/closeQuietly ^OutputStream os) ))
 
-(defn- process-multi-part "" [^Channel ch ^InterfaceHttpData data ^ArrayList items]
+(defn- process-multi-part "" [^Channel ch
+                              ^InterfaceHttpData data
+                              ^ArrayList items
+                              ^ArrayList out]
+  (debug "multi-part data = " (type data))
   (cond
     (= (.getHttpDataType data) InterfaceHttpData$HttpDataType/Attribute)
     (let [^io.netty.handler.codec.http.multipart.Attribute attr data
            nm (nsb (.getName attr))
-           nv (.get attr) ]
+           ^bytes nv (.get attr) ]
+      (debug "multi-part attribute value-string = " (String. nv "utf-8"))
       (.add items (ULFileItem. nm nv)))
     (= (.getHttpDataType data) InterfaceHttpData$HttpDataType/FileUpload)
     (let [ ^FileUpload fu data
            nm (nsb (.getName fu)) ]
       (when-not (.isCompleted fu)
         (throw (IOException. "checking uploaded file - incomplete.")))
+      (when-not (.isInMemory fu)(.add out fu))
       (.add items (ULFileItem. nm (.getContentType fu)
                                      (.getFilename fu)
                                      (if (.isInMemory fu)
@@ -457,7 +470,7 @@
                                        (XData. (.getFile fu))))))
     :else nil))
 
-(defn- parse-decoder [^ChannelHandlerContext ctx]
+(defn- finz-decoder [^ChannelHandlerContext ctx]
   (let [ ch (.channel ctx) attObj (ga-map ch)
          ^XData xdata (:xs attObj)
          info (:info attObj)
@@ -469,23 +482,30 @@
          ^HttpPostRequestDecoder
          dc (:decoder attObj)
 
-         items (ArrayList.) ]
+         out (:formtrash attObj)
+         items (:formitems attObj) ]
+    (doseq [ f (seq out) ]
+      (.removeHttpDataFromClean dc f))
+    (Try! (.destroy dc))
+    (.resetContent xdata items)
+    (.onreq usercb ch dir info xdata) ))
 
-    (with-local-vars [err false]
-      (while (and (not @err) (.hasNext dc))
+
+(defn- read-formdata [^ChannelHandlerContext ctx ^HttpPostRequestDecoder dc]
+  (let [ ch (.channel ctx)
+         attObj (ga-map ch)
+         items (:formitems attObj)
+         out (:formtrash attObj) ]
+    (try
+      (while (.hasNext dc)
         (let [ data (.next dc) ]
-          (when-not (nil? data)
-            (try
-              (process-multi-part ch data items)
-              (catch HttpPostRequestDecoder$EndOfDataDecoderException _ nil)
-              (catch Throwable e#
-                (var-set err true)
-                (error e# "")
-                (reply-xxx ch 400))))))
-      (when-not @err
-        (.resetContent xdata items)
-        (.onreq usercb ch dir info xdata))
-      )))
+          (try
+            (process-multi-part ch data items out)
+            (finally
+              (.release data)))))
+      (catch HttpPostRequestDecoder$EndOfDataDecoderException _
+        (warn "read-formdata: EndOfDataDecoderException thrown.")))
+    ))
 
 (defn- nioComplete "" [^ChannelHandlerContext ctx msg]
   (nioFinz ctx)
@@ -502,6 +522,7 @@
 
          os (:os attObj)
          clen (:clen attObj) ]
+
     (when (and (instance? ByteArrayOutputStream os)
                (> clen 0))
       (.resetContent xdata os))
@@ -514,7 +535,7 @@
       (instance? HttpRequest dir)
       (if (nil? dc)
         (.onreq usercb ch dir info xdata)
-        (parse-decoder ctx))
+        (finz-decoder ctx))
 
       (instance? WebSocketFrame msg)
       (do (.onreq usercb ch msg info xdata))
@@ -538,6 +559,8 @@
 (defn- nioCfgCtx [^ChannelHandlerContext ctx usercb]
   (let [ att { :os (make-baos)
                :xs (XData.)
+               :formtrash (ArrayList.)
+               :formitems (ArrayList.)
                :clen 0
                :cb usercb
                :dir nil
@@ -632,7 +655,7 @@
 (defn- new-data-fac "" ^DefaultHttpDataFactory []
   (DefaultHttpDataFactory. (com.zotoh.frwk.io.IOUtils/streamLimit)))
 
-(defn- maybe-multipart "" ^HttpPostRequestDecoder [^Channel ch ^HttpRequest req msginfo]
+(defn- maybe-formdata "" ^HttpPostRequestDecoder [^Channel ch ^HttpRequest req msginfo]
   (let [ ct (-> (nsb (HttpHeaders/getHeader req "content-type"))
                 (.toLowerCase))
          attObj (ga-map ch)
@@ -642,7 +665,7 @@
              (or (>= (.indexOf ct "multipart/form-data") 0)
                  (>= (.indexOf ct "application/x-www-form-urlencoded") 0)))
       (let [ rc (HttpPostRequestDecoder. (new-data-fac) req) ]
-        (sa-map! ch (-> attObj (assoc :decoder rc)))
+        (sa-map! ch (assoc attObj :decoder rc))
         rc)
       nil)
     ))
@@ -657,10 +680,10 @@
          ^HttpPostRequestDecoder c (:decoder attObj) ]
     (when (and (notnil? c)
                (instance? HttpContent req))
-      (with-local-vars [ err false]
+      (with-local-vars [err false]
         (try
             (.offer c ^HttpContent req)
-          (catch HttpPostRequestDecoder$EndOfDataDecoderException _ nil)
+            (read-formdata ctx c)
           (catch Throwable e#
             (var-set err true)
             (error e# "")
@@ -672,7 +695,7 @@
          attObj (ga-map ch)
          msginfo (:info attObj) ]
     (try
-      (let [ rc (maybe-multipart ch req msginfo) ]
+      (let [ rc (maybe-formdata ch req msginfo) ]
         (if (nil? rc)
           (when (and (not (:is-chunked msginfo))
                      (instance? ByteBufHolder req))
