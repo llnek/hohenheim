@@ -19,7 +19,7 @@
 
 package com.zotoh.frwk.util
 
-import java.util.concurrent.ThreadFactory
+import java.util.concurrent.{Executors,ThreadFactory}
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class TFac(private val _pfx:String) extends ThreadFactory {
   private val _cl = Thread.currentThread().getContextClassLoader
   private val _seq= new AtomicInteger(0)
+  private val _fac = Executors.defaultThreadFactory()
 
   private val _group = System.getSecurityManager() match {
     case sm:SecurityManager => sm.getThreadGroup()
@@ -39,6 +40,15 @@ class TFac(private val _pfx:String) extends ThreadFactory {
   }
 
   def newThread(r:Runnable) = {
+    val t = _fac.newThread(r)
+    t.setName(mkTname)
+    t.setPriority(Thread.NORM_PRIORITY)
+    t.setDaemon(false)
+    t.setContextClassLoader(_cl)
+    t
+  }
+
+  def XXnewThread(r:Runnable) = {
     val t = new Thread(_group, r, mkTname(), 0)
     t.setPriority(Thread.NORM_PRIORITY)
     t.setDaemon(false)
