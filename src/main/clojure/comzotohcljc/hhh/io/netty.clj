@@ -26,20 +26,20 @@
 
 (import '(com.zotoh.hohenheim.io HTTPEvent))
 (import '(javax.net.ssl SSLContext))
-(import '(io.netty.handler.codec.http
-  HttpRequest HttpResponse CookieDecoder ServerCookieEncoder
-  DefaultHttpResponse HttpVersion HttpHeaders LastHttpContent
+(import '(org.jboss.netty.handler.codec.http
+  HttpRequest HttpResponse CookieDecoder CookieEncoder
+  DefaultHttpResponse HttpVersion HttpHeaders
   HttpHeaders Cookie QueryStringDecoder))
-(import '(io.netty.channel Channel))
-(import '(io.netty.channel.group
+(import '(org.jboss.netty.channel Channel))
+(import '(org.jboss.netty.channel.group
   ChannelGroup))
-(import '(io.netty.bootstrap ServerBootstrap))
+(import '(org.jboss.netty.bootstrap ServerBootstrap))
 (import '(com.zotoh.frwk.net NetUtils))
 
 (import '(com.zotoh.frwk.core Hierarchial Identifiable))
 (import '(com.zotoh.hohenheim.io WebSockEvent WebSockResult))
 (import '(com.zotoh.frwk.io XData))
-(import '(io.netty.handler.codec.http.websocketx
+(import '(org.jboss.netty.handler.codec.http.websocketx
   WebSocketFrame
   WebSocketServerHandshaker
   WebSocketServerHandshakerFactory
@@ -56,7 +56,7 @@
 (use '[comzotohcljc.hhh.io.http])
 (use '[comzotohcljc.hhh.io.triggers])
 (use '[comzotohcljc.util.core :only [MuObj make-mmap notnil? conv-long] ])
-(use '[comzotohcljc.netty.comms :only [ makeServerNetty finzServer
+(use '[comzotohcljc.netty.comms :only [ makeServerNetty finzNetty
                                        makeRouteCracker] ])
 (use '[comzotohcljc.util.seqnum :only [next-long] ])
 (use '[comzotohcljc.util.mime :only [get-charset] ])
@@ -101,7 +101,7 @@
                          ^Channel ch
                          ^XData xdata]
   (let [ ssl (notnil? (.get (NetUtils/getPipeline ch) "ssl"))
-         ^InetSocketAddress laddr (.localAddress ch)
+         ^InetSocketAddress laddr (.getLocalAddress ch)
          ^WebSockResult res (make-wsock-result)
          impl (make-mmap)
          eeid (next-long) ]
@@ -143,7 +143,7 @@
          ^XData xdata (nth args 2)
          ^Channel ch (nth args 0)
          ssl (notnil? (.get (NetUtils/getPipeline ch) "ssl"))
-         ^InetSocketAddress laddr (.localAddress ch)
+         ^InetSocketAddress laddr (.getLocalAddress ch)
          impl (make-mmap)
          eeid (next-long) ]
     (with-meta
@@ -168,14 +168,14 @@
         (getCookies [_]
           (let [ v (nsb (HttpHeaders/getHeader req "Cookie"))
                  rc (ArrayList.)
-                 cks (if (hgl? v) (CookieDecoder/decode v) []) ]
+                 cks (if (hgl? v) (-> (CookieDecoder.) (.decode v)) []) ]
             (doseq [ ^Cookie c (seq cks) ]
               (.add rc (cookieToJava c)))
             rc))
         (getCookie [_ nm]
           (let [ v (nsb (HttpHeaders/getHeader req "Cookie"))
                  lnm (.toLowerCase nm)
-                 cks (if (hgl? v) (CookieDecoder/decode v) []) ]
+                 cks (if (hgl? v) (-> (CookieDecoder.)(.decode v)) []) ]
             (some (fn [^Cookie c]
                     (if (= (.toLowerCase (.getName c)) lnm)
                       (cookieToJava c)
@@ -198,15 +198,15 @@
         (getHeaderValue [_ nm] (HttpHeaders/getHeader req nm))
         (getParameterValues [_ nm]
           (let [ dc (QueryStringDecoder. (.getUri req))
-                 rc (.get (.parameters dc) nm) ]
+                 rc (.get (.getParameters dc) nm) ]
             (if (nil? rc) (ArrayList.) rc)))
         (getParameters [_]
           (let [ dc (QueryStringDecoder. (.getUri req))
-                 m (.parameters dc) ]
+                 m (.getParameters dc) ]
             (.keySet m)))
         (getParameterValue [_ nm]
           (let [ dc (QueryStringDecoder. (.getUri req))
-                 ^List rc (.get (.parameters dc) nm) ]
+                 ^List rc (.get (.getParameters dc) nm) ]
             (if (and (notnil? rc) (> (.size rc) 0))
               (.get rc 0)
               nil)))
@@ -240,7 +240,7 @@
 
         (getUri [_]
           (let [ dc (QueryStringDecoder. (.getUri req)) ]
-            (.path dc)))
+            (.getPath dc)))
 
         (getRequestURL [_] (throw (IOException. "not implemented")))
 
@@ -304,9 +304,8 @@
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ host (nsb (.getAttr co :host))
          ^long port (.getAttr co :port)
-         ^comzotohcljc.netty.comms.NettyServer
          nes (.getAttr co :netty)
-         ^ServerBootstrap bs (.server nes)
+         ^ServerBootstrap bs (:bootstrap nes)
          ^InetAddress ip (if (nichts? host)
               (InetAddress/getLocalHost)
               (InetAddress/getByName host))
@@ -320,7 +319,7 @@
 (defmethod ioes-stop :czc.hhh.io/NettyIO
   [^comzotohcljc.hhh.core.sys.Element co]
   (let [ nes (.getAttr co :netty) ]
-    (finzServer nes)
+    (finzNetty nes)
     (ioes-stopped co)))
 
 (defmethod comp-initialize :czc.hhh.io/NettyIO

@@ -19,21 +19,20 @@
 
   comzotohcljc.hhh.io.triggers )
 
-(import '(io.netty.handler.codec.http HttpResponseStatus))
+(import '(org.jboss.netty.handler.codec.http HttpResponseStatus))
 (import '(org.eclipse.jetty.continuation ContinuationSupport))
 (import '(org.eclipse.jetty.continuation Continuation))
-(import '(io.netty.channel Channel ChannelFuture ChannelFutureListener))
-(import '(io.netty.handler.codec.http
+(import '(org.jboss.netty.channel Channel ChannelFuture ChannelFutureListener))
+(import '(org.jboss.netty.handler.codec.http
   HttpResponse HttpHeaders HttpHeaders$Names HttpVersion
-  LastHttpContent
-  ServerCookieEncoder DefaultHttpResponse))
+  CookieEncoder DefaultHttpResponse))
 (import '(java.nio.channels ClosedChannelException))
 (import '(java.io OutputStream IOException))
-(import '(io.netty.handler.stream ChunkedStream))
+(import '(org.jboss.netty.handler.stream ChunkedStream))
 (import '(java.util List Timer TimerTask))
 (import '(java.net HttpCookie))
 (import '(javax.servlet.http Cookie HttpServletRequest HttpServletResponse))
-(import '(io.netty.buffer ByteBuf Unpooled ByteBufHolder))
+(import '(org.jboss.netty.buffer ChannelBuffer ChannelBuffers))
 (import '(java.nio ByteBuffer))
 
 (import '(org.apache.commons.io IOUtils))
@@ -41,13 +40,13 @@
 (import '(com.zotoh.frwk.io XData))
 (import '(com.zotoh.frwk.core Identifiable))
 (import '(com.zotoh.hohenheim.io WebSockEvent WebSockResult HTTPEvent))
-(import '(io.netty.handler.codec.http.websocketx
+(import '(org.jboss.netty.handler.codec.http.websocketx
   WebSocketFrame
   BinaryWebSocketFrame
   TextWebSocketFrame))
 
 (use '[clojure.tools.logging :only [info warn error debug] ])
-(use '[comzotohcljc.netty.comms :only [HTTP-CODES wwrite wflush makeHttpReply] ])
+(use '[comzotohcljc.netty.comms :only [HTTP-CODES makeHttpReply closeCF] ])
 (use '[comzotohcljc.util.core :only [make-mmap stringify notnil? Try!] ])
 (use '[comzotohcljc.util.str :only [nsb] ])
 (use '[comzotohcljc.hhh.io.core])
@@ -142,8 +141,9 @@
 (defn- cookiesToNetty ^String [^List cookies]
   (persistent! (reduce (fn [sum ^HttpCookie c]
                          (conj! sum
-                                (ServerCookieEncoder/encode
-                                  (.getName c)(.getValue c))))
+                                (-> (doto (CookieEncoder. true)
+                                          (.add (.getName c)(.getValue c)))
+                                    (.encode))))
                        (transient [])
                        (seq cookies)) ))
 
@@ -153,11 +153,11 @@
          ^WebSocketFrame
          f (cond
               (.isBinary res)
-              (BinaryWebSocketFrame. (Unpooled/wrappedBuffer bits))
+              (BinaryWebSocketFrame. (ChannelBuffers/wrappedBuffer bits))
 
               :else
               (TextWebSocketFrame. (nsb (stringify bits)))) ]
-    (wflush ch f)))
+    (.write ch f)))
 
 
 (defn- netty-reply "" [^comzotohcljc.util.core.MuObj res
@@ -169,13 +169,13 @@
          rsp (makeHttpReply code)
          data (.getf res :data)
          hdrs (.getf res :hds) ]
-    (with-local-vars [ clen 0 xd nil ]
+    (with-local-vars [ clen 0 xd nil wf nil]
       (doseq [[^String nm vs] (seq hdrs)]
         (when-not (= "content-length" (.toLowerCase nm))
           (doseq [vv (seq vs)]
             (HttpHeaders/addHeader rsp nm vv))))
       (doseq [s cks]
-        (HttpHeaders/addHeader rsp HttpHeaders$Names/SET_COOKIE cks) )
+        (HttpHeaders/addHeader rsp HttpHeaders$Names/SET_COOKIE s) )
       (cond
         (and (>= code 300)(< code 400))
         (HttpHeaders/setHeader rsp "Location" (nsb (.getf res :redirect)))
@@ -193,18 +193,15 @@
         (HttpHeaders/setHeader rsp "Connection" "keep-alive"))
 
       (HttpHeaders/setContentLength rsp @clen)
-      (wwrite ch rsp)
+      (var-set wf (.write ch rsp))
       (debug "wrote response headers out to client")
 
       (when (> @clen 0)
-        (wwrite ch (ChunkedStream. (.stream ^XData @xd)))
+        (var-set wf (.write ch (ChunkedStream. (.stream ^XData @xd))))
         (debug "wrote response body out to client"))
 
-      (let [ ^ChannelFuture wf (wflush ch LastHttpContent/EMPTY_LAST_CONTENT) ]
-        (debug "flushed last response content out to client")
-        (when-not (.isKeepAlive evt)
-          (debug "keep-alive == false, closing channel.  bye.")
-          (.addListener wf ChannelFutureListener/CLOSE)))
+      (debug "flushed last response content out to client")
+      (closeCF (not (.isKeepAlive evt)) wf)
 
       )))
 
@@ -221,7 +218,7 @@
     (resumeWithError [_]
       (let [ rsp (makeHttpReply 500) ]
         (try
-          (maybeClose evt (wflush ch rsp))
+          (maybeClose evt (.write ch rsp))
           (catch ClosedChannelException e#
             (warn "ClosedChannelException thrown while flushing headers"))
           (catch Throwable t# (error t# "") )) ))

@@ -24,19 +24,22 @@
 (import '(java.io File))
 (import '(com.zotoh.frwk.io XData))
 
-(import '(com.zotoh.hohenheim.mvc
-  HTTPErrorHandler MVCUtils WebAsset WebContent ))
 (import '(com.zotoh.hohenheim.io HTTPEvent Emitter))
-(import '(io.netty.channel Channel))
-(import '(io.netty.buffer ByteBuf Unpooled))
-(import '(io.netty.handler.codec.http
+(import '(com.zotoh.hohenheim.mvc
+  HTTPErrorHandler MVCUtils WebAsset WebContent))
+
+(import '(org.jboss.netty.buffer ChannelBuffers ChannelBuffer))
+(import '(org.jboss.netty.channel Channel))
+
+(import '(org.jboss.netty.handler.codec.http
   HttpHeaders$Values HttpHeaders$Names
-  LastHttpContent DefaultHttpRequest
+  DefaultHttpRequest
   HttpContentCompressor HttpHeaders HttpVersion
   HttpMessage HttpRequest HttpResponse HttpResponseStatus
   DefaultHttpResponse HttpMethod))
-(import '(jregex Matcher Pattern))
+
 (import '(com.zotoh.frwk.net NetUtils))
+(import '(jregex Matcher Pattern))
 
 (use '[clojure.tools.logging :only [info warn error debug] ])
 (use '[comzotohcljc.util.core :only [MuObj Try! nice-fpath] ])
@@ -47,8 +50,7 @@
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.mvc.tpls :only [getLocalFile replyFileAsset] ])
 (use '[comzotohcljc.netty.comms :only [sendRedirect makeRouteCracker
-                                       wwrite
-                                       makeHttpReply wflush closeCF] ])
+                                       makeHttpReply closeCF] ])
 (use '[comzotohcljc.util.str :only [hgl? nsb] ])
 (use '[comzotohcljc.util.meta :only [make-obj] ])
 
@@ -57,10 +59,10 @@
 (defn- isModified [^String eTag lastTm ^HttpRequest req]
   (with-local-vars [ modd true ]
     (cond
-      (-> (.headers req) (.contains "if-none-match"))
+      (.containsHeader req "if-none-match")
       (var-set modd (not= eTag (HttpHeaders/getHeader req "if-none-match")))
 
-      (-> (.headers req) (.contains "if-unmodified-since"))
+      (.containsHeader req "if-unmodified-since")
       (let [ s (HttpHeaders/getHeader req "if-unmodified-since") ]
         (when (hgl? s)
           (Try! (when (>= (.getTime (.parse (MVCUtils/getSDF) s)) lastTm)
@@ -94,7 +96,7 @@
   [^comzotohcljc.hhh.core.sys.Element src
    ^Channel ch
    code]
-  (with-local-vars [ rsp (makeHttpReply code) bits nil ]
+  (with-local-vars [ rsp (makeHttpReply code) bits nil wf nil]
     (try
       (let [ h (.getAttr src :errorHandler)
              ^HTTPErrorHandler
@@ -108,10 +110,10 @@
           (var-set bits (.body rc)))
         (HttpHeaders/setContentLength @rsp
                                       (if (nil? @bits) 0 (alength ^bytes @bits)))
-        (wwrite ch @rsp)
+        (var-set wf (.write ch @rsp))
         (when-not (nil? @bits)
-          (wwrite ch (Unpooled/wrappedBuffer ^bytes @bits)))
-        (closeCF true (wflush ch LastHttpContent/EMPTY_LAST_CONTENT)))
+          (var-set wf (.write ch (ChannelBuffers/wrappedBuffer ^bytes @bits))))
+        (closeCF true @wf))
       (catch Throwable e#
         (NetUtils/closeChannel ch)))))
 
@@ -125,12 +127,10 @@
           (debug "serving static file: " (nice-fpath file))
           (addETag src evt req rsp file)
           ;; 304 not-modified
-          (if (= (-> rsp (.getStatus)(.code)) 304)
+          (if (= (-> rsp (.getStatus)(.getCode)) 304)
             (do
               (HttpHeaders/setContentLength rsp 0)
-              (wwrite ch rsp)
-              (closeCF (not (.isKeepAlive evt))
-                       (wflush ch LastHttpContent/EMPTY_LAST_CONTENT)))
+              (closeCF (.isKeepAlive evt) (.write ch rsp)))
             (replyFileAsset src ch req rsp file))))
       (catch Throwable e#
         (error "failed to get static resource " (.getUri evt) e#)

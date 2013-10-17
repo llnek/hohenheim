@@ -112,7 +112,7 @@
 
 (defrecord NettyIO  [^Bootstrap bootstrap ^ChannelGroup cgroup ] )
 
-(defmulti ^:private addListener (fn [a & more ] (class a)))
+(defmulti addListener (fn [a & more ] (class a)))
 
 (defprotocol NettyServiceIO
   ""

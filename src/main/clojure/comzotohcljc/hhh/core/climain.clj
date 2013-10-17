@@ -21,7 +21,7 @@
 
 (use '[clojure.tools.logging :only (info warn error debug)])
 
-(import '(io.netty.channel
+(import '(org.jboss.netty.channel
   Channel ChannelFuture ChannelFutureListener))
 
 (import '(com.zotoh.hohenheim.core ConfigError))
@@ -172,10 +172,7 @@
                   (onerror [_ ch msginfo evt] nil)
                   (presend [_ ch msg] nil)
                   (onreq [_ ch req msginfo xdata]
-                    (Try!
-                      (.addListener
-                        ^ChannelFuture (wflush ch (makeFullHttpReply 200))
-                        ChannelFutureListener/CLOSE))
+                    (closeCF true (.write ^Channel ch (makeHttpReply 200)))
                     (stop-cli ctx))
                   (onres [_ ch rsp msginfo xdata] nil)) } )))
 

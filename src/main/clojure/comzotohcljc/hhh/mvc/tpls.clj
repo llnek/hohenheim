@@ -18,12 +18,12 @@
        :author "kenl" }
   comzotohcljc.hhh.mvc.tpls)
 
-(import '(io.netty.handler.codec.http
+(import '(org.jboss.netty.handler.codec.http
   HttpMethod HttpHeaders HttpResponseStatus
-  LastHttpContent HttpRequest HttpResponse))
-(import '(io.netty.handler.stream
+  HttpRequest HttpResponse))
+(import '(org.jboss.netty.handler.stream
   ChunkedFile ChunkedStream ChunkedInput ))
-(import '(io.netty.channel ChannelFuture ChannelFutureListener Channel))
+(import '(org.jboss.netty.channel ChannelFuture ChannelFutureListener Channel))
 
 (import '(org.apache.commons.io FileUtils))
 (import '(com.zotoh.hohenheim.mvc
@@ -34,7 +34,7 @@
 (import '(com.zotoh.frwk.net NetUtils))
 
 (use '[clojure.tools.logging :only [info warn error debug] ])
-(use '[comzotohcljc.netty.comms :only [wwrite wflush closeCF] ])
+(use '[comzotohcljc.netty.comms :only [addListener closeCF] ])
 (use '[comzotohcljc.util.mime :only [guess-contenttype] ])
 (use '[comzotohcljc.util.core :only [Try! notnil? nice-fpath] ])
 (use '[comzotohcljc.util.io :only [streamify] ])
@@ -120,7 +120,7 @@
   (let [ ^WebAsset asset (if (not (maybeCache file))
                  nil
                  (getAsset file)) ]
-    (with-local-vars [raf nil clen 0 inp nil ct ""]
+    (with-local-vars [raf nil clen 0 inp nil ct "" wf nil]
       (if (nil? asset)
         (do
           (var-set ct (guess-contenttype file "utf-8" "text/plain"))
@@ -138,16 +138,14 @@
         (HttpHeaders/setContentLength rsp @clen)
         (HttpHeaders/addHeader rsp "Accept-Ranges" "bytes")
         (HttpHeaders/setHeader rsp "Content-Type" @ct)
-        (wwrite ch rsp)
+        (var-set wf (.write ch rsp))
         (when-not (= (.getMethod req) HttpMethod/HEAD)
-          (wwrite ch @inp))
-        (let [ wf (wflush ch LastHttpContent/EMPTY_LAST_CONTENT) ]
-          (.addListener wf (reify ChannelFutureListener
-                            (operationComplete [_ f]
-                              (Try! (when (notnil? @raf)
-                                      (.close ^RandomAccessFile @raf)))
-                              (when-not (HttpHeaders/isKeepAlive req)
-                                (NetUtils/closeChannel ch))))))
+          (var-set wf (.write ch @inp)))
+        (addListener ^ChannelFuture @wf
+                     { :done (fn [^Channel c]
+                               (Try! (when (notnil? @raf) (.close ^RandomAccessFile @raf)))
+                               (when-not (HttpHeaders/isKeepAlive req)
+                                 (NetUtils/closeChannel c))) })
         (catch Throwable e#
           (Try! (when (notnil? @raf)(.close ^RandomAccessFile @raf)))
           (error e# "")
