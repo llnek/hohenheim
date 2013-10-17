@@ -172,7 +172,7 @@
                   (onerror [_ ch msginfo evt] nil)
                   (presend [_ ch msg] nil)
                   (onreq [_ ch req msginfo xdata]
-                    (closeCF true (.write ^Channel ch (makeHttpReply 200)))
+                    (closeCF false (.write ^Channel ch (makeHttpReply 200)))
                     (stop-cli ctx))
                   (onres [_ ch rsp msginfo xdata] nil)) } )))
 

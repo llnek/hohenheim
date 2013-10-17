@@ -18,6 +18,7 @@
 
 package com.zotoh.frwk.net
 
+import scala.collection.JavaConversions._
 import scala.collection.mutable
 import com.zotoh.frwk.io.XData
 
@@ -27,8 +28,8 @@ import com.zotoh.frwk.io.XData
 class ULFormItems {
   private val _items= mutable.ArrayBuffer[ULFileItem]()
   
+  def getAll() = asJavaCollection( _items.toIterable )
   def add(x:ULFileItem) { _items += x }
-  def getAll() = _items.toSeq
   def destroy() { 
     _items.foreach { (x) => 
       x.fileData match { 

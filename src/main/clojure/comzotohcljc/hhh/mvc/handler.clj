@@ -113,7 +113,7 @@
         (var-set wf (.write ch @rsp))
         (when-not (nil? @bits)
           (var-set wf (.write ch (ChannelBuffers/wrappedBuffer ^bytes @bits))))
-        (closeCF true @wf))
+        (closeCF false @wf))
       (catch Throwable e#
         (NetUtils/closeChannel ch)))))
 

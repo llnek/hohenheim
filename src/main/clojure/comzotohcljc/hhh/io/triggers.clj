@@ -201,7 +201,7 @@
         (debug "wrote response body out to client"))
 
       (debug "flushed last response content out to client")
-      (closeCF (not (.isKeepAlive evt)) wf)
+      (closeCF (.isKeepAlive evt) wf)
 
       )))
 

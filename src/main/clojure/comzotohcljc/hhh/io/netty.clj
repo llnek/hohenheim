@@ -56,8 +56,8 @@
 (use '[comzotohcljc.hhh.io.http])
 (use '[comzotohcljc.hhh.io.triggers])
 (use '[comzotohcljc.util.core :only [MuObj make-mmap notnil? conv-long] ])
-(use '[comzotohcljc.netty.comms :only [ makeServerNetty finzNetty
-                                       makeRouteCracker] ])
+(use '[comzotohcljc.netty.comms :only [ makeServerNetty finzNetty addListener
+                                        makeRouteCracker] ])
 (use '[comzotohcljc.util.seqnum :only [next-long] ])
 (use '[comzotohcljc.util.mime :only [get-charset] ])
 (use '[comzotohcljc.util.str :only [hgl? nsb strim nichts?] ])
@@ -193,8 +193,8 @@
         (encoding [this]  (get-charset (.contentType this)))
         (contextPath [_] "")
 
-        (getHeaderValues [_ nm] (-> (.headers req) (.getAll nm)))
-        (getHeaders [_] (-> (.headers req) (.names)))
+        (getHeaderValues [_ nm] (.getHeaders req nm))
+        (getHeaders [_] (.getHeaderNames req))
         (getHeaderValue [_ nm] (HttpHeaders/getHeader req nm))
         (getParameterValues [_ nm]
           (let [ dc (QueryStringDecoder. (.getUri req))
@@ -309,10 +309,10 @@
          ^InetAddress ip (if (nichts? host)
               (InetAddress/getLocalHost)
               (InetAddress/getByName host))
-         c (.bind bs (InetSocketAddress. ip port))
+         cf (.bindAsync bs (InetSocketAddress. ip port))
          ^ChannelGroup cg (:cgroup nes) ]
 ;;    c.getConfig().setConnectTimeoutMillis(millis)
-    (.add cg (.channel c))
+    (addListener cf { :ok (fn [^Channel c] (.add cg c)) })
     (debug "netty-io running on port: " port ", host: " host ", ip: " ip)
     (ioes-started co)))
 

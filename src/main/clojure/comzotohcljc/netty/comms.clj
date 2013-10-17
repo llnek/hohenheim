@@ -154,8 +154,8 @@
                           (get HTTP-CODES status))))
 
 (defn closeCF "Maybe close the channel."
-  [doit ^ChannelFuture cf]
-  (if (and doit (notnil? cf))
+  [keepAlive? ^ChannelFuture cf]
+  (if (and (not keepAlive?) (notnil? cf))
     (.addListener cf ChannelFutureListener/CLOSE)))
 
 (defn sendRedirect "Redirect a request."
@@ -163,7 +163,7 @@
   (let [ rsp (makeHttpReply (if perm 301 307)) ]
     (debug "redirecting to -> " targetUrl)
     (HttpHeaders/setHeader rsp  "location" targetUrl)
-    (closeCF true (.write ch rsp))))
+    (closeCF false (.write ch rsp))))
 
 (defn makeNilServiceIO "Reify a no-op service-io object."
   ^comzotohcljc.netty.comms.NettyServiceIO
@@ -263,7 +263,7 @@
       (doseq [ [k v] (seq opts) ]
         (.setOption bs (name k) v))
       (.setPipelineFactory bs (inizServer options))
-      (comzotohcljc.netty.comms.NettyIO bs cg)
+      (comzotohcljc.netty.comms.NettyIO. bs cg)
       )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -301,7 +301,7 @@
      (doseq [ [k v] (seq opts) ]
        (.setOption bs (name k) v))
      (.setPipeline bs (inizClient options))
-     (comzotohcljc.netty.comms.NettyIO bs cg)
+     (comzotohcljc.netty.comms.NettyIO. bs cg)
      )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -414,7 +414,7 @@
 
 (defn- process-multi-part "" [^Channel ch
                               ^InterfaceHttpData data
-                              ^ArrayList items
+                              ^ULFormItems items
                               ^ArrayList out]
   (debug "multi-part data = " (type data))
   (cond
@@ -526,8 +526,8 @@
 (defn- nioCfgCtx [^ChannelHandlerContext ctx usercb]
   (let [ att { :os (make-baos)
                :xs (XData.)
+               :formitems (ULFormItems.)
                :formtrash (ArrayList.)
-               :formitems (ArrayList.)
                :clen 0
                :cb usercb
                :dir nil
@@ -666,7 +666,8 @@
       (let [ rc (maybe-formdata ch req msginfo) ]
         (if (nil? rc)
           (when-not (:is-chunked msginfo)
-            (nioSockitDown ctx (.getContent req)))
+            (nioSockitDown ctx (.getContent req))
+            (nioComplete ctx req))
           (nio-req-decode ctx req)))
       (catch Throwable e#
         (error e# "")
