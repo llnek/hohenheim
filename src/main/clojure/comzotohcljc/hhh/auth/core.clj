@@ -93,7 +93,7 @@
       (dbio-set-m2m { :as :roles :with sql } acc r))
     acc))
 
-(defn- get-loginAccount  "" [^SQLr sql
+(defn get-loginAccount  "" [^SQLr sql
                             ^String user
                             ^comzotohcljc.crypto.codec.Password pwdObj]
   (let [ acct (.findOne sql :czc.hhh.auth/LoginAccount

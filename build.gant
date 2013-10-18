@@ -401,6 +401,8 @@ path (id: 'testPathId') {
 
 target (cljhhhMain: '') { cljhhh_Main() }
 
+target (cljhhhCore: '') { cljhhh_Core() }
+
 target (cljhhhIO: '') { cljhhh_IO() }
 
 target (cljhhhAuth: '') { cljhhh_Auth() }
@@ -588,9 +590,10 @@ def compile_clj() {
   clj_Net()
   clj_JMX()
   clj_DBIO()
-  cljhhh_Auth()
   cljhhh_IO()
   cljhhh_MVC()
+  cljhhh_Core()
+  cljhhh_Auth()
   cljhhh_Main()
 
   copy (todir: "${buildDir}") {
@@ -823,7 +826,7 @@ def cljhhh_IO() {
   }
 }
 
-def cljhhh_Main() {
+def cljhhh_Core() {
   java (classname: 'clojure.lang.Compile',
         fork: true,
         failonerror: true,
@@ -840,6 +843,17 @@ def cljhhh_Main() {
     arg (value: 'comzotohcljc.hhh.etc.core')
     arg (value: 'comzotohcljc.hhh.etc.misc')
     arg (value: 'comzotohcljc.hhh.impl.defaults')
+  }
+}
+
+def cljhhh_Main() {
+  java (classname: 'clojure.lang.Compile',
+        fork: true,
+        failonerror: true,
+        maxmemory: '2048m',
+        classpathref: 'compilePathId') {
+    sysproperty (key: 'clojure.compile.warn-on-reflection', value: true)
+    sysproperty (key: 'clojure.compile.path', value: "${buildDir}")
     arg (value: 'comzotohcljc.hhh.impl.ext')
     arg (value: 'comzotohcljc.hhh.impl.sys')
     arg (value: 'comzotohcljc.hhh.impl.exec')
