@@ -23,6 +23,7 @@
 (import '(java.util Date))
 (import '(java.io File))
 (import '(com.zotoh.frwk.io XData))
+(import '(com.zotoh.frwk.core Hierarchial Identifiable))
 
 (import '(com.zotoh.hohenheim.io HTTPEvent Emitter))
 (import '(com.zotoh.hohenheim.mvc
@@ -50,6 +51,7 @@
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.mvc.tpls :only [getLocalFile replyFileAsset] ])
 (use '[comzotohcljc.netty.comms :only [sendRedirect makeRouteCracker
+                                       makeServerNetty finzNetty addListener
                                        makeHttpReply closeCF] ])
 (use '[comzotohcljc.util.str :only [hgl? nsb] ])
 (use '[comzotohcljc.util.meta :only [make-obj] ])
@@ -196,43 +198,58 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn handleOneNettyREQ
-  [ ^Emitter co
-    ^Channel ch
-    ^HttpRequest req
-    ^comzotohcljc.net.comms.HTTPMsgInfo msgInfo
-    ^XData xdata]
-  (let [ ^HTTPEvent evt (ioes-reify-event co ch req xdata)
-         ^comzotohcljc.hhh.core.sys.Element
-         ctr (.container co)
-         rcc (makeRouteCracker (.getAttr ctr :routes))
-         [r1 ^comzotohcljc.net.rts.RouteInfo r2 r3 r4]
-         (.crack rcc msgInfo) ]
-    (cond
-      (and r1 (hgl? r4))
-      (sendRedirect ch false r4)
+(defn- make-service-io [^comzotohcljc.hhh.io.core.EmitterAPI co]
+  (reify comzotohcljc.netty.comms.NettyServiceIO
+    (onres [_ ch rsp msginfo xdata] nil)
+    (onerror [_ ch msginfo exp]  nil)
+    (presend [_ ch msg] nil)
+    (onreq [_ ch req msginfo xdata]
+      (let [ ^HTTPEvent evt (ioes-reify-event co ch req xdata)
+             ^comzotohcljc.hhh.core.sys.Element
+             ctr (.container co)
+             rcc (.getAttr co :rtcObj)
+             [r1 ^comzotohcljc.net.rts.RouteInfo r2 r3 r4]
+             (.crack rcc msginfo) ]
+        (cond
+          (and r1 (hgl? r4))
+          (sendRedirect ch false r4)
 
-      (= r1 true)
-      (do
-        (debug "matched one route: " (.getPath r2) " , and static = " (.isStatic? r2))
-        (if (.isStatic? r2)
-          (serveStatic co r2 r3 ch req evt)
-          (serveRoute co r2 r3 ch evt)))
-
-      :else
-      (let [ fp (serveWelcomeFile evt) ]
-        (if (nil? fp)
-          (handleStatic co ch req evt fp)
+          (= r1 true)
           (do
-            (debug "failed to match uri: " (.getUri evt))
-            (serve-error co ch 404)
-            ))) )))
+            (debug "matched one route: " (.getPath r2) " , and static = " (.isStatic? r2))
+            (if (.isStatic? r2)
+              (serveStatic co r2 r3 ch req evt)
+              (serveRoute co r2 r3 ch evt)))
 
+          :else
+          (let [ fp (serveWelcomeFile evt) ]
+            (if (nil? fp)
+              (handleStatic co ch req evt fp)
+              (do
+                (debug "failed to match uri: " (.getUri evt))
+                (serve-error co ch 404)
+                ))) )))
+    ))
 
-(defmethod nettyServiceReq :czc.hhh.io/NettyMVC
-  [^comzotohcljc.hhh.io.core.EmitterAPI co
-   ch req msginfo xdata]
-  (handleOneNettyREQ co ch req msginfo xdata))
+(defn- init-netty
+  [^comzotohcljc.hhh.core.sys.Element co reqcb]
+  (let [ ^comzotohcljc.hhh.core.sys.Element
+         ctr (.parent ^Hierarchial co)
+         rtc (makeRouteCracker (.getAttr ctr :routes))
+         options { :serverkey (.getAttr co :serverKey)
+                   :passwd (.getAttr co :pwd)
+                   :forwardBadRoutes true
+                   :usercb reqcb
+                   :rtcObj rtc }
+         nes (makeServerNetty options) ]
+    (debug "server-netty - made - success.")
+    (.setAttr! co :rtcObj rtc)
+    (.setAttr! co :netty nes)
+    co))
+
+(defmethod comp-initialize :czc.hhh.io/NettyMVC
+  [^comzotohcljc.hhh.core.sys.Element co]
+  (init-netty co (make-service-io co)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

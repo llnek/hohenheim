@@ -81,7 +81,7 @@
 (use '[comzotohcljc.crypto.ssl :only [make-sslContext make-sslClientCtx] ])
 (use '[comzotohcljc.net.rts])
 (use '[comzotohcljc.util.files :only [save-file get-file] ])
-(use '[comzotohcljc.util.core :only [uid notnil? Try! TryC] ])
+(use '[comzotohcljc.util.core :only [_MB uid notnil? Try! TryC] ])
 (use '[comzotohcljc.util.str :only [strim nsb hgl?] ])
 (use '[comzotohcljc.util.io :only [make-baos] ])
 
@@ -256,7 +256,7 @@
            bees (Executors/newCachedThreadPool (TFac. "bees"))
            bs (doto (ServerBootstrap. (NioServerSocketChannelFactory. boss bees))
                     (.setOption "reuseAddress" true)
-                    (.setOption "child.receiveBufferSize" (int (* 2 1024 1024)))
+                    (.setOption "child.receiveBufferSize" (int (* 2 _MB)))
                     (.setOption "child.tcpNoDelay" true))
            opts (:netty options)
            cg (DefaultChannelGroup. (uid)) ]

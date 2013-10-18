@@ -66,8 +66,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defmulti nettyServiceReq "" (fn [a & args] (:typeid (meta a))))
-
 (defn- make-wsock-result []
   (let [ impl (make-mmap) ]
     (.mm-s impl :binary false)
@@ -261,42 +259,36 @@
     (.setAttr! co :contextPath (strim c))
     (http-basic-config co cfg) ))
 
-(defmethod nettyServiceReq :czc.hhh.io/NettyIO
-  [^comzotohcljc.hhh.io.core.EmitterAPI co
-   ch req msginfo xdata]
-  (let [ mtd (:method msginfo)
-         evt (cond
-                (= "WS" mtd)
-                (make-wsock-event co ch xdata)
-                :else
-                (ioes-reify-event co ch req xdata))
-         ^comzotohcljc.hhh.io.core.WaitEventHolder
-         w (make-async-wait-holder (make-netty-trigger ch evt co) evt) ]
-    (.timeoutMillis w
-                    (.getAttr
-                      ^comzotohcljc.hhh.core.sys.Element co
-                      :waitMillis))
-    (.hold co w)
-    (.dispatch co evt)))
-
-(defn- make-service-io [^comzotohcljc.hhh.io.core.EmitterAPI co reqcb]
+(defn- make-service-io [^comzotohcljc.hhh.io.core.EmitterAPI co]
   (reify comzotohcljc.netty.comms.NettyServiceIO
+    (onres [_ ch rsp msginfo xdata] nil)
     (onerror [_ ch msginfo exp]  nil)
     (presend [_ ch msg] nil)
     (onreq [_ ch req msginfo xdata]
-      (reqcb co ch req msginfo xdata))
-    (onres [_ ch rsp msginfo xdata] nil)) )
+      (let [ mtd (:method msginfo)
+             evt (cond
+                    (= "WS" mtd)
+                    (make-wsock-event co ch xdata)
+                    :else
+                    (ioes-reify-event co ch req xdata))
+             ^comzotohcljc.hhh.io.core.WaitEventHolder
+             w (make-async-wait-holder (make-netty-trigger ch evt co) evt) ]
+        (.timeoutMillis w
+                        (.getAttr
+                          ^comzotohcljc.hhh.core.sys.Element co
+                          :waitMillis))
+        (.hold co w)
+        (.dispatch co evt))) ))
 
 (defn- init-netty
   [^comzotohcljc.hhh.core.sys.Element co reqcb]
   (let [ ^comzotohcljc.hhh.core.sys.Element
          ctr (.parent ^Hierarchial co)
          options { :serverkey (.getAttr co :serverKey)
-                   :forwardBadRoutes true
                    :passwd (.getAttr co :pwd)
-                   :usercb (make-service-io co reqcb)
-                   :rtcObj (makeRouteCracker (.getAttr ctr :routes)) }
+                   :usercb reqcb }
          nes (makeServerNetty options) ]
+    (debug "server-netty - made - success.")
     (.setAttr! co :netty nes)
     co))
 
@@ -324,7 +316,7 @@
 
 (defmethod comp-initialize :czc.hhh.io/NettyIO
   [^comzotohcljc.hhh.core.sys.Element co]
-  (init-netty co nettyServiceReq))
+  (init-netty co (make-service-io co)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
