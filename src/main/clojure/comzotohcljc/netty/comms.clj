@@ -116,10 +116,10 @@
 
 (defprotocol NettyServiceIO
   ""
-  (onreq [_ ch req msginfo xdata] )
-  (presend [_ ch req] )
-  (onerror [_ ch msginfo err] )
-  (onres [_ ch rsp msginfo xdata] ))
+  (onRequest [_ ch req msginfo rdata] )
+  (preSend [_ ch req] )
+  (onError [_ ch msginfo err] )
+  (onReply [_ ch rsp msginfo rdata] ))
 
 (defprotocol RouteCracker
   ""
@@ -169,10 +169,10 @@
   ^comzotohcljc.netty.comms.NettyServiceIO
   []
   (reify NettyServiceIO
-    (presend [_ ch req] (debug "empty pre-send." ))
-    (onerror [_ ch msginfo err] (debug "empty onerror." ))
-    (onreq [_ ch req msginfo xdata] (debug "empty onreq." ))
-    (onres [_ ch rsp msginfo xdata] (debug "empty onres." ))))
+    (preSend [_ ch req] (debug "empty pre-send." ))
+    (onError [_ ch msginfo err] (debug "empty onerror." ))
+    (onRequest [_ ch req msginfo rdata] (debug "empty onreq." ))
+    (onReply [_ ch rsp msginfo rdata] (debug "empty onres." ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; server side netty
@@ -199,7 +199,7 @@
                          (:keep-alive msginfo)) ]
         (when-not (nil? err) (error err ""))
         (when-not (nil? ucb)
-          (.onerror ^comzotohcljc.netty.comms.NettyServiceIO
+          (.onError ^comzotohcljc.netty.comms.NettyServiceIO
                     ucb ch msginfo err))
         (when-not keepAlive (Try! (NetUtils/closeChannel ch)))))
 
@@ -439,7 +439,7 @@
 
 (defn- finz-decoder [^ChannelHandlerContext ctx]
   (let [ ch (.getChannel ctx) attObj (ga-map ch)
-         ^XData xdata (:xs attObj)
+         ^XData rdata (:xs attObj)
          info (:info attObj)
          dir (:dir attObj)
 
@@ -454,8 +454,8 @@
     (doseq [ f (seq out) ]
       (.removeHttpDataFromClean dc f))
     (Try! (.cleanFiles dc))
-    (.resetContent xdata items)
-    (.onreq usercb ch dir info xdata) ))
+    (.resetContent rdata items)
+    (.onRequest usercb ch dir info rdata) ))
 
 
 (defn- read-formdata [^ChannelHandlerContext ctx ^HttpPostRequestDecoder dc]
@@ -477,7 +477,7 @@
 (defn- nioComplete "" [^ChannelHandlerContext ctx msg]
   (nioFinz ctx)
   (let [ ch (.getChannel ctx) attObj (ga-map ch)
-         ^XData xdata (:xs attObj)
+         ^XData rdata (:xs attObj)
          info (:info attObj)
          dir (:dir attObj)
 
@@ -492,20 +492,20 @@
 
     (when (and (instance? ByteArrayOutputStream os)
                (> clen 0))
-      (.resetContent xdata os))
+      (.resetContent rdata os))
     (cond
       (instance? HttpResponse dir)
       (do
         (TryC (NetUtils/closeChannel ch))
-        (.onres usercb ch dir info xdata))
+        (.onReply usercb ch dir info rdata))
 
       (instance? HttpRequest dir)
       (if (nil? dc)
-        (.onreq usercb ch dir info xdata)
+        (.onRequest usercb ch dir info rdata)
         (finz-decoder ctx))
 
       (instance? WebSocketFrame msg)
-      (do (.onreq usercb ch msg info xdata))
+      (do (.onRequest usercb ch msg info rdata))
 
       :else nil)
     ))
@@ -513,12 +513,12 @@
 (defn- nioSockitDown [^ChannelHandlerContext ctx ^ChannelBuffer cbuf]
   (let [ ch (.getChannel ctx) attObj (ga-map ch)
          ^OutputStream cout (:os attObj)
-         ^XData xdata (:xs attObj)
+         ^XData rdata (:xs attObj)
          csum (:clen attObj)
          nsum (NetUtils/sockItDown cbuf cout csum)
-         nout (if (.isDiskFile xdata)
+         nout (if (.isDiskFile rdata)
                   cout
-                  (NetUtils/swapFileBacked xdata cout nsum)) ]
+                  (NetUtils/swapFileBacked rdata cout nsum)) ]
     (sa-map! ch (-> attObj
                     (assoc :clen nsum)
                     (assoc :os nout))) ))
@@ -539,7 +539,7 @@
   (let [ ch (.getChannel ctx) attObj (ga-map ch)
          info (:info attObj)
          usercb (:cb attObj) ]
-    (.onerror ^comzotohcljc.netty.comms.NettyServiceIO usercb ch info err)))
+    (.onError ^comzotohcljc.netty.comms.NettyServiceIO usercb ch info err)))
 
 (defn- nioFrameChunk [^ChannelHandlerContext ctx
                       ^ContinuationWebSocketFrame frame]
@@ -775,9 +775,9 @@
 
   (nettyXXXServer host port options))
 
-(defn- reply-get-vfile [^Channel ch ^XData xdata]
+(defn- reply-get-vfile [^Channel ch ^XData rdata]
   (let [ res (makeHttpReply 200)
-         clen (.size xdata)
+         clen (.size rdata)
          attObj (ga-map ch)
          info (:info attObj)
          kalive (if (nil? info) false (:keep-alive info)) ]
@@ -785,35 +785,38 @@
     (HttpHeaders/setContentLength res clen)
     (.setChunked res true)
     (.write ch res)
-    (closeCF kalive (.write ch (ChunkedStream. (.stream xdata)))) ))
+    (closeCF kalive (.write ch (ChunkedStream. (.stream rdata)))) ))
 
 (defn- filer-handler [^File vdir]
-  (let [ putter (fn [^Channel ch ^String fname ^XData xdata]
+  (let [ putter (fn [^Channel ch ^String fname rdata]
                   (try
-                      (save-file vdir fname xdata)
-                      (reply-xxx ch 200)
+                    (if (instance? XData rdata)
+                      (do
+                        (save-file vdir fname ^XData rdata)
+                        (reply-xxx ch 200))
+                      (reply-xxx ch 400))
                     (catch Throwable e#
                       (reply-xxx ch 500))))
          getter (fn [^Channel ch ^String fname]
-                  (let [ xdata (get-file vdir fname) ]
-                    (if (.hasContent xdata)
-                      (reply-get-vfile ch xdata)
+                  (let [ rdata (get-file vdir fname) ]
+                    (if (.hasContent rdata)
+                      (reply-get-vfile ch rdata)
                       (reply-xxx ch 204)))) ]
     (reify NettyServiceIO
-      (presend [_ ch msg] nil)
-      (onerror [_ ch msginfo err]
+      (preSend [_ ch msg] nil)
+      (onError [_ ch msginfo err]
         (do
           (when-not (nil? err) (error err ""))
           (reply-xxx ch 500)))
-      (onres [_ ch rsp msginfo xdata] nil)
-      (onreq [_ ch req msginfo xdata]
+      (onReply [_ ch rsp msginfo rdata] nil)
+      (onRequest [_ ch req msginfo rdata]
         (let [ mtd (nsb (:method msginfo))
                uri (nsb (:uri msginfo))
                pos (.lastIndexOf uri (int \/))
                p (if (< pos 0) uri (.substring uri (inc pos))) ]
           (debug "Method = " mtd ", Uri = " uri ", File = " p)
           (cond
-            (or (= mtd "POST")(= mtd "PUT")) (putter ^Channel ch p xdata)
+            (or (= mtd "POST")(= mtd "PUT")) (putter ^Channel ch p rdata)
             (or (= mtd "GET")(= mtd "HEAD")) (getter ^Channel ch p)
             :else (reply-xxx ch 405)))))
       ))
@@ -860,8 +863,8 @@
      (debug "Netty client connected to " host ":" port " - OK.")
      [nc ch opts] )))
 
-(defn- send-httpClient "" [^URL targetUrl ^XData xdata options]
-  (let [ clen (if (nil? xdata) 0 (.size xdata))
+(defn- send-httpClient "" [^URL targetUrl ^XData rdata options]
+  (let [ clen (if (nil? rdata) 0 (.size rdata))
          mo (:override options)
          md (if (> clen 0)
               (if (hgl? mo) mo "POST")
@@ -875,7 +878,7 @@
          ucb (:usercb opts) ]
     (HttpHeaders/setHeader req "Connection" (if ka "keep-alive" "close"))
     (HttpHeaders/setHeader req "host" (.getHost targetUrl))
-    (.presend ucb ch req)
+    (.preSend ucb ch req)
     (let [ ct (HttpHeaders/getHeader req "content-type") ]
       (when (and (StringUtils/isEmpty ct)
                  (> clen 0))
@@ -887,16 +890,16 @@
       (var-set wf (.write ch req))
       (when (> clen 0)
         (var-set wf (if (> clen (com.zotoh.frwk.io.IOUtils/streamLimit))
-                      (.write ch (ChunkedStream. (.stream xdata)))
-                      (.write ch (ChannelBuffers/wrappedBuffer (.javaBytes xdata))))))
+                      (.write ch (ChunkedStream. (.stream rdata)))
+                      (.write ch (ChannelBuffers/wrappedBuffer (.javaBytes rdata))))))
       (closeCF ka @wf))
     ))
 
 (defn asyncPost "Async HTTP Post"
-  ([^URL targetUrl ^XData xdata options]
-   (send-httpClient targetUrl xdata options))
-  ([^URL targetUrl ^XData xdata]
-   (asyncPost targetUrl xdata {})) )
+  ([^URL targetUrl ^XData rdata options]
+   (send-httpClient targetUrl rdata options))
+  ([^URL targetUrl ^XData rdata]
+   (asyncPost targetUrl rdata {})) )
 
 (defn asyncGet "Async HTTP GET"
   ([^URL targetUrl] (asyncGet targetUrl {}))

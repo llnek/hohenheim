@@ -169,12 +169,12 @@
       "127.0.0.1"
       port
       { :usercb (reify NettyServiceIO
-                  (onerror [_ ch msginfo evt] nil)
-                  (presend [_ ch msg] nil)
-                  (onreq [_ ch req msginfo xdata]
+                  (onError [_ ch msginfo evt] nil)
+                  (preSend [_ ch msg] nil)
+                  (onRequest [_ ch req msginfo rdata]
                     (closeCF false (.write ^Channel ch (makeHttpReply 200)))
                     (stop-cli ctx))
-                  (onres [_ ch rsp msginfo xdata] nil)) } )))
+                  (onReply [_ ch rsp msginfo rdata] nil)) } )))
 
 (defn- hookShutdown [^comzotohcljc.util.core.MuObj ctx]
   (let [ cli (.getf ctx K_CLISH) ]

@@ -144,11 +144,11 @@
 
 (defn- doPOST "" [^URL targetUrl
                   ^String contentType
-                  ^XData xdata
+                  ^XData rdata
                   beforeSendFunc]
   (let [ ^HttpClient cli (mkApacheClientHandle) ]
     (try
-      (let [ ent (InputStreamEntity. (.stream xdata) (.size xdata))
+      (let [ ent (InputStreamEntity. (.stream rdata) (.size rdata))
              p (HttpPost. (.toURI targetUrl)) ]
         (.setEntity p (doto ent
                             (.setContentType contentType)
@@ -170,9 +170,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn syncPost "Perform a http-post on the target url."
-  ([^URL targetUrl contentType ^XData xdata] (syncPost targetUrl contentType xdata nil))
-  ([^URL targetUrl contentType ^XData xdata beforeSendFunc]
-    (doPOST targetUrl contentType xdata beforeSendFunc)))
+  ([^URL targetUrl contentType ^XData rdata] (syncPost targetUrl contentType rdata nil))
+  ([^URL targetUrl contentType ^XData rdata beforeSendFunc]
+    (doPOST targetUrl contentType rdata beforeSendFunc)))
 
 (defn syncGet "Perform a http-get on the target url."
   ([^URL targetUrl] (syncGet targetUrl nil))

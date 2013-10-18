@@ -200,14 +200,15 @@
 
 (defn- make-service-io [^comzotohcljc.hhh.io.core.EmitterAPI co]
   (reify comzotohcljc.netty.comms.NettyServiceIO
-    (onres [_ ch rsp msginfo xdata] nil)
-    (onerror [_ ch msginfo exp]  nil)
-    (presend [_ ch msg] nil)
-    (onreq [_ ch req msginfo xdata]
-      (let [ ^HTTPEvent evt (ioes-reify-event co ch req xdata)
+    (onReply [_ ch rsp msginfo rdata] nil)
+    (onError [_ ch msginfo exp]  nil)
+    (preSend [_ ch msg] nil)
+    (onRequest [_ ch req msginfo rdata]
+      (let [ ^HTTPEvent evt (ioes-reify-event co ch req rdata)
              ^comzotohcljc.hhh.core.sys.Element
-             ctr (.container co)
-             rcc (.getAttr co :rtcObj)
+             ctr (.container ^com.zotoh.hohenheim.io.Emitter co)
+             ^comzotohcljc.netty.comms.RouteCracker
+             rcc (.getAttr ^comzotohcljc.hhh.core.sys.Element co :rtcObj)
              [r1 ^comzotohcljc.net.rts.RouteInfo r2 r3 r4]
              (.crack rcc msginfo) ]
         (cond

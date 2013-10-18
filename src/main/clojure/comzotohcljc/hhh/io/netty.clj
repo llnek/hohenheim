@@ -97,7 +97,7 @@
 (defn- make-wsock-event
   [^comzotohcljc.hhh.io.core.EmitterAPI co
                          ^Channel ch
-                         ^XData xdata]
+                         ^XData rdata]
   (let [ ssl (notnil? (.get (NetUtils/getPipeline ch) "ssl"))
          ^InetSocketAddress laddr (.getLocalAddress ch)
          ^WebSockResult res (make-wsock-result)
@@ -121,9 +121,9 @@
         (getSession [_] (.mm-g impl :ios))
         (getId [_] eeid)
         (isSSL [_] ssl)
-        (isText [_] (instance? String (.content xdata)))
+        (isText [_] (instance? String (.content rdata)))
         (isBinary [this] (not (.isText this)))
-        (getData [_] xdata)
+        (getData [_] rdata)
         (getResultObj [_] res)
         (replyResult [this]
           (let [ ^comzotohcljc.hhh.io.core.WaitEventHolder
@@ -138,7 +138,7 @@
   [^comzotohcljc.hhh.io.core.EmitterAPI co & args]
   (let [ ^HTTPResult res (make-http-result)
          ^HttpRequest req (nth args 1)
-         ^XData xdata (nth args 2)
+         rdata (nth args 2)
          ^Channel ch (nth args 0)
          ssl (notnil? (.get (NetUtils/getPipeline ch) "ssl"))
          ^InetSocketAddress laddr (.getLocalAddress ch)
@@ -182,8 +182,8 @@
 
         (isKeepAlive [_] (HttpHeaders/isKeepAlive req))
 
-        (hasData [_] (notnil? xdata))
-        (data [_] xdata)
+        (hasData [_] (notnil? rdata))
+        (data [_] rdata)
 
         (contentType [_] (HttpHeaders/getHeader req "content-type"))
         (contentLength [_] (HttpHeaders/getContentLength req 0))
@@ -261,16 +261,18 @@
 
 (defn- make-service-io [^comzotohcljc.hhh.io.core.EmitterAPI co]
   (reify comzotohcljc.netty.comms.NettyServiceIO
-    (onres [_ ch rsp msginfo xdata] nil)
-    (onerror [_ ch msginfo exp]  nil)
-    (presend [_ ch msg] nil)
-    (onreq [_ ch req msginfo xdata]
+    (onReply [_ ch rsp msginfo rdata] nil)
+    (onError [_ ch msginfo exp]  nil)
+    (preSend [_ ch msg] nil)
+    (onRequest [_ ch req msginfo rdata]
       (let [ mtd (:method msginfo)
              evt (cond
-                    (= "WS" mtd)
-                    (make-wsock-event co ch xdata)
-                    :else
-                    (ioes-reify-event co ch req xdata))
+                   (= "WS" mtd)
+                   (if (instance? XData rdata)
+                     (make-wsock-event co ch ^XData rdata)
+                     (throw (IOException. "Unexpected websocket data.")))
+                   :else
+                   (ioes-reify-event co ch req rdata))
              ^comzotohcljc.hhh.io.core.WaitEventHolder
              w (make-async-wait-holder (make-netty-trigger ch evt co) evt) ]
         (.timeoutMillis w

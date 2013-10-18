@@ -142,7 +142,7 @@
   (persistent! (reduce (fn [sum ^HttpCookie c]
                          (conj! sum
                                 (-> (doto (CookieEncoder. true)
-                                          (.add (.getName c)(.getValue c)))
+                                          (.addCookie (.getName c)(.getValue c)))
                                     (.encode))))
                        (transient [])
                        (seq cookies)) ))
