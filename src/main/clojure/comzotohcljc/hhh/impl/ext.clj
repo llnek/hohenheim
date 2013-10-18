@@ -440,8 +440,9 @@
     ;; handle the plugins
     (.setAttr! co K_PLUGINS
       (persistent!  (reduce (fn [sum en]
-                              (conj! sum (doOnePlugin co (last en) appDir env app)) ) 
-                            (transient []) (seq (:plugins app))) ))
+                              (assoc! sum (keyword (first en))
+                                          (doOnePlugin co (last en) appDir env app)) )
+                            (transient {}) (seq (:plugins app))) ))
 
     (.setAttr! co K_SCHEDULER sc)
     (.setAttr! co K_JCTOR jc)

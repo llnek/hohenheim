@@ -24,25 +24,42 @@
 (use '[clojure.tools.logging :only [info warn error debug] ])
 
 (import '(com.zotoh.hohenheim.runtime AuthError UnknownUser))
-(import '(com.zotoh.hohenheim.etc PluginFactory Plugin))
+(import '(com.zotoh.hohenheim.etc
+  PluginFactory Plugin PluginError))
 (import '(com.zotoh.hohenheim.core Container))
 
-(import '(com.zotoh.frwk.dbio SQLr))
-(import '(java.util Properties))
-(import '(java.io File))
+(import '(com.zotoh.frwk.dbio
+  DBAPI MetaCache SQLr JDBCPool JDBCInfo))
+
 (import '(org.apache.commons.io FileUtils))
+(import '(java.io File IOException))
+(import '(java.util Properties))
 
 (import '(org.apache.shiro.config IniSecurityManagerFactory))
 (import '(org.apache.shiro SecurityUtils))
 (import '(org.apache.shiro.subject Subject))
 
+(import '( com.zotoh.wflow
+  FlowPoint Activity Pipeline PipelineDelegate PTask Work))
+(import '(com.zotoh.hohenheim.io HTTPEvent HTTPResult))
+(import '(com.zotoh.wflow.core Scope))
+
+
 (use '[comzotohcljc.util.core :only [make-mmap uid load-javaprops] ])
 (use '[comzotohcljc.crypto.codec :only [pwdify] ])
 (use '[comzotohcljc.util.str :only [nsb strim] ])
+(use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.auth.dms])
+(use '[comzotohcljc.dbio.connect :only [dbio-connect] ])
 (use '[comzotohcljc.dbio.core])
 (require '[clojure.data.json :as json])
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defprotocol AuthPlugin
+  ""
+  (getRoles [_ acctObj ] )
+  (getAccount [_ user pwdObj]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -76,7 +93,7 @@
       (dbio-set-m2m { :as :roles :with sql } acc r))
     acc))
 
-(defn get-loginAccount  "" [^SQLr sql
+(defn- get-loginAccount  "" [^SQLr sql
                             ^String user
                             ^comzotohcljc.crypto.codec.Password pwdObj]
   (let [ acct (.findOne sql :czc.hhh.auth/LoginAccount
@@ -136,11 +153,43 @@
     (info "created shiro security manager: " sm)
   ))
 
-(defn makeAuthPlugin ""
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn make-verifyAcctTask "" []
+  (PTask. (reify Work
+    (perform [_ fw scope arg]
+      (let [ ^comzotohcljc.hhh.core.sys.Element ctr (.container ^Scope scope)
+             ^comzotohcljc.hhh.auth.core.AuthPlugin
+             pa (:auth (.getAttr ctr K_PLUGINS))
+             ^HTTPEvent evt (.event ^Scope scope)
+             ^comzotohcljc.hhh.mvc.ios.WebSession ss (.getSession evt)
+             ^String user (.getAttribute ss WS_USER)
+             ^String pwd (.getAttribute ss WS_CRED) ]
+      (when (nil? pa) (throw (PluginError. "AuthPlugin missing.")))
+      (let [ acct (.getAccount pa user pwd)
+             rs (.getRoles pa acct) ]
+        ))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- mkjdbc ^JDBCInfo [^comzotohcljc.util.core.MutableMapAPI impl]
+  (let [ pkey (.mm-g impl :appKey)
+         cfg (get (.mm-g impl :cfg) (keyword "_")) ]
+    (make-jdbc "_" cfg (pwdify (:passwd cfg) pkey))))
+
+(defn- makeAuthPlugin ""
   ^Plugin
   []
   (let [ impl (make-mmap) ]
     (reify
+      AuthPlugin
+      (getAccount [_ user pwd]
+        (let [ pkey (.mm-g impl :appKey)
+               ^SQLr sql (-> (dbio-connect (mkjdbc impl) AUTH-MCACHE {})
+                             (.newSimpleSQLr)) ]
+          (get-loginAccount sql user (pwdify pwd pkey))))
+      (getRoles [_ acct] [])
+
       Plugin
       (contextualize [_ ctr]
         (.mm-s impl :appDir (.getAppDir ^Container ctr))
@@ -149,10 +198,8 @@
         (let [ dbs (:databases (:env props)) ]
           (.mm-s impl :cfg (:jdbc dbs)) ))
       (initialize [_]
-        (let [ pkey (.mm-g impl :appKey)
-               cfg (get (.mm-g impl :cfg) (keyword "_"))
-               j (make-jdbc (uid) cfg (pwdify (:passwd cfg) pkey)) ]
-          (applyAuthPluginDDL j)
+        (let []
+          (applyAuthPluginDDL (mkjdbc impl))
           (init-shiro (.mm-g impl :appDir)
                       (.mm-g impl :appKey))))
       (start [_]
@@ -165,7 +212,6 @@
 (deftype AuthPluginFactory []
   PluginFactory
   (createPlugin [_]
-    (require 'comzotohcljc.hhh.auth.core)
     (makeAuthPlugin)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

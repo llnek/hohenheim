@@ -82,8 +82,10 @@
   Schema
   (getModels [_] [ StdAddress AuthRole LoginAccount AccountRole] ))
 
+(def AUTH-MCACHE (make-MetaCache (AuthPluginSchema.)))
+
 (defn generateAuthPluginDDL ^String [dbtype]
-  (getDDL (make-MetaCache (AuthPluginSchema.))
+  (getDDL AUTH-MCACHE
     (case dbtype
       (:postgres :postgresql) Postgresql
       :mysql MySQL

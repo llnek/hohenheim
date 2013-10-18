@@ -130,6 +130,8 @@
 
 (def K_META :meta )
 
+(def WS_CRED "credential")
+(def WS_USER "principal")
 
 
 
