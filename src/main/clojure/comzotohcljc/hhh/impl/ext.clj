@@ -75,7 +75,6 @@
 (use '[ comzotohcljc.net.rts :only [load-routes] ])
 (require '[clojure.data.json :as json])
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* false)
 

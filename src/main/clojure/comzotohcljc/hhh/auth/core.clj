@@ -27,6 +27,9 @@
 (import '(com.zotoh.hohenheim.etc
   PluginFactory Plugin PluginError))
 (import '(com.zotoh.hohenheim.core Container))
+(import '(org.apache.commons.codec.binary Base64))
+
+(import '(com.zotoh.frwk.net ULFormItems ULFileItem))
 
 (import '(com.zotoh.frwk.dbio
   DBAPI MetaCache SQLr JDBCPool JDBCInfo))
@@ -45,9 +48,9 @@
 (import '(com.zotoh.wflow.core Scope))
 
 
-(use '[comzotohcljc.util.core :only [make-mmap uid load-javaprops] ])
+(use '[comzotohcljc.util.core :only [stringify make-mmap uid load-javaprops] ])
 (use '[comzotohcljc.crypto.codec :only [pwdify] ])
-(use '[comzotohcljc.util.str :only [nsb strim] ])
+(use '[comzotohcljc.util.str :only [nsb hgl? strim] ])
 (use '[comzotohcljc.hhh.core.constants])
 (use '[comzotohcljc.hhh.auth.dms])
 (use '[comzotohcljc.dbio.connect :only [dbio-connect] ])
@@ -55,6 +58,9 @@
 (require '[clojure.data.json :as json])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def LF-PASSWORD "password")
+(def LF-USER "user")
 
 (defprotocol AuthPlugin
   ""
@@ -155,6 +161,59 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn make-loginTask "" []
+  (PTask. (reify Work
+    (perform [_ fw scope arg]
+      (let [ ^comzotohcljc.hhh.core.sys.Element ctr (.container ^Scope scope)
+             ^comzotohcljc.hhh.auth.core.AuthPlugin
+             pa (:auth (.getAttr ctr K_PLUGINS))
+             ^HTTPEvent evt (.event ^Scope scope)
+             data (.data evt)
+             ^comzotohcljc.netty.ios.WebSession ss (.getSession evt) ]
+        (debug "dude ! , data = " (type data))
+        (when (nil? pa) (throw (PluginError. "AuthPlugin missing.")))
+        (debug "auth-plugin - ok")
+        (with-local-vars [user "" pwd ""]
+          (cond
+            (instance? ULFormItems data)
+            (doseq [ ^ULFileItem
+                     x (filter #(.isFormField ^ULFileItem %)
+                               (.getAll ^ULFormItems data)) ]
+              (debug "Field-name ===== " (.getFieldName x))
+              (debug "Field-val ===== " (.getString x))
+              (case (.getFieldName x)
+                "password" (var-set pwd  (.getString x))
+                "user" (var-set user (.getString x))
+                nil))
+
+            (hgl? (.getHeaderValue evt "authorization"))
+            (let [ s (stringify (Base64/decodeBase64 (.getHeaderValue evt "authorization")))
+                   pos (.indexOf s ":") ]
+              (when (pos > 0)
+                (var-set pwd (.substring s (inc pos)))
+                (var-set user (.substring s 0 pos))))
+
+            (and (hgl? (.getParameterValue evt LF-PASSWORD))
+                 (hgl? (.getParameterValue evt LF-USER)))
+            (do
+              (var-set pwd (.getParameterValue evt LF-PASSWORD))
+              (var-set user (.getParameterValue evt LF-USER)))
+
+            :else
+            nil)
+          (debug "USER ==== " @user)
+          (debug "PWD ==== " @pwd)
+          (if (and (hgl? @user)
+                   (hgl? @pwd))
+            (let [ acct (.getAccount pa @user @pwd)
+                   rs (.getRoles pa acct) ]
+              (.setAttribute ss LF-PASSWORD @pwd)
+              (.setAttribute ss LF-USER @user)
+              (.setAttribute ss "roles" rs))
+            (throw (AuthError. "Unknown user or bad password."))))
+
+        )))))
+
 (defn make-verifyAcctTask "" []
   (PTask. (reify Work
     (perform [_ fw scope arg]
@@ -162,7 +221,7 @@
              ^comzotohcljc.hhh.auth.core.AuthPlugin
              pa (:auth (.getAttr ctr K_PLUGINS))
              ^HTTPEvent evt (.event ^Scope scope)
-             ^comzotohcljc.hhh.mvc.ios.WebSession ss (.getSession evt)
+             ^comzotohcljc.netty.ios.WebSession ss (.getSession evt)
              ^String user (.getAttribute ss WS_USER)
              ^String pwd (.getAttribute ss WS_CRED) ]
       (when (nil? pa) (throw (PluginError. "AuthPlugin missing.")))
@@ -182,14 +241,6 @@
   []
   (let [ impl (make-mmap) ]
     (reify
-      AuthPlugin
-      (getAccount [_ user pwd]
-        (let [ pkey (.mm-g impl :appKey)
-               ^SQLr sql (-> (dbio-connect (mkjdbc impl) AUTH-MCACHE {})
-                             (.newSimpleSQLr)) ]
-          (get-loginAccount sql user (pwdify pwd pkey))))
-      (getRoles [_ acct] [])
-
       Plugin
       (contextualize [_ ctr]
         (.mm-s impl :appDir (.getAppDir ^Container ctr))
@@ -207,11 +258,26 @@
       (stop [_]
         (info "AuthPlugin stopped."))
       (dispose [_]
-        (info "AuthPlugin disposed."))) ))
+        (info "AuthPlugin disposed."))
+
+      AuthPlugin
+      (getAccount [_ user pwd]
+        (let [ pkey (.mm-g impl :appKey)
+               ^SQLr sql (-> (dbio-connect (mkjdbc impl) AUTH-MCACHE {})
+                             (.newSimpleSQLr)) ]
+          (get-loginAccount sql user (pwdify pwd pkey))))
+      (getRoles [_ acct] [])
+
+      )))
+
+
+
+
 
 (deftype AuthPluginFactory []
   PluginFactory
   (createPlugin [_]
+    (require 'comzotohcljc.hhh.auth.core)
     (makeAuthPlugin)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

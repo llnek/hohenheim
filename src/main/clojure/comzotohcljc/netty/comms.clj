@@ -454,8 +454,8 @@
     (doseq [ f (seq out) ]
       (.removeHttpDataFromClean dc f))
     (Try! (.cleanFiles dc))
-    (.resetContent rdata items)
-    (.onRequest usercb ch dir info rdata) ))
+    ;;(.resetContent rdata items)
+    (.onRequest usercb ch dir info items) ))
 
 
 (defn- read-formdata [^ChannelHandlerContext ctx ^HttpPostRequestDecoder dc]
@@ -632,6 +632,7 @@
              (or (>= (.indexOf ct "multipart/form-data") 0)
                  (>= (.indexOf ct "application/x-www-form-urlencoded") 0)))
       (let [ rc (HttpPostRequestDecoder. (new-data-fac) req) ]
+        (debug "form-data as input, required post-decoder")
         (sa-map! ch (assoc attObj :decoder rc))
         rc)
       nil)

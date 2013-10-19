@@ -781,7 +781,6 @@ def cljhhh_MVC() {
         classpathref: 'compilePathId') {
     sysproperty (key: 'clojure.compile.warn-on-reflection', value: true)
     sysproperty (key: 'clojure.compile.path', value: "${buildDir}")
-    arg (value: 'comzotohcljc.hhh.mvc.ios')
     arg (value: 'comzotohcljc.hhh.mvc.tpls')
     arg (value: 'comzotohcljc.hhh.mvc.handler')
   }

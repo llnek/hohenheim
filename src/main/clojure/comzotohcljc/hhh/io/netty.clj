@@ -146,7 +146,7 @@
          ^InetSocketAddress laddr (.getLocalAddress ch)
          impl (make-mmap)
          eeid (next-long) ]
-    (.mm-s impl :ios (make-session))
+    ;;(.mm-s impl :ios (make-session))
     (with-meta
       (reify
 
