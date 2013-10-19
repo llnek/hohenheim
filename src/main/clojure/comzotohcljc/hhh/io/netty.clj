@@ -58,6 +58,7 @@
 (use '[comzotohcljc.util.core :only [MuObj make-mmap notnil? conv-long] ])
 (use '[comzotohcljc.netty.comms :only [ makeServerNetty finzNetty addListener
                                         makeRouteCracker] ])
+(use '[comzotohcljc.netty.ios :only [ make-session]])
 (use '[comzotohcljc.util.seqnum :only [next-long] ])
 (use '[comzotohcljc.util.mime :only [get-charset] ])
 (use '[comzotohcljc.util.str :only [hgl? nsb strim nichts?] ])
@@ -103,6 +104,7 @@
          ^WebSockResult res (make-wsock-result)
          impl (make-mmap)
          eeid (next-long) ]
+    (.mm-s impl :ios (make-session))
     (with-meta
       (reify
         MuObj
@@ -144,6 +146,7 @@
          ^InetSocketAddress laddr (.getLocalAddress ch)
          impl (make-mmap)
          eeid (next-long) ]
+    (.mm-s impl :ios (make-session))
     (with-meta
       (reify
 

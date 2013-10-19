@@ -16,7 +16,7 @@
 
 (ns ^{ :doc ""
        :author "kenl" }
-  comzotohcljc.hhh.mvc.ios )
+  comzotohcljc.netty.ios )
 
 
 (import '(org.apache.commons.lang3 StringUtils))
@@ -36,7 +36,7 @@
 ;;(set! *warn-on-reflection* true)
 
 
-(def ^:private SESSION_COOKIE "hhh_ssid" )
+(def ^:private SESSION_COOKIE "h3_ssid" )
 (def ^:private SSID_FLAG "f_01ec")
 (def ^:private TS_FLAG "f_684f" )
 
@@ -56,7 +56,7 @@
   (getLastAccessedTime [_] )
   (getMaxInactiveInterval [_] ))
 
-(defn- resurrect [^comzotohcljc.hhh.mvc.ios.WebSession mvs
+(defn- resurrect [^comzotohcljc.netty.ios.WebSession mvs
                   ^HTTPEvent evt]
   (let [ ctr (.container ^Emitter (.emitter evt))
          pkey (-> ctr (.getAppKey)(bytesify))
